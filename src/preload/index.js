@@ -90,7 +90,16 @@ const api = {
     ipcRenderer.removeAllListeners('browser:preview')
     ipcRenderer.on('browser:preview', (_, data) => cb(data))
   },
-  showBrowserWindow: () => ipcRenderer.send('browser:show')
+  showBrowserWindow: () => ipcRenderer.send('browser:show'),
+  osRead: () => ipcRenderer.invoke('os:read'),
+  osClick: (query) => ipcRenderer.invoke('os:click', query),
+  osType: (query) => ipcRenderer.invoke('os:type', query),
+  osKey: (combo) => ipcRenderer.invoke('os:key', combo),
+  osScroll: (query) => ipcRenderer.invoke('os:scroll', query),
+  osOpen: (target) => ipcRenderer.invoke('os:open', target),
+  osListWindows: () => ipcRenderer.invoke('os:list-windows'),
+  osFocusWindow: (title) => ipcRenderer.invoke('os:focus-window', title),
+  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

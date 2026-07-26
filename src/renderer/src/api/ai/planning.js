@@ -12,9 +12,6 @@ const CATEGORY_TEXTS = {
   music: 'putar lagu musik youtube yt music cari video mp3 play lagu puter',
   search: 'cari di internet google penelusuran web berita terbaru cuaca informasi terkini',
   system: 'screenshot kirim pesan whatsapp wa operasikan komputer sistem',
-  browser:
-    'buka web website halaman navigasi klik browse internet login form isi formulir pesan order beli cari di web otomasi browser automasi',
-  capabilities: 'apa saja plugin mu daftar tool kemampuan fitur bisa ngapain aja'
 }
 
 let categoryVectors = null
@@ -177,15 +174,30 @@ ATURAN BROWSER AUTOMATION:
 4. Jika elemen yang dicari tidak ditemukan, coba browser-scroll atau browser-read.
 5. Elemen ditandai dengan format: [ID] Tipe: "Label". Gunakan ID angka untuk merujuk elemen.
 6. JANGAN MENYERAH! Secara default user diblokir. Jika butuh user login/isi form manual, JANGAN balas dengan 'answer' lalu berhenti! HARUS selalu gunakan tool browser-ask-user, lalu tunggu user selesai, dan LAKUKAN sisa tugasmu!
-7. JANGAN GUNAKAN browser ini untuk memutar lagu!${
-  activeCategories.includes('music')
-    ? `\n- music-play: Memutar lagu di YouTube Music.
+7. JANGAN GUNAKAN browser ini untuk memutar lagu!
+- os-read: Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.
+- os-click: Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.
+- os-type: Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung.
+- os-key: Tekan kombinasi tombol keyboard shortcut. Query: combo (misal: ctrl+c, alt+tab, win+e, ctrl+s, enter).
+- os-scroll: Scroll mouse wheel di aplikasi aktif. Query: direction||amount (misal: down||5 atau up||3).
+- os-open: Membuka aplikasi Windows dari Start Menu atau path. Query: nama app/path (misal: notepad, winword, C:\\app.exe).
+- os-list-windows: Menampilkan daftar semua window aplikasi yang terbuka beserta judulnya.
+- os-focus-window: Fokus/brings to front sebuah window aplikasi berdasarkan judulnya. Query: judul window.
+- os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+S).
+
+ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
+1. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
+2. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
+3. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
+4. PENTING: Saat otomatisasi PC berjalan, user bisa menghentikannya kapan saja dengan menekan Ctrl+S. Jika tool os-* mengembalikan status "stopped_by_user", gunakan tool 'os-ask' untuk menanyakan alasan user, atau sesuaikan langkahmu dengan masukan user!${
+        activeCategories.includes('music')
+          ? `\n- music-play: Memutar lagu di YouTube Music.
 - music-toggle: Pause/lanjut memutar lagu.
 - music-search: Mencari lagu spesifik di YT Music.
 - music-next: Mengganti lagu ke track selanjutnya.
 - music-prev: Mengganti lagu ke track sebelumnya.`
-    : ''
-}
+          : ''
+      }
 ${
   activeCategories.some((c) => ['system', 'casual'].includes(c))
     ? `- analyze-screen: Mengambil screenshot untuk dianalisis oleh "Mata AI" (Vision). Gunakan tool ini JIKA DAN HANYA JIKA kamu perlu TAHU apa yang sedang tampil di layar komputer user. Query: Isi dengan prompt instruksi visual spesifikmu, isi query dengan jelas dan panjang karena akan dibaca oleh model ai visual, Jangan minta untuk ambil screenshot karen sudah ditangani oleh sistem, prompt ini bertujuan untuk menganalisa hasil screenshot oleh sistem (misal: "Tolong bacakan teks error di layar" atau "Cari tombol warna biru").

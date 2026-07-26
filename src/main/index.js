@@ -242,6 +242,20 @@ ipcMain.handle('browser:close', (event) => {
 ipcMain.on('browser:show', () => {
   showBrowser()
 })
+
+import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
+
+// PC Automation IPCs
+ipcMain.handle('os:read', async () => await readDesktop())
+ipcMain.handle('os:click', async (event, query) => await executeClick(query))
+ipcMain.handle('os:type', async (event, query) => await executeType(query))
+ipcMain.handle('os:key', async (event, combo) => await executeKey(combo))
+ipcMain.handle('os:scroll', async (event, query) => await executeScroll(query))
+ipcMain.handle('os:open', async (event, target) => await openApp(target))
+ipcMain.handle('os:list-windows', async () => await listWindows())
+ipcMain.handle('os:focus-window', async (event, title) => await focusWindow(title))
+ipcMain.handle('os:ask-user', async (event, query) => await askUserPC(query))
+
 app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.mark.agent')

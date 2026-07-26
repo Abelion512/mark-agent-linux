@@ -592,7 +592,16 @@ export const useMarkPlan = ({
                 'browser-type',
                 'browser-scroll',
                 'browser-ask-user',
-                'browser-close'
+                'browser-close',
+                'os-read',
+                'os-click',
+                'os-type',
+                'os-key',
+                'os-scroll',
+                'os-open',
+                'os-list-windows',
+                'os-focus-window',
+                'os-ask'
               ].includes(tool)
             ) {
               // --- NATIVE TOOLS (Built-in) ---

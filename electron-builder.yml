@@ -12,6 +12,7 @@ asarUnpack:
   - resources/**
   - "node_modules/ffmpeg-static/**/*"
   - "node_modules/youtube-dl-exec/**/*"
+  - "**/pc-agent-scripts/**/*"
 win:
   executableName: 'Mark Agent'
 nsis:

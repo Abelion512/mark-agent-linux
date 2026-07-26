@@ -463,6 +463,78 @@ const Guidebook = () => {
                   </div>
                 </div>
 
+                {/* Kategori PC Automation */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
+                    <FaTerminal className="text-warning" /> PC Automation Engine (Zero-Vision)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <ToolCard
+                      name="os-read"
+                      description="Membaca elemen GUI aplikasi Windows aktif via UIAutomation/OCR."
+                      needsPermission={false}
+                      queryFormat="(kosong)"
+                      howItWorks="Mengambil Accessibility Tree dan mengubah elemen tombol/input menjadi JSON teks ber-ID untuk hemat 90% token."
+                    />
+                    <ToolCard
+                      name="os-click"
+                      description="Klik mouse pada elemen GUI desktop."
+                      needsPermission={false}
+                      queryFormat="id atau x||y"
+                      howItWorks="Mengklik elemen berdasarkan nomor ID dari os-read atau koordinat layar absolut."
+                    />
+                    <ToolCard
+                      name="os-type"
+                      description="Ketik teks ke input aplikasi Windows."
+                      needsPermission={false}
+                      queryFormat="id||teks"
+                      howItWorks="Fokus ke elemen ID lalu mengetik string teks secara otomatis."
+                    />
+                    <ToolCard
+                      name="os-key"
+                      description="Tekan kombinasi tombol keyboard shortcut."
+                      needsPermission={false}
+                      queryFormat="ctrl+s, alt+tab, win+e"
+                      howItWorks="Mengirim kombinasi tombol (shortcut berbahaya di-blacklist dan butuh approval)."
+                    />
+                    <ToolCard
+                      name="os-scroll"
+                      description="Scroll mouse wheel di aplikasi aktif."
+                      needsPermission={false}
+                      queryFormat="down||5"
+                      howItWorks="Menggulir layar ke atas atau bawah dengan jumlah tick tertentu."
+                    />
+                    <ToolCard
+                      name="os-open"
+                      description="Membuka aplikasi Windows dari Start Menu/Path."
+                      needsPermission={true}
+                      queryFormat="notepad, calc, winword"
+                      howItWorks="Membuka process aplikasi Windows baru (memerlukan persetujuan user)."
+                    />
+                    <ToolCard
+                      name="os-list-windows"
+                      description="Melihat daftar semua window aplikasi yang terbuka."
+                      needsPermission={false}
+                      queryFormat="(kosong)"
+                      howItWorks="Mengembalikan judul dan PID seluruh aplikasi yang sedang aktif."
+                    />
+                    <ToolCard
+                      name="os-focus-window"
+                      description="Membawa window aplikasi ke depan layar."
+                      needsPermission={false}
+                      queryFormat="judul window"
+                      howItWorks="Fokus dan restore window aplikasi yang minimised berdasarkan judulnya."
+                    />
+                    <ToolCard
+                      name="os-ask"
+                      description="Meminta bantuan/masukan user saat mengontrol PC atau saat dihentikan Ctrl+S."
+                      needsPermission={false}
+                      queryFormat="pertanyaan/pesan"
+                      howItWorks="Memunculkan modal dialog floating di layar untuk menanyakan alasan user menghentikan otomatisasi atau meminta instruksi."
+                    />
+                  </div>
+                </div>
+
                 {/* Kategori File */}
                 <div>
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">

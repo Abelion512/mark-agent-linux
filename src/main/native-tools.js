@@ -3,6 +3,30 @@ import path from 'path'
 import { exec } from 'child_process'
 import util from 'util'
 import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agent.js'
+import {
+  readDesktop,
+  executeClick,
+  executeType,
+  executeKey,
+  executeScroll,
+  openApp,
+  listWindows,
+  focusWindow,
+  askUserPC
+} from './pc-agent.js'
+
+const DANGEROUS_KEY_COMBOS = [
+  'alt+f4',
+  'ctrl+shift+del',
+  'win+l',
+  'ctrl+alt+del',
+  'alt+shift+del',
+  'ctrl+shift+esc'
+]
+export const isDangerousKeyCombo = (combo = '') => {
+  const normalized = combo.toLowerCase().replace(/\s+/g, '')
+  return DANGEROUS_KEY_COMBOS.some((bad) => normalized.includes(bad.replace(/\s+/g, '')))
+}
 
 const execPromise = util.promisify(exec)
 
@@ -301,6 +325,107 @@ export const NATIVE_TOOLS = {
     handler: async (query) => {
       try {
         const result = await executeAction({ action: 'unblock', value: query })
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-read': {
+    needsApproval: false,
+    handler: async () => {
+      try {
+        const result = await readDesktop()
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-click': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await executeClick(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-type': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await executeType(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-key': {
+    needsApproval: (query) => isDangerousKeyCombo(query),
+    approvalMessage: (query) =>
+      `Mark ingin menekan shortcut keyboard yang berpotensi BERBAHAYA:\n\n${query}`,
+    handler: async (query) => {
+      try {
+        const result = await executeKey(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-scroll': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await executeScroll(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-open': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await openApp(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-list-windows': {
+    needsApproval: false,
+    handler: async () => {
+      try {
+        const result = await listWindows()
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-focus-window': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await focusWindow(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-ask': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await askUserPC(query)
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
