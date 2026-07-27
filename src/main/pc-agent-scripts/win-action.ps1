@@ -45,6 +45,12 @@ public class Win32 {
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int GetWindowTextLength(IntPtr hWnd);
 
@@ -104,6 +110,53 @@ public class Win32 {
         return "{\"status\":\"error\",\"message\":\"Window not found: " + target.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}";
     }
 
+    public static bool IsMarkWindow(string title) {
+        if (string.IsNullOrWhiteSpace(title)) return true;
+        string t = title.Trim();
+        if (t == "Program Manager" || t == "Default IME" || t.StartsWith("MSCTFIME")) return true;
+        string lower = t.ToLower();
+        if (lower == "mark" || lower.StartsWith("mark -") || lower.StartsWith("mark_pc_stop") || lower.StartsWith("mark_unblock") || lower.Contains("mark agent") || lower.Contains("mark pc automation")) {
+            return true;
+        }
+        return false;
+    }
+
+    public static void EnsureTargetWindowFocused() {
+        IntPtr fg = GetForegroundWindow();
+        string fgTitle = "";
+        int fgLen = GetWindowTextLength(fg);
+        if (fgLen > 0) {
+            StringBuilder fgSb = new StringBuilder(fgLen + 1);
+            GetWindowText(fg, fgSb, fgSb.Capacity);
+            fgTitle = fgSb.ToString();
+        }
+
+        if (!IsMarkWindow(fgTitle)) {
+            return;
+        }
+
+        IntPtr target = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr hWnd, IntPtr lParam) {
+            if (!IsWindowVisible(hWnd) || IsIconic(hWnd)) return true;
+            int len = GetWindowTextLength(hWnd);
+            if (len <= 0) return true;
+            StringBuilder sb = new StringBuilder(len + 1);
+            GetWindowText(hWnd, sb, sb.Capacity);
+            string title = sb.ToString();
+
+            if (!IsMarkWindow(title)) {
+                target = hWnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        if (target != IntPtr.Zero) {
+            SetForegroundWindow(target);
+            System.Threading.Thread.Sleep(200);
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT {
         public ushort wVk;
@@ -113,10 +166,10 @@ public class Win32 {
         public IntPtr dwExtraInfo;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct INPUT {
-        [FieldOffset(0)] public int type;
-        [FieldOffset(4)] public KEYBDINPUT ki;
+        public int type;
+        public KEYBDINPUT ki;
     }
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -175,16 +228,39 @@ function Execute-Click {
     Write-Output "({`"status`":`"success`",`"action`":`"click`",`"x`":$X,`"y`":$Y})".Trim("()")
 }
 
+function Escape-SendKeys {
+    param([string]$str)
+    if ([string]::IsNullOrEmpty($str)) { return "" }
+    $res = ""
+    foreach ($char in $str.ToCharArray()) {
+        if ("+^%~(){}[]".Contains($char.ToString())) {
+            $res += "{$char}"
+        } elseif ($char -eq "`n" -or $char -eq "`r") {
+            $res += "{ENTER}"
+        } else {
+            $res += $char
+        }
+    }
+    return $res
+}
+
 function Execute-Type {
+    [Win32]::EnsureTargetWindowFocused()
     if (-not [string]::IsNullOrEmpty($Text)) {
-        $res = [Win32]::TypeTextUnicode($Text)
-        Write-Output $res
+        $escaped = Escape-SendKeys -str $Text
+        try {
+            [System.Windows.Forms.SendKeys]::SendWait($escaped)
+            Write-Output "({`"status`":`"success`",`"action`":`"type`",`"text`":`"$Text`"})".Trim("()")
+        } catch {
+            Write-Output '{"status":"error","message":"SendKeys failed for type"}'
+        }
     } else {
         Write-Output '{"status":"error","message":"Empty text"}'
     }
 }
 
 function Execute-Key {
+    [Win32]::EnsureTargetWindowFocused()
     if (-not [string]::IsNullOrEmpty($Combo)) {
         $keys = $Combo.ToLower().Trim()
         $sendStr = ""

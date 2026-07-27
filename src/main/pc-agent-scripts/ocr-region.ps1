@@ -30,11 +30,79 @@ public class Win32 {
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    public static bool IsMarkWindow(string title) {
+        if (string.IsNullOrWhiteSpace(title)) return true;
+        string t = title.Trim();
+        if (t == "Program Manager" || t == "Default IME" || t.StartsWith("MSCTFIME")) return true;
+        string lower = t.ToLower();
+        if (lower == "mark" || lower.StartsWith("mark -") || lower.StartsWith("mark_pc_stop") || lower.StartsWith("mark_unblock") || lower.Contains("mark agent") || lower.Contains("mark pc automation")) {
+            return true;
+        }
+        return false;
+    }
+
+    public static IntPtr GetTargetWindow() {
+        IntPtr fg = GetForegroundWindow();
+        string fgTitle = "";
+        int fgLen = GetWindowTextLength(fg);
+        if (fgLen > 0) {
+            StringBuilder fgSb = new StringBuilder(fgLen + 1);
+            GetWindowText(fg, fgSb, fgSb.Capacity);
+            fgTitle = fgSb.ToString();
+        }
+
+        if (!IsMarkWindow(fgTitle)) {
+            return fg;
+        }
+
+        IntPtr target = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr hWnd, IntPtr lParam) {
+            if (!IsWindowVisible(hWnd) || IsIconic(hWnd)) return true;
+            int len = GetWindowTextLength(hWnd);
+            if (len <= 0) return true;
+            StringBuilder sb = new StringBuilder(len + 1);
+            GetWindowText(hWnd, sb, sb.Capacity);
+            string title = sb.ToString();
+
+            if (!IsMarkWindow(title)) {
+                target = hWnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+
+        if (target != IntPtr.Zero) {
+            SetForegroundWindow(target);
+            return target;
+        }
+        return fg;
+    }
 }
 "@
 Add-Type -TypeDefinition $code -Language CSharp
 
-$hwnd = [Win32]::GetForegroundWindow()
+$hwnd = [Win32]::GetTargetWindow()
 $titleBuilder = New-Object System.Text.StringBuilder 512
 [Win32]::GetWindowText($hwnd, $titleBuilder, $titleBuilder.Capacity) | Out-Null
 $windowTitle = $titleBuilder.ToString()

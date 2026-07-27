@@ -11,9 +11,20 @@ let lastReadResult = null
 let overlayWindow = null
 let activeChildProcess = null
 let isStoppedByUser = false
+let lastStopTime = 0
 let lastStopReason = null
 let overlayHideTimeout = null
 let pendingAskResolve = null
+let isSessionOpen = false
+let mouseLockerProcess = null
+
+function isStopActive() {
+  if (isStoppedByUser && Date.now() - lastStopTime > 15000) {
+    console.log('[PC-Agent] Emergency stop state expired after 15s. Resetting isStoppedByUser=false')
+    isStoppedByUser = false
+  }
+  return isStoppedByUser
+}
 
 function getOverlayHTML() {
   return `<!DOCTYPE html>
@@ -29,84 +40,96 @@ function getOverlayHTML() {
       user-select: none;
     }
     .banner {
-      width: 100%;
-      height: 86px;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(16px);
-      border: 1.5px solid rgba(31, 184, 84, 0.45);
-      border-radius: 18px;
-      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.65);
+      box-sizing: border-box;
+      width: calc(100% - 8px);
+      height: calc(100% - 8px);
+      margin: 4px;
+      background: rgba(25, 54, 45, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(31, 184, 84, 0.4);
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      color: #f8fafc;
+      justify-content: center;
+      gap: 14px;
+      padding: 0 24px;
+      color: #1fb854;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .left { display: flex; align-items: center; gap: 14px; }
-    .pulse-dot {
-      width: 12px; height: 12px; background: #22c55e; border-radius: 50%;
-      box-shadow: 0 0 12px #22c55e; animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
-    .title { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; color: #f8fafc; }
-    .subtitle { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-    .btn-stop {
-      background: rgba(239, 68, 68, 0.15); color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.4); padding: 9px 16px;
-      border-radius: 10px; font-weight: 600; font-size: 12px;
-      cursor: pointer; display: flex; align-items: center; gap: 6px;
-      transition: all 0.2s;
-    }
-    .btn-stop:hover { background: #ef4444; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+    
+    @keyframes mark-spin { 100% { transform: rotate(360deg); } }
+    .mark-spin { animation: mark-spin 1.5s linear infinite; }
+    @keyframes mark-pulse { 50% { opacity: 0.7; } }
+    .mark-pulse { animation: mark-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+    .title { font-size: 14px; font-weight: 600; letter-spacing: 0.3px; color: #1fb854; display: flex; align-items: center; gap: 6px; }
+    .subtitle { font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 1px; }
+    
     .modal-content {
-      display: none; width: 100%; height: 100%;
-      background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px);
-      border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 18px;
-      padding: 20px; flex-direction: column; justify-content: space-between;
+      display: none;
+      box-sizing: border-box;
+      width: calc(100% - 24px);
+      height: calc(100% - 24px);
+      margin: 12px;
+      background: rgba(25, 54, 45, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(31, 184, 84, 0.4);
+      border-radius: 18px;
+      box-shadow: 0 15px 35px -5px rgba(0,0,0,0.5);
+      padding: 22px;
+      flex-direction: column;
+      gap: 16px;
+      pointer-events: auto;
+      font-family: system-ui, sans-serif;
     }
-    .modal-title { font-size: 15px; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 8px; }
-    .modal-subtitle { font-size: 12px; color: #94a3b8; margin: 8px 0 12px 0; }
+    .modal-header { display: flex; align-items: center; gap: 12px; }
+    .modal-title { font-weight: 600; color: #f8fafc; font-size: 15px; letter-spacing: 0.5px; }
+    .modal-subtitle {
+      font-size: 13px; color: #94a3b8; line-height: 1.5;
+      background: rgba(0,0,0,0.2); padding: 10px;
+      border-radius: 8px; border-left: 3px solid #1fb854;
+      margin: 0;
+    }
     input[type="text"] {
-      width: 100%; padding: 10px 14px; background: rgba(30, 41, 59, 0.7);
-      border: 1px solid #475569; border-radius: 10px; color: white;
-      font-size: 13px; outline: none; transition: all 0.2s;
+      width: 100%; padding: 12px 14px; background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(31, 184, 84, 0.4); border-radius: 8px; color: #f8fafc;
+      font-size: 13px; outline: none; transition: all 0.2s; box-sizing: border-box;
     }
-    input[type="text"]:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+    input[type="text"]::placeholder { color: rgba(248, 250, 252, 0.5); }
+    input[type="text"]:focus { border-color: #1fb854; box-shadow: 0 0 0 2px rgba(31, 184, 84, 0.2); }
     .btn-send {
-      width: 100%; padding: 11px; background: #ef4444; color: white;
-      border: none; border-radius: 10px; font-weight: 700; font-size: 13px;
-      cursor: pointer; margin-top: 14px; transition: all 0.2s;
+      width: 100%; padding: 12px; background: #1fb854; color: #0f172a;
+      border: none; border-radius: 8px; font-weight: 600; font-size: 14px;
+      cursor: pointer; margin-top: auto; transition: all 0.2s;
     }
-    .btn-send:hover { background: #dc2626; }
+    .btn-send:hover { background: #22c55e; transform: translateY(-1px); }
   </style>
 </head>
 <body>
   <div class="banner" id="banner">
-    <div class="left">
-      <div class="pulse-dot"></div>
-      <div>
-        <div class="title">MARK PC AUTOMATION</div>
-        <div class="subtitle">Press <strong style="color: #cbd5e1;">[Ctrl+S]</strong> or click Stop to halt automation</div>
-      </div>
+    <svg class="mark-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+    </svg>
+    <div>
+      <div class="title mark-pulse">Mark is working...</div>
+      <div class="subtitle" id="banner-subtitle">Mouse locked. Press <strong style="color: #cbd5e1;">[Ctrl+Shift+S]</strong> to stop</div>
     </div>
-    <button class="btn-stop" id="btn-stop" onclick="onStop()">
-      ⏹ Stop (Ctrl+S)
-    </button>
   </div>
 
   <div class="modal-content" id="modal">
-    <div>
-      <div class="modal-title">⏸️ Automation Paused by User</div>
-      <div class="modal-subtitle">Why did you stop automation? Give MARK instructions or correction:</div>
-      <input type="text" id="reason-input" placeholder="e.g., Tolong buka window Notepad dulu brok..." autofocus />
+    <div class="modal-header">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1fb854" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+        <path d="M2 17l10 5 10-5"></path>
+        <path d="M2 12l10 5 10-5"></path>
+      </svg>
+      <div class="modal-title">Mark paused for input</div>
     </div>
+    <div class="modal-subtitle">Menunggu respon atau instruksi...</div>
+    <input type="text" id="reason-input" placeholder="Add a comment for Mark (optional)..." autocomplete="off" />
     <button class="btn-send" id="btn-send" onclick="onSend()">
-      Send to MARK AI
+      Resume Automation
     </button>
   </div>
 
@@ -119,13 +142,7 @@ function getOverlayHTML() {
       const modal = document.getElementById('modal');
       modal.style.display = 'flex';
       if (titleText) modal.querySelector('.modal-title').innerText = titleText;
-      if (subtitleText) modal.querySelector('.modal-subtitle').innerText = subtitleText;
-      if (btnColor) {
-        modal.style.borderColor = btnColor;
-        const btn = document.getElementById('btn-send');
-        btn.style.background = btnColor;
-        btn.innerText = 'Resume Automation';
-      }
+      if (subtitleText) modal.querySelector('.modal-subtitle').innerHTML = subtitleText;
       const input = document.getElementById('reason-input');
       input.focus();
       input.addEventListener('keypress', (e) => {
@@ -137,7 +154,7 @@ function getOverlayHTML() {
       document.title = 'MARK_PC_STOP_REASON:' + (val.trim() || 'User stopped PC automation without comment.');
     }
     window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         onStop();
       }
@@ -152,10 +169,10 @@ function showPCOverlay() {
     clearTimeout(overlayHideTimeout)
     overlayHideTimeout = null
   }
-  if (isStoppedByUser || pendingAskResolve) return
+  if (isStopActive() || pendingAskResolve) return
 
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.show()
+    overlayWindow.showInactive()
     overlayWindow.setAlwaysOnTop(true, 'screen-saver')
     return
   }
@@ -163,17 +180,18 @@ function showPCOverlay() {
   try {
     const display = screen.getPrimaryDisplay()
     const { width } = display.workAreaSize
-    const winWidth = 460
-    const winHeight = 90
+    const winWidth = 340
+    const winHeight = 72
     overlayWindow = new BrowserWindow({
       width: winWidth,
       height: winHeight,
       x: Math.floor((width - winWidth) / 2),
-      y: 20,
+      y: 24,
       alwaysOnTop: true,
       frame: false,
       transparent: true,
       resizable: false,
+      focusable: false,
       skipTaskbar: true,
       webPreferences: {
         nodeIntegration: false,
@@ -199,12 +217,12 @@ function showPCOverlay() {
     })
 
     try {
-      globalShortcut.unregister('CommandOrControl+S')
-      globalShortcut.register('CommandOrControl+S', () => {
+      globalShortcut.unregister('CommandOrControl+Shift+S')
+      globalShortcut.register('CommandOrControl+Shift+S', () => {
         triggerEmergencyStop()
       })
     } catch (err) {
-      console.warn('[PC-Agent] Could not register Ctrl+S global shortcut:', err.message)
+      console.warn('[PC-Agent] Could not register Ctrl+Shift+S global shortcut:', err.message)
     }
   } catch (err) {
     console.warn('[PC-Agent] Could not create overlay window:', err.message)
@@ -216,6 +234,22 @@ function hidePCOverlay() {
     clearTimeout(overlayHideTimeout)
     overlayHideTimeout = null
   }
+  
+  if (isSessionOpen) {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      try {
+        overlayWindow.webContents.executeJavaScript(`
+          document.getElementById('modal').style.display='none';
+          document.getElementById('banner').style.display='flex';
+          document.getElementById('reason-input').value='';
+        `)
+        overlayWindow.setSize(340, 72)
+        overlayWindow.setFocusable(false)
+      } catch (err) {}
+    }
+    return
+  }
+
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     try {
       overlayWindow.close()
@@ -223,11 +257,12 @@ function hidePCOverlay() {
   }
   overlayWindow = null
   try {
-    globalShortcut.unregister('CommandOrControl+S')
+    globalShortcut.unregister('CommandOrControl+Shift+S')
   } catch (err) {}
 }
 
 function scheduleHidePCOverlay() {
+  if (isSessionOpen) return // Do not auto-hide if session is explicitly open
   if (overlayHideTimeout) {
     clearTimeout(overlayHideTimeout)
   }
@@ -245,25 +280,114 @@ function triggerEmergencyStop() {
     } catch (err) {}
     activeChildProcess = null
   }
+  if (mouseLockerProcess) {
+    try {
+      mouseLockerProcess.kill()
+    } catch (err) {}
+    mouseLockerProcess = null
+  }
   isStoppedByUser = true
+  lastStopTime = Date.now()
+  lastStopReason = 'User menekan tombol eksekusi Stop (Ctrl+Shift+S).'
 
+
+  // AI akan menerima status "stopped_by_user", lalu AI yang akan
+  // memanggil "os-ask" untuk menanyakan alasan user (yang mana baru memunculkan modal).
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     try {
-      overlayWindow.setSize(440, 240)
-      overlayWindow.webContents.executeJavaScript(`showAskModal()`)
+      overlayWindow.webContents.executeJavaScript(`
+        document.getElementById('banner-subtitle').innerHTML = '<strong style="color: #ef4444;">STOPPED! Menunggu AI...</strong>';
+      `)
     } catch (err) {}
   }
+}
+
+/**
+ * Helper to spawn mouse locker
+ */
+function startMouseLocker() {
+  if (mouseLockerProcess) return
+  try {
+    let scriptPath = join(__dirname, '../../src/main/pc-agent-scripts/mouse-locker.ps1')
+    if (app.isPackaged) {
+      const unpackedPath = join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'src',
+        'main',
+        'pc-agent-scripts',
+        'mouse-locker.ps1'
+      )
+      if (fs.existsSync(unpackedPath)) scriptPath = unpackedPath
+    }
+    mouseLockerProcess = spawn('powershell.exe', [
+      '-NoProfile',
+      '-WindowStyle',
+      'Hidden',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      scriptPath
+    ])
+  } catch (err) {
+    console.warn('[PC-Agent] Failed to start mouse locker:', err)
+  }
+}
+
+function stopMouseLocker() {
+  if (mouseLockerProcess) {
+    try {
+      mouseLockerProcess.kill()
+    } catch (err) {}
+    mouseLockerProcess = null
+  }
+}
+
+/**
+ * Open a persistent PC Automation session
+ */
+export async function openPCSession() {
+  isSessionOpen = true
+  isStoppedByUser = false
+  showPCOverlay()
+  startMouseLocker()
+  return JSON.stringify({
+    status: 'success',
+    message: 'PC Automation Session OPENED. Layar telah memunculkan peringatan. Anda HANYA boleh memanggil os-read, os-click, os-type, dll SELAMA session open. WAJIB panggil os-control-close ketika selesai.'
+  })
+}
+
+/**
+ * Close a persistent PC Automation session
+ */
+export async function closePCSession() {
+  isSessionOpen = false
+  isStoppedByUser = false
+  hidePCOverlay()
+  stopMouseLocker()
+  return JSON.stringify({
+    status: 'success',
+    message: 'PC Automation Session CLOSED.'
+  })
 }
 
 /**
  * Ask user via PC automation overlay modal
  */
 export async function askUserPC(query = '') {
+  if (!isSessionOpen) {
+    return JSON.stringify({
+      status: 'error',
+      message: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.'
+    })
+  }
   isStoppedByUser = false
   showPCOverlay()
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     try {
-      overlayWindow.setSize(440, 240)
+      overlayWindow.setFocusable(true)
+      overlayWindow.show()
+      overlayWindow.setSize(380, 260)
       const cleanMsg = query.replace(/'/g, "\\'").replace(/"/g, '\\"')
       overlayWindow.webContents.executeJavaScript(
         `showAskModal("❓ MARK Needs Your Help", "${cleanMsg}", "#3b82f6")`
@@ -331,11 +455,11 @@ function runScript(scriptName, args = []) {
       if (code !== 0 && stderr) {
         console.warn(`[PC-Agent] Script ${scriptName} exited with code ${code}: ${stderr}`)
       }
-      if (isStoppedByUser) {
+      if (isStopActive()) {
         resolve(
           JSON.stringify({
             status: 'stopped_by_user',
-            message: `PC automation stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`,
+            message: `PC automation stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`,
             user_message: lastStopReason || 'User pressed Ctrl+S / Stop button',
             action: 'os-ask'
           })
@@ -359,8 +483,12 @@ function runScript(scriptName, args = []) {
  * Read the active desktop GUI elements (UIAutomation with OCR fallback)
  */
 export async function readDesktop() {
+  if (!isSessionOpen) {
+    return { window: 'error', method: 'error', elements: [], element_count: 0, error: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.' }
+  }
   if (isStoppedByUser) {
-    return { window: 'stopped_by_user', method: 'stopped_by_user', elements: [], element_count: 0, message: lastStopReason }
+    console.log('[PC-Agent] Resetting isStoppedByUser=false for new readDesktop() call')
+    isStoppedByUser = false
   }
   showPCOverlay()
   try {
@@ -432,8 +560,11 @@ function resolveCoordinates(query) {
  * Click an element by ID or coordinates
  */
 export async function executeClick(query) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   const coords = resolveCoordinates(query)
@@ -457,8 +588,11 @@ export async function executeClick(query) {
  * Type text into an element by ID or directly
  */
 export async function executeType(query) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   let text = query
@@ -492,8 +626,11 @@ export async function executeType(query) {
  * Press a keyboard shortcut combo
  */
 export async function executeKey(combo) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   const result = await runScript('win-action.ps1', ['-Action', 'key', '-Combo', combo])
@@ -505,8 +642,11 @@ export async function executeKey(combo) {
  * Scroll mouse wheel
  */
 export async function executeScroll(query) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   let direction = 'down'
@@ -519,7 +659,6 @@ export async function executeScroll(query) {
   } else if (query) {
     direction = query.trim().toLowerCase()
   }
-
   const result = await runScript('win-action.ps1', [
     '-Action',
     'scroll',
@@ -536,8 +675,11 @@ export async function executeScroll(query) {
  * Open an application
  */
 export async function openApp(target) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   const result = await runScript('win-action.ps1', ['-Action', 'open', '-Target', target])
@@ -549,7 +691,10 @@ export async function openApp(target) {
  * List all active top-level windows
  */
 export async function listWindows() {
-  if (isStoppedByUser) {
+  if (!isSessionOpen) {
+    return { status: 'error', windows: [], count: 0, message: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.' }
+  }
+  if (isStopActive()) {
     return { status: 'stopped_by_user', windows: [], count: 0, message: lastStopReason }
   }
   showPCOverlay()
@@ -567,8 +712,11 @@ export async function listWindows() {
  * Focus window by title substring
  */
 export async function focusWindow(title) {
-  if (isStoppedByUser) {
-    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+S'}`
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
   const result = await runScript('win-action.ps1', ['-Action', 'focus-window', '-Target', title])

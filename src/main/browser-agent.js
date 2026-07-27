@@ -535,6 +535,13 @@ export async function executeAction(data) {
           blocker.style.background = 'transparent';
           blocker.style.pointerEvents = 'none'; // Biar halaman di baliknya bisa diklik
           
+          if (!document.getElementById('mark-placeholder-style')) {
+            const style = document.createElement('style');
+            style.id = 'mark-placeholder-style';
+            style.textContent = '#mark-user-input::placeholder { color: rgba(248, 250, 252, 0.5); }';
+            document.head.appendChild(style);
+          }
+          
           blocker.innerHTML = \`
             <div style="background: rgba(25, 54, 45, 0.95); backdrop-filter: blur(12px); padding: 20px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 16px; pointer-events: auto; font-family: system-ui, sans-serif; width: 340px; border: 1px solid rgba(31, 184, 84, 0.3);">
               <div style="display: flex; align-items: center; gap: 12px;">

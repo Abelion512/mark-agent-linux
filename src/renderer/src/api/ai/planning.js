@@ -175,6 +175,9 @@ ATURAN BROWSER AUTOMATION:
 5. Elemen ditandai dengan format: [ID] Tipe: "Label". Gunakan ID angka untuk merujuk elemen.
 6. JANGAN MENYERAH! Secara default user diblokir. Jika butuh user login/isi form manual, JANGAN balas dengan 'answer' lalu berhenti! HARUS selalu gunakan tool browser-ask-user, lalu tunggu user selesai, dan LAKUKAN sisa tugasmu!
 7. JANGAN GUNAKAN browser ini untuk memutar lagu!
+8. PENTING: Tool 'browser-*' HANYA untuk browser internal tersembunyi milikmu. JANGAN gunakan tool ini jika user ingin mengendalikan aplikasi desktop Google Chrome / Microsoft Edge secara fisik di OS Windows! Untuk otomatisasi desktop PC/Chrome Windows, WAJIB gunakan tool 'os-*'.
+- os-control-open: WAJIB DIPANGGIL PERTAMA KALI sebelum memulai rangkaian tugas otomatisasi PC. Mengunci sesi dan memunculkan overlay peringatan. Query: KOSONG.
+- os-control-close: WAJIB DIPANGGIL TERAKHIR setelah semua tugas otomatisasi PC selesai. Menutup sesi dan overlay. Query: KOSONG.
 - os-read: Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.
 - os-click: Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.
 - os-type: Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung.
@@ -183,13 +186,16 @@ ATURAN BROWSER AUTOMATION:
 - os-open: Membuka aplikasi Windows dari Start Menu atau path. Query: nama app/path (misal: notepad, winword, C:\\app.exe).
 - os-list-windows: Menampilkan daftar semua window aplikasi yang terbuka beserta judulnya.
 - os-focus-window: Fokus/brings to front sebuah window aplikasi berdasarkan judulnya. Query: judul window.
-- os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+S).
+- os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+Shift+S).
 
 ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
-1. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
-2. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
-3. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
-4. PENTING: Saat otomatisasi PC berjalan, user bisa menghentikannya kapan saja dengan menekan Ctrl+S. Jika tool os-* mengembalikan status "stopped_by_user", gunakan tool 'os-ask' untuk menanyakan alasan user, atau sesuaikan langkahmu dengan masukan user!${
+1. WAJIB jalankan 'os-control-open' SEBELUM menjalankan tool os-* apapun! Semua tool otomasi PC (os-read, os-click, os-type, os-key, os-scroll, os-open, os-list-windows, os-focus-window, os-ask) AKAN DITOLAK DAN GAGAL secara sistem jika kamu belum membuka sesi dengan 'os-control-open'.
+2. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
+3. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
+4. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
+5. PENTING: Tombol 'Ctrl+Shift+S' adalah tombol Emergency Stop milik user! KAMU DILARANG KERAS mengeksekusi 'os-key ctrl+shift+s' karena akan membatalkan sistemmu sendiri! Jika tool os-* mengembalikan status "stopped_by_user" (berarti user menekan stop), JANGAN lanjutkan otomatisasi! Gunakan tool 'os-ask' untuk menanyakan alasan user.
+6. JIKA SEMUA TUGAS PC SUDAH SELESAI, kamu WAJIB memanggil 'os-control-close' sebelum mengakhiri giliran (answer).
+7. PERBEDAAN KRITIS BROWSER vs CHROME/EDGE DESKTOP: Jika tugas melibatkan aplikasi Google Chrome atau Microsoft Edge yang terbuka di desktop PC user, KAMU WAJIB MENGGUNAKAN TOOL 'os-*' (os-control-open -> os-open chrome -> os-read -> os-click/os-type). JANGAN PERNAH gunakan 'browser-*' untuk aplikasi desktop!${
         activeCategories.includes('music')
           ? `\n- music-play: Memutar lagu di YouTube Music.
 - music-toggle: Pause/lanjut memutar lagu.
@@ -218,12 +224,27 @@ ${
 - run-powershell: Eksekusi perintah PowerShell. (Perlu persetujuan user untuk command berbahaya)`
     : ''
 }
+`
+    : ''
+}
 
-${pluginCapabilities ? `\n# PLUGIN TAMBAHAN (EXTERNAL)\n${pluginCapabilities}\n(Catatan: User bisa sewaktu-waktu menginstal atau menghapus plugin tambahan di atas ke dalam sistemmu. Jika tool yang relevan tidak ada di daftar bawaan, periksa daftar plugin tambahan ini.)` : ''}
+${
+  !options.disableTools && pluginCapabilities
+    ? `\n# PLUGIN TAMBAHAN (EXTERNAL)\n${pluginCapabilities}\n(Catatan: User bisa sewaktu-waktu menginstal atau menghapus plugin tambahan di atas ke dalam sistemmu. Jika tool yang relevan tidak ada di daftar bawaan, periksa daftar plugin tambahan ini.)`
+    : ''
+}
 
-# OBSERVATION
+${
+  !options.disableTools
+    ? `# OBSERVATION
 Pesan "[OBSERVATION]" = hasil tool. Baca, lalu putuskan: tool lagi atau jawab user.
 `
+    : ''
+}
+
+${
+  options.disableTools
+    ? `\n# MODE NON-TOOL (GREETING/OBROLAN SAJA)\nPENTING: Eksekusi tool saat ini NONAKTIF (disableTools = true). KAMU DILARANG KERAS MENGELUARKAN "action" (wajib "action": null). JANGAN melanjutkan eksekusi tool atau tugas dari obrolan sebelumnya! Fokus langsung berikan "answer" kepada user sesuai instruksi!`
     : ''
 }
 
@@ -366,6 +387,8 @@ ${
                 'browser-type',
                 'browser-scroll',
                 'browser-ask-user',
+                'os-control-open',
+                'os-control-close',
                 ...pluginActions.map((a) => a.name)
               ]
             },

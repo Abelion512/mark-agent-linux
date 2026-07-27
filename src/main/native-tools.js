@@ -12,7 +12,9 @@ import {
   openApp,
   listWindows,
   focusWindow,
-  askUserPC
+  askUserPC,
+  openPCSession,
+  closePCSession
 } from './pc-agent.js'
 
 const DANGEROUS_KEY_COMBOS = [
@@ -426,6 +428,28 @@ export const NATIVE_TOOLS = {
     handler: async (query) => {
       try {
         const result = await askUserPC(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-control-open': {
+    needsApproval: false,
+    handler: async () => {
+      try {
+        const result = await openPCSession()
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-control-close': {
+    needsApproval: false,
+    handler: async () => {
+      try {
+        const result = await closePCSession()
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }

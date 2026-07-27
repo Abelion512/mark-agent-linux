@@ -111,6 +111,8 @@ export const useMarkPlan = ({
         chatSession.push(item)
       }
     })
+    // Tetap bawa history pesan sebelumnya walaupun mode disableTools (misal saat boot greeting)
+    // agar AI bisa menyapa dengan konteks ("sudah lama tidak ngobrol", dll)
     chatSession = [...chatSession].slice(-1 * (config[0]?.context || 10))
     chatSession = [...chatSession, userMessage]
 
@@ -254,6 +256,16 @@ export const useMarkPlan = ({
           activeTopic,
           { ...options, intentQuery: searchQuery, waContext, currentMusicTrack }
         )
+
+        if (options.disableTools) {
+          if (decision.action) {
+            console.log('[useMarkPlan] disableTools aktif, menghapus action dari decision:', decision.action)
+            decision.action = null
+          }
+          if (!decision.answer) {
+            decision.answer = 'Halo! Aku sudah aktif dan siap membantumu. Ada yang bisa kita kerjakan hari ini?'
+          }
+        }
 
         lastDecision = decision
 
@@ -601,7 +613,9 @@ export const useMarkPlan = ({
                 'os-open',
                 'os-list-windows',
                 'os-focus-window',
-                'os-ask'
+                'os-ask',
+                'os-control-open',
+                'os-control-close'
               ].includes(tool)
             ) {
               // --- NATIVE TOOLS (Built-in) ---
@@ -730,6 +744,14 @@ export const useMarkPlan = ({
         setIsLoading(false)
       }
       setIsAgentBusy(false)
+      
+      // Cleanup PC session if it was left open
+      try {
+        if (window.api && window.api.executeNativeTool) {
+          window.api.executeNativeTool('os-control-close').catch(() => {})
+        }
+      } catch (e) {}
+
     } catch (error) {
       if (error.name !== 'AbortError' && !error.message.includes('AbortError')) {
         console.error('Planning Error:', error)
@@ -739,6 +761,13 @@ export const useMarkPlan = ({
         setIsLoading(false)
       }
       setIsAgentBusy(false)
+
+      // Emergency cleanup PC session
+      try {
+        if (window.api && window.api.executeNativeTool) {
+          window.api.executeNativeTool('os-control-close').catch(() => {})
+        }
+      } catch (e) {}
 
       dismissProcess(agenticProcessId)
 
