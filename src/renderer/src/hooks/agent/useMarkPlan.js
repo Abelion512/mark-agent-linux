@@ -42,6 +42,7 @@ export const useMarkPlan = ({
 
   const isExecutingRef = useRef(false)
   const interventionBufferRef = useRef([])
+  const lastUserPromptRef = useRef('')
 
   const handleIntervention = (msg) => {
     interventionBufferRef.current.push(msg)
@@ -72,6 +73,7 @@ export const useMarkPlan = ({
     // Jangan blokir UI Desktop jika perintah datang dari background/WhatsApp
     if (!waContext && !isAutonomous) {
       setIsLoading(true)
+      lastUserPromptRef.current = userInput // Simpan prompt terakhir untuk dikembalikan ke input jika gagal/abort
       setMessage('') // Clear input box instantly upon sending
     }
     setIsAgentBusy(true)
@@ -742,6 +744,7 @@ export const useMarkPlan = ({
 
       if (!waContext && !isAutonomous) {
         setIsLoading(false)
+        lastUserPromptRef.current = '' // Sukses, bersihkan simpanan prompt
       }
       setIsAgentBusy(false)
       
@@ -759,6 +762,10 @@ export const useMarkPlan = ({
 
       if (!waContext && !isAutonomous) {
         setIsLoading(false)
+        if (lastUserPromptRef.current) {
+          setMessage(lastUserPromptRef.current) // Kembalikan prompt sebelumnya yang gagal/di-abort ke input bar
+          lastUserPromptRef.current = ''
+        }
       }
       setIsAgentBusy(false)
 

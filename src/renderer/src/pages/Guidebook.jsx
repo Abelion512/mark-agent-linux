@@ -470,6 +470,20 @@ const Guidebook = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <ToolCard
+                      name="os-control-open"
+                      description="Membuka session kontrol Mark di komputer Anda."
+                      needsPermission={true}
+                      queryFormat="(kosong)"
+                      howItWorks="Mengunci sesi kontrol sementara, mengaktifkan pengunci mouse dan floating banner keamanan, serta meminta izin konfirmasi dari pengguna sebelum mengambil alih PC."
+                    />
+                    <ToolCard
+                      name="os-control-close"
+                      description="Menutup session kontrol Mark di komputer Anda."
+                      needsPermission={false}
+                      queryFormat="(kosong)"
+                      howItWorks="Menutup sesi kontrol otomatisasi PC, menghentikan pengunci mouse, serta menghilangkan floating banner keamanan di layar."
+                    />
+                    <ToolCard
                       name="os-read"
                       description="Membaca elemen GUI aplikasi Windows aktif via UIAutomation/OCR."
                       needsPermission={false}

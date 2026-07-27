@@ -18,6 +18,7 @@
 - **Relational Growth System & Dynamic Persona:** Hubungan Anda dengan Mark dievaluasi layaknya dengan manusia sungguhan melalui 4 parameter krusial (_Warmth, Sarcasm, Trust, Energy_). Tingkat kesopanan, kelancangan (_toxicity_), dan kepribadian Mark akan berevolusi organik. Jika Anda sering bersarkasme, Mark bebas menggunakan bahasa _tongkrongan_ dan men-_roasting_ Anda. Didukung oleh **9 Inside Out 2 Emotions** (Joy, Sadness, Fear, Anger, Disgust, Anxiety, Envy, Embarrassment, Ennui) yang secara dinamis mengubah warna UI Orb di layar.
 - **Dual AI Provider (Hybrid) & Custom API:** Anda memegang kendali penuh. Gunakan **Local AI** (berjalan langsung di PC Anda), atau alihkan ke **Cloud AI** (Groq/Cerebras). Ditambah dukungan Custom OpenAI-Compatible API untuk fleksibilitas mutlak.
 - **Asisten Bot WhatsApp Mandiri:** Mark mampu memproses tugas rumit melalui WhatsApp dengan menyusun rencana terstruktur, mengeksekusi langkah demi langkah (mencari data, merangkum, dll), dan memberi laporan akhir berkat arsitektur `waAutonomous.js`.
+- **Physical PC & Desktop Automation (Windows UIAutomation):** Menggunakan mesin otomatisasi Windows lokal (`read-ui.ps1` & UIAutomation API), Mark dapat membaca elemen GUI desktop secara struktural, mengklik tombol, mengetik teks, menekan _shortcut_, hingga mengelola jendela aplikasi di Windows secara fisik tanpa biaya vision API yang tinggi (_Zero-Vision Cost_). Dilengkapi dengan _Security Floating Overlay_, sistem konfirmasi keamanan berlapis, serta tombol **Emergency Stop (`Ctrl+Shift+S`)** untuk keamanan kendali mutlak.
 - **Proaktif dengan Awareness Engine:** Sistem Mark tidak hanya pasif merespons. Mark bisa proaktif menegur, menyapa, atau memutarkan musik di latar belakang. Aksi proaktif intrusif dibatasi oleh _Proactive Proposal Boundary_, dan kini dilengkapi fitur **Toggle** (bisa dimatikan kapan saja).
 
 ## Kemampuan Utama (Tools)
@@ -25,6 +26,7 @@
 Mark dibekali dengan berbagai integrasi alat untuk mengeksekusi tugas di luar sekadar membalas teks:
 
 - **Native File Handling & PowerShell:** Mark memiliki kontrol OS tingkat lanjut untuk membaca, menulis, memodifikasi, dan menghapus file secara _native_. Mark juga dapat mengeksekusi perintah PowerShell untuk mengendalikan sistem operasi. _(Keamanan Tinggi: Semua perintah berisiko wajib mendapat persetujuan modal UI dari pengguna)._
+- **Otomatisasi Desktop PC (`os-*` tools):** Mengendalikan GUI Windows secara penuh (`os-control-open`, `os-read`, `os-click`, `os-type`, `os-key`, `os-scroll`, `os-open`, `os-list-windows`, `os-focus-window`, `os-ask`). Mark membaca elemen interaktif aplikasi aktif berbasis UIAutomation (dengan fallback OCR WinRT), mengklik, dan mengetik pada aplikasi apapun di desktop. Sistem mengunci sesi dengan _floating banner_ informatif, memerlukan izin eksplisit dari pengguna sebelum mengambil alih kendali, dan menyediakan fitur interupsi cepat via **`Ctrl+Shift+S`**.
 - **Vision Awareness (Desktop Screen Reading):** Mark tidak lagi buta! Ia memiliki kemampuan membaca layar (`analyze-screen`) untuk "melihat" apa yang sedang terjadi di PC Anda. Terintegrasi dengan _Awareness Engine_, Mark bisa memberikan panduan sangat kontekstual berdasarkan aplikasi visual yang Anda buka.
 - **Camera Vision (Mata Fisik):** Dilengkapi integrasi Webcam (`camera-look`), Mark dapat mengobservasi keadaan fisik Anda di dunia nyata. Fitur ini dapat dipicu manual maupun secara otonom oleh Mark sendiri jika diperlukan.
 - **Autonomous Web Browsing:** Menggunakan _window_ Chromium internal, Mark dapat secara otonom membuka halaman web, bernavigasi, dan berinteraksi dengan website secara mandiri. Dilengkapi dengan _Smart Pause & Resume_ jika membutuhkan intervensi manual (login/CAPTCHA).
@@ -45,6 +47,8 @@ mark/
 │   │   │   ├── baileys-service.js     # Koneksi, Parsing Pesan, IPC Routing & Perintah
 │   │   │   ├── message-store.js       # Penyimpanan histori chat di RAM
 │   │   │   └── media-downloader.js    # Modul pengunduh media MP3 untuk WA (ytdl-exec)
+│   │   ├── pc-agent.js            # Mesin Otomatisasi PC & Desktop Windows (UIAutomation)
+│   │   ├── pc-agent-scripts/      # Skrip PowerShell untuk pembacaan UI & kontrol Windows
 │   │   └── ai-bridge.js   # Penghubung utama ke AI API, Rate Limit, & Auto-Repair JSON
 │   ├── preload/           # Skrip Preload (Jembatan keamanan Node.js ke React)
 │   └── renderer/          # Frontend (React 19 + Vite)
