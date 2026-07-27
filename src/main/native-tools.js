@@ -435,7 +435,9 @@ export const NATIVE_TOOLS = {
     }
   },
   'os-control-open': {
-    needsApproval: false,
+    needsApproval: true,
+    approvalMessage: () =>
+      'Mark ingin mengontrol fisik PC/desktop-mu (mengunci sesi sementara dan memunculkan overlay kontrol PC). Apakah kamu mengizinkan?',
     handler: async () => {
       try {
         const result = await openPCSession()

@@ -20,7 +20,9 @@ let mouseLockerProcess = null
 
 function isStopActive() {
   if (isStoppedByUser && Date.now() - lastStopTime > 15000) {
-    console.log('[PC-Agent] Emergency stop state expired after 15s. Resetting isStoppedByUser=false')
+    console.log(
+      '[PC-Agent] Emergency stop state expired after 15s. Resetting isStoppedByUser=false'
+    )
     isStoppedByUser = false
   }
   return isStoppedByUser
@@ -53,7 +55,7 @@ function getOverlayHTML() {
       align-items: center;
       justify-content: center;
       gap: 14px;
-      padding: 0 24px;
+      padding: 12px 24px;
       color: #1fb854;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -153,6 +155,12 @@ function getOverlayHTML() {
       const val = document.getElementById('reason-input').value;
       document.title = 'MARK_PC_STOP_REASON:' + (val.trim() || 'User stopped PC automation without comment.');
     }
+    function resetBanner() {
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('banner').style.display = 'flex';
+      document.getElementById('reason-input').value = '';
+      document.getElementById('banner-subtitle').innerHTML = 'Mouse locked. Press <strong style="color: #cbd5e1;">[Ctrl+Shift+S]</strong> to stop';
+    }
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
@@ -174,6 +182,9 @@ function showPCOverlay() {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.showInactive()
     overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+    try {
+      overlayWindow.webContents.executeJavaScript('if (typeof resetBanner === "function") resetBanner();')
+    } catch (err) {}
     return
   }
 
@@ -234,14 +245,12 @@ function hidePCOverlay() {
     clearTimeout(overlayHideTimeout)
     overlayHideTimeout = null
   }
-  
+
   if (isSessionOpen) {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       try {
         overlayWindow.webContents.executeJavaScript(`
-          document.getElementById('modal').style.display='none';
-          document.getElementById('banner').style.display='flex';
-          document.getElementById('reason-input').value='';
+          if (typeof resetBanner === "function") resetBanner();
         `)
         overlayWindow.setSize(340, 72)
         overlayWindow.setFocusable(false)
@@ -289,7 +298,6 @@ function triggerEmergencyStop() {
   isStoppedByUser = true
   lastStopTime = Date.now()
   lastStopReason = 'User menekan tombol eksekusi Stop (Ctrl+Shift+S).'
-
 
   // AI akan menerima status "stopped_by_user", lalu AI yang akan
   // memanggil "os-ask" untuk menanyakan alasan user (yang mana baru memunculkan modal).
@@ -359,7 +367,8 @@ export async function openPCSession() {
   startMouseLocker()
   return JSON.stringify({
     status: 'success',
-    message: 'PC Automation Session OPENED. Layar telah memunculkan peringatan. Anda HANYA boleh memanggil os-read, os-click, os-type, dll SELAMA session open. WAJIB panggil os-control-close ketika selesai.'
+    message:
+      'PC Automation Session OPENED. Layar telah memunculkan peringatan. Anda HANYA boleh memanggil os-read, os-click, os-type, dll SELAMA session open. WAJIB panggil os-control-close ketika selesai.'
   })
 }
 
@@ -384,7 +393,8 @@ export async function askUserPC(query = '') {
   if (!isSessionOpen) {
     return JSON.stringify({
       status: 'error',
-      message: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.'
+      message:
+        'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.'
     })
   }
   isStoppedByUser = false
@@ -490,7 +500,14 @@ function runScript(scriptName, args = []) {
  */
 export async function readDesktop() {
   if (!isSessionOpen) {
-    return { window: 'error', method: 'error', elements: [], element_count: 0, error: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.' }
+    return {
+      window: 'error',
+      method: 'error',
+      elements: [],
+      element_count: 0,
+      error:
+        'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.'
+    }
   }
   if (isStoppedByUser) {
     console.log('[PC-Agent] Resetting isStoppedByUser=false for new readDesktop() call')
@@ -510,7 +527,9 @@ export async function readDesktop() {
 
     // If UIAutomation returned 0 elements or failed, fallback to local OCR
     if (!parsed || !parsed.elements || parsed.elements.length === 0) {
-      console.log('[PC-Agent] UIAutomation returned 0 elements. Executing local WinRT OCR fallback...')
+      console.log(
+        '[PC-Agent] UIAutomation returned 0 elements. Executing local WinRT OCR fallback...'
+      )
       const ocrText = await runScript('ocr-region.ps1')
       if (ocrText) {
         try {
@@ -698,7 +717,13 @@ export async function openApp(target) {
  */
 export async function listWindows() {
   if (!isSessionOpen) {
-    return { status: 'error', windows: [], count: 0, message: 'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.' }
+    return {
+      status: 'error',
+      windows: [],
+      count: 0,
+      message:
+        'ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu.'
+    }
   }
   if (isStopActive()) {
     return { status: 'stopped_by_user', windows: [], count: 0, message: lastStopReason }
