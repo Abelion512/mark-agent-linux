@@ -213,7 +213,7 @@ public class Win32 {
                 System.Threading.Thread.Sleep(8);
             }
         }
-        return "{\"status\":\"success\",\"action\":\"type\",\"text\":\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}";
+        return "{\"status\":\"success\",\"action\":\"type\",\"text\":\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n") + "\"}";
     }
 }
 "@

@@ -318,7 +318,13 @@ function startMouseLocker() {
         'pc-agent-scripts',
         'mouse-locker.ps1'
       )
-      if (fs.existsSync(unpackedPath)) scriptPath = unpackedPath
+      if (fs.existsSync(unpackedPath)) {
+        scriptPath = unpackedPath
+      } else {
+        scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked')
+      }
+    } else if (!fs.existsSync(scriptPath)) {
+      scriptPath = join(__dirname, 'pc-agent-scripts', 'mouse-locker.ps1')
     }
     mouseLockerProcess = spawn('powershell.exe', [
       '-NoProfile',

@@ -39,6 +39,12 @@ public class MouseBlocker {
     
     public static void Start() {
         _hookID = SetHook(_proc);
+        AppDomain.CurrentDomain.ProcessExit += (s, e) => {
+            if (_hookID != IntPtr.Zero) {
+                UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
+            }
+        };
         Console.WriteLine("LOCKED");
         Application.Run();
     }

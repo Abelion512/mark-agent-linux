@@ -466,7 +466,7 @@ const Guidebook = () => {
                 {/* Kategori PC Automation */}
                 <div>
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
-                    <FaTerminal className="text-warning" /> PC Automation Engine (Zero-Vision)
+                    <FaTerminal className="text-warning" /> PC Automation Engine
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <ToolCard
