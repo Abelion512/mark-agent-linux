@@ -1,45 +1,65 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { FaMicrophone, FaStop, FaArrowUp, FaDesktop, FaWhatsapp, FaSmile } from 'react-icons/fa';
-import ConfirmModal from './ConfirmModal';
+import React, { useRef, useEffect, useState } from 'react'
+import { FaMicrophone, FaStop, FaArrowUp, FaDesktop, FaWhatsapp, FaSmile } from 'react-icons/fa'
+import ConfirmModal from './ConfirmModal'
 
-const EMOJIS = ['😂', '🤣', '😅', '🗿', '🙏', '🔥', '🚀', '💀', '😎', '🤔', '😭', '❤️', '👍', '✨', '👀', '💯'];
+const EMOJIS = [
+  '😂',
+  '🤣',
+  '😅',
+  '🗿',
+  '🙏',
+  '🔥',
+  '🚀',
+  '💀',
+  '😎',
+  '🤔',
+  '😭',
+  '❤️',
+  '👍',
+  '✨',
+  '👀',
+  '💯'
+]
 
-const InputBar = ({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  isLoading, 
-  isRecording, 
-  onToggleRecord, 
+const InputBar = ({
+  value,
+  onChange,
+  onSubmit,
+  isLoading,
+  isRecording,
+  onToggleRecord,
   onStop,
   source = 'pc'
 }) => {
-  const inputRef = useRef(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+  const inputRef = useRef(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showAbortConfirm, setShowAbortConfirm] = useState(false)
 
   useEffect(() => {
     if (!isLoading && inputRef.current) {
       // setTimeout to ensure it runs after the disabled attribute is fully removed by React
       setTimeout(() => {
-        if (inputRef.current) inputRef.current.focus();
-      }, 50);
+        if (inputRef.current) inputRef.current.focus()
+      }, 50)
     }
-  }, [isLoading]);
+  }, [isLoading])
 
   const handleEmojiClick = (emoji) => {
     // Memasukkan emoji ke dalam input state
-    onChange({ target: { value: value + emoji } });
-    setShowEmojiPicker(false);
+    onChange({ target: { value: value + emoji } })
+    setShowEmojiPicker(false)
     setTimeout(() => {
-      if (inputRef.current) inputRef.current.focus();
-    }, 10);
-  };
+      if (inputRef.current) inputRef.current.focus()
+    }, 10)
+  }
 
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
-      <form 
-        onSubmit={(e) => { e.preventDefault(); onSubmit(); }}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          onSubmit()
+        }}
         className="relative flex items-center bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] rounded-[2rem] p-2 pr-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_20px_oklch(var(--su)/0.2)]"
       >
         {/* Mic / Record Toggle */}
@@ -47,8 +67,8 @@ const InputBar = ({
           type="button"
           onClick={onToggleRecord}
           className={`p-3 rounded-full transition-all flex-shrink-0 ${
-            isRecording 
-              ? 'text-error bg-error/20 animate-pulse' 
+            isRecording
+              ? 'text-error bg-error/20 animate-pulse'
               : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
           title={isRecording ? 'Stop Recording' : 'Click to Talk'}
@@ -66,10 +86,10 @@ const InputBar = ({
           >
             <FaSmile size={18} />
           </button>
-          
+
           {showEmojiPicker && (
             <div className="absolute bottom-full left-0 mb-4 bg-[var(--glass-bg)] backdrop-blur-3xl border border-[var(--glass-border)] rounded-2xl p-2 shadow-2xl flex flex-wrap w-52 gap-1 z-[100] animate-[holo-project-in_0.2s_ease-out_forwards]">
-              {EMOJIS.map(emoji => (
+              {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
@@ -84,13 +104,21 @@ const InputBar = ({
         </div>
 
         {/* Input */}
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
+          rows={1}
           value={value}
           onChange={onChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (value.trim() && !isLoading) {
+                onSubmit()
+              }
+            }
+          }}
           placeholder={isLoading ? 'Beri intervensi ke Mark...' : 'Tanya apapun ke Mark...'}
-          className="flex-1 bg-transparent border-none outline-none text-white px-3 py-3 placeholder:text-white/30 disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent border-none outline-none text-white px-3 py-2.5 text-sm md:text-base leading-normal placeholder:text-white/30 disabled:opacity-50 no-scrollbar"
         />
 
         {/* Action Buttons */}
@@ -124,13 +152,13 @@ const InputBar = ({
         cancelText="Batal"
         isError={true}
         onConfirm={() => {
-          setShowAbortConfirm(false);
-          if (onStop) onStop();
+          setShowAbortConfirm(false)
+          if (onStop) onStop()
         }}
         onCancel={() => setShowAbortConfirm(false)}
       />
     </div>
-  );
-};
+  )
+}
 
-export default InputBar;
+export default InputBar
