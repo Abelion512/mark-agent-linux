@@ -35,29 +35,7 @@ app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
 
 
 const setupYoutubeFix = () => {
-  // Kita cegat semua request yang pergi ke YouTube & YouTube Music
-  session.defaultSession.webRequest.onBeforeSendHeaders(
-    {
-      urls: [
-        '*://*.youtube.com/*',
-        '*://*.googlevideo.com/*',
-        '*://music.youtube.com/*'
-      ]
-    },
-    (details, callback) => {
-      const url = details.url || ''
-      if (url.includes('music.youtube.com')) {
-        details.requestHeaders['Referer'] = 'https://music.youtube.com/'
-        details.requestHeaders['Origin'] = 'https://music.youtube.com'
-        details.requestHeaders['Sec-Fetch-Site'] = 'same-origin'
-      } else {
-        details.requestHeaders['Referer'] = 'https://www.youtube.com/'
-        details.requestHeaders['Origin'] = 'https://www.youtube.com'
-        details.requestHeaders['Sec-Fetch-Site'] = 'same-origin'
-      }
-      callback({ requestHeaders: details.requestHeaders })
-    }
-  )
+  // Tidak perlu intercept request googlevideo/youtube yang merusak validasi CORS Google Music
 }
 
 let mainWindow = null
@@ -77,7 +55,8 @@ function createWindow() {
       webviewTag: true,
       sandbox: false,
       webSecurity: false,
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 

@@ -73,8 +73,10 @@ export const useMarkPlan = ({
     // Jangan blokir UI Desktop jika perintah datang dari background/WhatsApp
     if (!waContext && !isAutonomous) {
       setIsLoading(true)
-      lastUserPromptRef.current = userInput // Simpan prompt terakhir untuk dikembalikan ke input jika gagal/abort
-      setMessage('') // Clear input box instantly upon sending
+      if (!isSystem) {
+        lastUserPromptRef.current = userInput // Simpan prompt terakhir untuk dikembalikan ke input jika gagal/abort
+        setMessage('') // Clear input box instantly upon sending
+      }
     }
     setIsAgentBusy(true)
 
@@ -762,7 +764,7 @@ export const useMarkPlan = ({
 
       if (!waContext && !isAutonomous) {
         setIsLoading(false)
-        if (lastUserPromptRef.current) {
+        if (!isSystem && lastUserPromptRef.current) {
           setMessage(lastUserPromptRef.current) // Kembalikan prompt sebelumnya yang gagal/di-abort ke input bar
           lastUserPromptRef.current = ''
         }

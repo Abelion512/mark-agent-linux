@@ -521,8 +521,8 @@ const Guidebook = () => {
                     <ToolCard
                       name="os-open"
                       description="Membuka aplikasi Windows dari Start Menu/Path."
-                      needsPermission={true}
-                      queryFormat="notepad, calc, winword"
+                      needsPermission={false}
+                      queryFormat="notepad, calc, winword, etc"
                       howItWorks="Membuka process aplikasi Windows baru (memerlukan persetujuan user)."
                     />
                     <ToolCard

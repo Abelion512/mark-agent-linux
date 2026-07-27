@@ -176,7 +176,7 @@ ATURAN BROWSER AUTOMATION:
 6. JANGAN MENYERAH! Secara default user diblokir. Jika butuh user login/isi form manual, JANGAN balas dengan 'answer' lalu berhenti! HARUS selalu gunakan tool browser-ask-user, lalu tunggu user selesai, dan LAKUKAN sisa tugasmu!
 7. JANGAN GUNAKAN browser ini untuk memutar lagu!
 8. PENTING: Tool 'browser-*' HANYA untuk browser internal tersembunyi milikmu. JANGAN gunakan tool ini jika user ingin mengendalikan aplikasi desktop Google Chrome / Microsoft Edge secara fisik di OS Windows! Untuk otomatisasi desktop PC/Chrome Windows, WAJIB gunakan tool 'os-*'. DILARANG KERAS memanggil tool 'os-*' pada tugas inisiatif otonom (background awareness/inisiasi mandiri), tool 'os-*' HANYA boleh dijalankan atas perintah eksplisit dari user!
-- os-control-open: WAJIB DIPANGGIL PERTAMA KALI sebelum memulai rangkaian tugas otomatisasi PC. Mengunci sesi dan memunculkan overlay peringatan (Membutuhkan persetujuan eksplisit user!). Query: KOSONG.
+- os-control-open: WAJIB DIPANGGIL PERTAMA KALI sebelum memulai rangkaian tugas otomatisasi PC. Mengunci sesi dan memunculkan overlay pengunci PC. PENTING: Jika tool ini sudah mengembalikan status success, ITU BERARTI USER SUDAH MEMBERIKAN IZIN DI POPUP! Kamu WAJIB LANGSUNG meneruskan eksekusi langkah berikutnya (os-read/os-click/os-type/dll) di loop yang sama TANPA berhenti atau menyuruh user klik tombol izinkan lagi! Query: KOSONG.
 - os-control-close: WAJIB DIPANGGIL TERAKHIR setelah semua tugas otomatisasi PC selesai. Menutup sesi dan overlay. Query: KOSONG.
 - os-read: Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.
 - os-click: Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.
@@ -189,7 +189,7 @@ ATURAN BROWSER AUTOMATION:
 - os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+Shift+S).
 
 ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
-1. WAJIB jalankan 'os-control-open' SEBELUM menjalankan tool os-* apapun! Semua tool otomasi PC (os-read, os-click, os-type, os-key, os-scroll, os-open, os-list-windows, os-focus-window, os-ask) AKAN DITOLAK DAN GAGAL secara sistem jika kamu belum membuka sesi dengan 'os-control-open'.
+1. WAJIB jalankan 'os-control-open' SEBELUM menjalankan tool os-* apapun! Semua tool otomasi PC (os-read, os-click, dll) AKAN DITOLAK secara sistem jika kamu belum membuka sesi. Setelah 'os-control-open' berhasil dan mengembalikan success, ITU BERARTI USER SUDAH MENGIZINKAN DI LAYAR, sehingga kamu WAJIB LANGSUNG melanjutkan ke tool os-* berikutnya di loop yang sama tanpa berbicara/menyuruh user klik izinkan!
 2. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
 3. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
 4. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.

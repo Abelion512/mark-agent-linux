@@ -77,10 +77,9 @@ export const YoutubeMusicPlayer = () => {
           display: none !important;
         }
 
-        /* Sembunyikan popup promosi, overlay backdrop, dan promo login/sign-in */
-        ytmusic-popup-container, iron-overlay-backdrop, ytmusic-upsell-dialog-renderer,
-        ytmusic-sign-in-promo-renderer, ytmusic-modal-with-title-and-button-renderer,
-        yt-confirm-dialog-renderer, #consent-bump, ytmusic-consent-bump-renderer {
+        /* Sembunyikan promo banner non-modal */
+        ytmusic-mealbar-promo-renderer,
+        ytmusic-sign-in-promo-renderer {
           display: none !important;
         }
       `)
@@ -105,15 +104,12 @@ export const YoutubeMusicPlayer = () => {
                 isAdMuted = true;
               }
 
-              // B. Paksa kecepatan 16x (Iklan 30 detik jadi ~2 detik)
-              video.playbackRate = 16;
-
-              // C. Paksa loncat ke akhir video iklan
-              if (isFinite(video.duration)) {
-                video.currentTime = video.duration - 0.1;
+              // B. Paksa kecepatan hanya jika buffer siap agar tidak loading terus
+              if (video.readyState >= 3) {
+                video.playbackRate = 16;
               }
 
-              // D. Klik tombol skip kalau tiba-tiba muncul
+              // C. Klik tombol skip kalau tiba-tiba muncul
               if (skipBtn) skipBtn.click();
             } 
             
@@ -136,15 +132,23 @@ export const YoutubeMusicPlayer = () => {
               'button[aria-label="No thanks"], button[aria-label="Lain kali"], ' +
               'button[aria-label="Dismiss"], button[aria-label="Lewati"], ' +
               'button[aria-label="Reject all"], button[aria-label="Tolak semua"], ' +
-              'ytmusic-consent-bump-renderer .yt-spec-button-shape-next--call-to-action-secondary'
+              'button[aria-label="Accept all"], button[aria-label="Terima semua"], ' +
+              'ytmusic-consent-bump-renderer .yt-spec-button-shape-next--call-to-action-secondary, ' +
+              'ytmusic-consent-bump-renderer button, #consent-bump button'
             );
             dismissBtns.forEach(btn => btn.click());
 
-            const loginModal = document.querySelector('ytmusic-modal-with-title-and-button-renderer, ytmusic-sign-in-promo-renderer, ytmusic-consent-bump-renderer');
-            if (loginModal) {
-              loginModal.remove();
-              const backdrop = document.querySelector('iron-overlay-backdrop, tp-yt-iron-overlay-backdrop');
-              if (backdrop) backdrop.remove();
+            // Pastikan halaman & player tidak terkunci (backdrop sisa / overflow hidden / pointer-events none)
+            const backdrop = document.querySelector('iron-overlay-backdrop, tp-yt-iron-overlay-backdrop');
+            if (backdrop && backdrop.style.display !== 'none') {
+              backdrop.click();
+              backdrop.style.display = 'none';
+            }
+            if (document.body && document.body.style.overflow === 'hidden') {
+              document.body.style.overflow = 'auto';
+            }
+            if (document.body && document.body.style.pointerEvents === 'none') {
+              document.body.style.pointerEvents = 'auto';
             }
 
             // Anti-pause "Are you still watching?"
@@ -161,27 +165,14 @@ export const YoutubeMusicPlayer = () => {
   }, [])
 
   useEffect(() => {
-    if (isReady && webviewRef.current && musicUrl && musicUrl !== 'https://music.youtube.com') {
+    if (webviewRef.current && musicUrl && musicUrl !== 'https://music.youtube.com') {
       try {
-        // Trik SPA Router pakai klik a tag buat transisi smooth
-        webviewRef.current.executeJavaScript(`
-          (function() {
-            try {
-              const a = document.createElement('a');
-              a.href = "${musicUrl}";
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-            } catch(e) {
-              window.location.href = "${musicUrl}";
-            }
-          })();
-        `)
+        webviewRef.current.loadURL(musicUrl)
       } catch (e) {
         console.error('Gagal ganti lagu YT Music:', e)
       }
     }
-  }, [musicUrl, playId, isReady])
+  }, [musicUrl, playId])
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 pointer-events-none">

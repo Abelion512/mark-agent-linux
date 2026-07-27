@@ -3,6 +3,7 @@ productName: 'Mark Agent'
 directories:
   buildResources: resources
 files:
+  - '**/*'
   - '!**/.vscode/*'
   - '!src/*'
   - 'src/main/pc-agent-scripts/**/*'

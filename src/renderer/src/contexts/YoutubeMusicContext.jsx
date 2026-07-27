@@ -80,15 +80,36 @@ export const YoutubeMusicProvider = ({ children }) => {
   }, [])
 
   const nextTrack = useCallback(() => {
-    webviewRef.current?.executeJavaScript(`document.querySelector('.next-button')?.click();`)
+    webviewRef.current?.executeJavaScript(`
+      (function() {
+        const btn = document.querySelector('.next-button, #next-button, ytmusic-player-bar .next-button, ytmusic-player-bar #next-button');
+        if (btn) btn.click();
+      })();
+    `)
   }, [])
 
   const prevTrack = useCallback(() => {
-    webviewRef.current?.executeJavaScript(`document.querySelector('.previous-button')?.click();`)
+    webviewRef.current?.executeJavaScript(`
+      (function() {
+        const btn = document.querySelector('.previous-button, #previous-button, ytmusic-player-bar .previous-button, ytmusic-player-bar #previous-button');
+        if (btn) btn.click();
+      })();
+    `)
   }, [])
 
   const playPause = useCallback(() => {
-    webviewRef.current?.executeJavaScript(`document.querySelector('.play-pause-button')?.click();`)
+    webviewRef.current?.executeJavaScript(`
+      (function() {
+        const btn = document.querySelector('#play-pause-button, .play-pause-button, ytmusic-player-bar #play-pause-button, ytmusic-player-bar .play-pause-button');
+        const video = document.querySelector('video');
+        if (btn) {
+          btn.click();
+        } else if (video) {
+          if (video.paused) video.play();
+          else video.pause();
+        }
+      })();
+    `)
   }, [])
 
   const value = {
