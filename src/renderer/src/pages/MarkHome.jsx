@@ -14,6 +14,7 @@ import BrowserPreviewWidget from '../components/core/BrowserPreviewWidget'
 import musicCoverFallback from '../assets/music-cover.png'
 import { useYoutubeMusic } from '../contexts/YoutubeMusicContext'
 import { useVAD } from '../hooks/useVAD'
+import { useMemoryGroomer } from '../hooks/useMemoryGroomer'
 
 const MarkHome = () => {
   const chatContext = useChat()
@@ -38,6 +39,7 @@ const MarkHome = () => {
     config
   } = chatContext
   const { isPlaying, currentTrack, isPlayerOpen } = useYoutubeMusic()
+  useMemoryGroomer(true) // Aktifkan Hippocampus Engine
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isMemoryMapOpen, setIsMemoryMapOpen] = useState(false)

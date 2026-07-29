@@ -132,7 +132,7 @@ export const useMarkAgent = () => {
           if (lastUserMsg && lastUserMsg.message) {
             const cleanMsg = lastUserMsg.message.replace(/\[.*?\]/g, '').trim()
             if (cleanMsg && cleanMsg.length > 3) {
-              topicContext = `\n[TOPIK TERAKHIR KALIAN]: "${cleanMsg.slice(0, 100)}". Kamu boleh sedikit menyinggung atau mengaitkan obrolan terakhir ini jika cocok agar sapaanmu terasa hidup dan peka memori.`
+              topicContext = `\n[TOPIK TERAKHIR KALIAN DI RIWAYAT]: "${cleanMsg.slice(0, 100)}". PENTING: Topik obrolan terakhir ini adalah MASA LALU. JANGAN mengira pengguna MASIH atau SEDANG melakukan aktivitas/game tersebut sekarang! Jika ingin menyinggungnya, tanyakan secara lampau (contoh: "gimana main game/kerjaan kemarin?", bukan "masih main/kerja ya?").`
             }
           }
         }

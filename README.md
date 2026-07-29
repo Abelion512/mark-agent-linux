@@ -13,6 +13,7 @@
 
 - **Dynamic Agentic Planning (ReAct Loop):** Mengganti sistem penjawab statis dengan arsitektur penalaran cerdas. Mark mampu memecah masalah, memikirkan strategi, menggunakan _tools_ secara otonom berulang kali, dan mengevaluasi hasilnya sebelum memberikan jawaban akhir yang komprehensif.
 - **Infinite Memory & Injection Knowledge RAG:** Sistem Vector Retrieval-Augmented Generation (RAG) kini berjalan secara _offline_. Mark dapat menyimpan riwayat memori obrolan masif tanpa batas dan pengguna dapat menambahkan pengetahuan dari sebuah file document tanpa membebani _context window_ utama LLM.
+- **Automatic Memory Groomer (Hippocampus Engine):** Sistem pembersihan dan konsolidasi memori mandiri berbasis *Orama Clustering* dan *LLM Batch Processing*. Hippocampus Engine berjalan otonom di latar belakang untuk mendeteksi klaster memori yang serupa atau duplikat (`profile` & `preference`), lalu menggabungkannya secara kronologis tanpa menghilangkan sejarah informasi. Dilengkapi *Grooming Status Bar* dan tombol konsolidasi manual pada antarmuka *Memory Visualizer*.
 - **Visualisasi Jaringan Otak (Memory Visualizer):** Dilengkapi dengan UI _Live Feed_ "Mark Neural Core". Pengguna dapat melihat secara _real-time_ grafis Neural Network yang menampilkan jaringan _Chat History_, _Knowledge Base_, hingga _Document Vault_.
 - **Live Thought Process (Neural Flow):** Perhatikan Mark berpikir! Setiap kali sistem mengeksekusi rencana (_Agentic Planning_), antarmuka akan memancarkan animasi _3D Neuron_ yang terbang mengorbit inti pikiran (Orb) untuk interaktivitas tingkat _Sci-Fi_.
 - **Relational Growth System & Dynamic Persona:** Hubungan Anda dengan Mark dievaluasi layaknya dengan manusia sungguhan melalui 4 parameter krusial (_Warmth, Sarcasm, Trust, Energy_). Tingkat kesopanan, kelancangan (_toxicity_), dan kepribadian Mark akan berevolusi organik. Jika Anda sering bersarkasme, Mark bebas menggunakan bahasa _tongkrongan_ dan men-_roasting_ Anda. Didukung oleh **9 Inside Out 2 Emotions** (Joy, Sadness, Fear, Anger, Disgust, Anxiety, Envy, Embarrassment, Ennui) yang secara dinamis mengubah warna UI Orb di layar.
@@ -54,13 +55,14 @@ mark/
 │   └── renderer/          # Frontend (React 19 + Vite)
 │       └── src/
 │           ├── api/
-│           │   ├── ai/             # Modul Integrasi AI (chat, perencanaan, tools)
+│           │   ├── ai/             # Modul Integrasi AI (chat, perencanaan, tools, memoryGroomer.js)
 │           │   ├── db.js           # Skema & Migrasi Database Lokal (Dexie/IndexedDB)
 │           │   ├── scraping.js     # Mesin pencari Google & web scraper
 │           │   ├── vectorMemory.js # Sistem Memori Vektor (Transformers.js / LM Studio)
+│           │   ├── oramaStore.js   # Hybrid Full-Text & Vector Search, Memory Clustering
 │           │   └── waAutonomous.js # Logika otonom & eksekusi plugin untuk Bot WhatsApp
 │           ├── components/         # Komponen UI modular
-│           ├── hooks/              # Custom Hooks React (useMarkPlan, useVAD, dll)
+│           ├── hooks/              # Custom Hooks React (useMarkPlan, useMemoryGroomer, dll)
 │           └── pages/              # Halaman UI (Chat, Configuration, WhatsApp Bot)
 ```
 
@@ -71,7 +73,7 @@ mark/
 | **Framework**      | Electron 39, React 19, Vite 7                                                 |
 | **Antarmuka (UI)** | Tailwind CSS 4, DaisyUI 5, Framer Motion/GSAP (Animasi), React Force Graph 2D |
 | **Mesin AI**       | LM Studio (Offline) / Groq, Cerebras, Custom OpenAI-Compatible API            |
-| **Memori Vektor**  | Transformers.js (`@huggingface/transformers`), LM Studio                      |
+| **Memori Vektor**  | `@orama/orama` (Hybrid Search), Transformers.js (`@huggingface/transformers`) |
 | **Pencarian Web**  | Electron Webview (Bypass Anti-Bot)                                            |
 | **Suara & Audio**  | Groq API (STT), Transformers.js (Local STT), Edge-TTS, Web Audio API (VAD)    |
 | **Integrasi**      | `youtube-transcript-plus`, `youtube-dl-exec`, `ffmpeg-static`, Baileys WA     |

@@ -124,22 +124,35 @@ export async function getMainThread() {
 }
 
 // --- UPDATE ---
-export async function updateMemory(data) {
+export async function updateMemory(data, maybeMemory, maybeType) {
   try {
-    const newMemoryText = data.memory.trim()
-    const type = getValidType(data.type)
+    let id, memoryText, typeStr, summaryStr
+    if (typeof data === 'object' && data !== null) {
+      id = data.id
+      memoryText = data.memory || ''
+      typeStr = data.type
+      summaryStr = data.summary || ''
+    } else {
+      id = Number(data)
+      memoryText = String(maybeMemory || '')
+      typeStr = maybeType || 'profile'
+      summaryStr = ''
+    }
+
+    const newMemoryText = memoryText.trim()
+    const type = getValidType(typeStr)
     
     let updatePayload = {
       type: type,
-      summary: data.summary || '',
+      summary: summaryStr,
       memory: newMemoryText,
       vector: (await generateVector(newMemoryText)) || []
     }
 
-    if (data.id) {
-      await db.memory.update(data.id, updatePayload)
-      updateMemoryInOrama(data.id, { ...updatePayload, id: data.id }).catch(console.error)
-      console.log(`✅ Memory ID ${data.id} berhasil di-update.`)
+    if (id && !isNaN(id)) {
+      await db.memory.update(id, updatePayload)
+      updateMemoryInOrama(id, { ...updatePayload, id: id }).catch(console.error)
+      console.log(`✅ Memory ID ${id} berhasil di-update.`)
     } else {
       console.warn('⚠️ Gagal update: ID tidak ditemukan.')
     }
@@ -151,10 +164,11 @@ export async function updateMemory(data) {
 // --- DELETE ---
 export async function deleteMemory(data) {
   try {
-    if (data.id) {
-      await db.memory.delete(data.id)
-      deleteMemoryFromOrama(data.id).catch(console.error)
-      console.log(`🗑️ Memory ID ${data.id} berhasil dihapus oleh Mark.`)
+    const id = typeof data === 'object' && data !== null ? data.id : Number(data)
+    if (id && !isNaN(id)) {
+      await db.memory.delete(id)
+      deleteMemoryFromOrama(id).catch(console.error)
+      console.log(`🗑️ Memory ID ${id} berhasil dihapus oleh Mark.`)
       return { success: true }
     }
     

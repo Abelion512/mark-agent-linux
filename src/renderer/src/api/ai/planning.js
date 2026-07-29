@@ -274,6 +274,7 @@ Setelah observation: {"thought":"done","action":null,"answer":"Harganya sekitar 
 # KONTEKS DINAMIS
 Kepribadian: ${conf.personality || 'Santai layaknya teman.'}
 ${getCurrentTimeInfo()}
+PENTING - KESADARAN WAKTU & AKTIVITAS: Perhatikan waktu sekarang di atas dan waktu/tanggal pada setiap riwayat pesan chat jika ada. JANGAN PERNAH menganggap aktivitas yang dibahas di riwayat chat lama (seperti main game Tekken, ngoding, atau nonton kemarin/tadi) MASIH sedang dilakukan saat ini! Jika obrolan tersebut sudah berlalu (beda jam/hari), anggap aktivitas itu sudah selesai di masa lampau. Jangan bertanya "masih main/kerja ya?" untuk aktivitas lama!
 ${options.currentMusicTrack ? `[PLAYER MUSIK REAL-TIME: "${options.currentMusicTrack.title}" — ${options.currentMusicTrack.artist} (AKTIF SEKARANG, abaikan lagu lama di riwayat chat!)]` : ''}
 Isi "active_topic" dgn ringkasan topik. ${activeTopic ? `Topik sblmnya: "${activeTopic}". PERTAHANKAN jika msh relevan!` : `Jangan ubah topik khusus.`}
 ${contextMsg ? `\n# KONTEKS SAAT INI\n${contextMsg}\nPENTING: Kamu punya akses eksekusi tool di PC host!` : ''}

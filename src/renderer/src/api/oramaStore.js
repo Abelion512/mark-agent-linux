@@ -262,3 +262,85 @@ export async function deleteMemoryFromOrama(dexieId) {
   }
 }
 
+export async function findSimilarMemoryClusters(threshold = 0.60) {
+  if (!memoryIndex) {
+    console.warn('[Orama Groomer] memoryIndex belum siap!')
+    return []
+  }
+  try {
+    console.log('[Orama Groomer] Memulai scanning cluster memori di Orama dengan threshold:', threshold)
+    const results = await search(memoryIndex, {
+      term: '',
+      limit: 1000
+    })
+    let memories = results.hits
+      .map(hit => ({
+        ...hit.document,
+        id: hit.document.dexieId
+      }))
+      .filter(m => m.type === 'profile' || m.type === 'preference')
+
+    const visited = new Set()
+    const clusters = []
+    let groupCount = 1
+
+    for (const mem of memories) {
+      if (visited.has(mem.id)) continue
+      if (!mem.vector || !Array.isArray(mem.vector)) {
+        visited.add(mem.id)
+        continue
+      }
+
+      const simResults = await search(memoryIndex, {
+        term: mem.memory,
+        mode: 'hybrid',
+        vector: { value: mem.vector, property: 'vector' },
+        similarity: threshold,
+        limit: 20
+      })
+
+      if (simResults.hits.length > 1) {
+        console.log(
+          '[Orama Groomer] Kandidat mirip untuk:',
+          mem.memory,
+          '-> scores:',
+          simResults.hits.map(h => `${h.score.toFixed(2)} (${h.document.memory.slice(0, 30)}...)`)
+        )
+      }
+
+      const similarHits = simResults.hits
+        .map(hit => ({
+          ...hit.document,
+          id: hit.document.dexieId,
+          score: hit.score
+        }))
+        .filter(
+          h =>
+            (h.type === 'profile' || h.type === 'preference') &&
+            h.score >= threshold &&
+            !visited.has(h.id)
+        )
+
+      if (similarHits.length >= 2) {
+        similarHits.forEach(h => visited.add(h.id))
+        clusters.push({
+          group: groupCount++,
+          items: similarHits.map(h => ({
+            id: h.id,
+            type: h.type,
+            memory: h.memory,
+            timestamp: h.timestamp
+          }))
+        })
+      } else {
+        visited.add(mem.id)
+      }
+    }
+
+    console.log(`[Orama Groomer] Ditemukan ${clusters.length} cluster dari total ${memories.length} memori profile/preference.`)
+    return clusters
+  } catch (err) {
+    console.error('[Orama] Error in findSimilarMemoryClusters:', err)
+    return []
+  }
+}
