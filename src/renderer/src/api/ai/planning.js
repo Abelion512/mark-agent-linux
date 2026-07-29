@@ -190,7 +190,7 @@ ATURAN BROWSER AUTOMATION:
 
 ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
 1. PILIHAN TERAKHIR: Jika tugas bisa diselesaikan oleh tool lain, WAJIB pakai tool lain itu dulu! Gunakan 'os-control-open' HANYA JIKA wajib interaksi mouse/keyboard GUI di aplikasi desktop.
-2. WAJIB jalankan 'os-control-open' SEBELUM tool 'os-*' apapun! Setelah sukses, LANGSUNG eksekusi tool 'os-*' berikutnya tanpa minta izin user di chat!
+2. WAJIB jalankan 'os-control-open' 1x DI AWAL saja sebelum tool 'os-*'. JANGAN panggil 'os-control-open' lagi setelah 'os-ask' atau jika sesi sudah aktif!
 3. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
 4. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
 5. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
