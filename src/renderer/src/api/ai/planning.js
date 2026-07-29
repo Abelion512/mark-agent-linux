@@ -11,7 +11,7 @@ const CATEGORY_TEXTS = {
     'baca file tulis file hapus file buat file edit file folder direktori cari teks grep terminal powershell command jalankan perintah eksekusi cmd',
   music: 'putar lagu musik youtube yt music cari video mp3 play lagu puter',
   search: 'cari di internet google penelusuran web berita terbaru cuaca informasi terkini',
-  system: 'screenshot kirim pesan whatsapp wa operasikan komputer sistem',
+  system: 'screenshot kirim pesan whatsapp wa operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram',
 }
 
 let categoryVectors = null
@@ -189,13 +189,14 @@ ATURAN BROWSER AUTOMATION:
 - os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+Shift+S).
 
 ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
-1. WAJIB jalankan 'os-control-open' SEBELUM menjalankan tool os-* apapun! Semua tool otomasi PC (os-read, os-click, dll) AKAN DITOLAK secara sistem jika kamu belum membuka sesi. Setelah 'os-control-open' berhasil dan mengembalikan success, ITU BERARTI USER SUDAH MENGIZINKAN DI LAYAR, sehingga kamu WAJIB LANGSUNG melanjutkan ke tool os-* berikutnya di loop yang sama tanpa berbicara/menyuruh user klik izinkan!
-2. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
-3. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
-4. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
-5. PENTING: Tombol 'Ctrl+Shift+S' adalah tombol Emergency Stop milik user! KAMU DILARANG KERAS mengeksekusi 'os-key ctrl+shift+s' karena akan membatalkan sistemmu sendiri! Jika tool os-* mengembalikan status "stopped_by_user" (berarti user menekan stop), JANGAN lanjutkan otomatisasi! Gunakan tool 'os-ask' untuk menanyakan alasan user.
-6. JIKA SEMUA TUGAS PC SUDAH SELESAI, kamu WAJIB memanggil 'os-control-close' sebelum mengakhiri giliran (answer).
-7. PERBEDAAN KRITIS BROWSER vs CHROME/EDGE DESKTOP: Jika tugas melibatkan aplikasi Google Chrome atau Microsoft Edge yang terbuka di desktop PC user, KAMU WAJIB MENGGUNAKAN TOOL 'os-*' (os-control-open -> os-open chrome -> os-read -> os-click/os-type). JANGAN PERNAH gunakan 'browser-*' untuk aplikasi desktop!${
+1. PILIHAN TERAKHIR: Jika tugas bisa diselesaikan oleh tool lain, WAJIB pakai tool lain itu dulu! Gunakan 'os-control-open' HANYA JIKA wajib interaksi mouse/keyboard GUI di aplikasi desktop.
+2. WAJIB jalankan 'os-control-open' SEBELUM tool 'os-*' apapun! Setelah sukses, LANGSUNG eksekusi tool 'os-*' berikutnya tanpa minta izin user di chat!
+3. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
+4. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
+5. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
+6. PENTING: Tombol 'Ctrl+Shift+S' adalah tombol Emergency Stop milik user! KAMU DILARANG KERAS mengeksekusi 'os-key ctrl+shift+s' karena akan membatalkan sistemmu sendiri! Jika tool os-* mengembalikan status "stopped_by_user" (berarti user menekan stop), JANGAN lanjutkan otomatisasi! Gunakan tool 'os-ask' untuk menanyakan alasan user.
+7. JIKA SEMUA TUGAS PC SUDAH SELESAI, kamu WAJIB memanggil 'os-control-close' sebelum mengakhiri giliran (answer).
+8. PERBEDAAN KRITIS BROWSER vs CHROME/EDGE DESKTOP: Jika tugas melibatkan aplikasi Google Chrome atau Microsoft Edge yang terbuka di desktop PC user, KAMU WAJIB MENGGUNAKAN TOOL 'os-*' (os-control-open -> os-open chrome -> os-read -> os-click/os-type). JANGAN PERNAH gunakan 'browser-*' untuk aplikasi desktop!${
         activeCategories.includes('music')
           ? `\n- music-play: Memutar lagu di YouTube Music.
 - music-toggle: Pause/lanjut memutar lagu.
