@@ -18,6 +18,10 @@ let pendingAskResolve = null
 let isSessionOpen = false
 let mouseLockerProcess = null
 
+export function isPCSessionOpen() {
+  return isSessionOpen
+}
+
 function isStopActive() {
   if (isStoppedByUser && Date.now() - lastStopTime > 15000) {
     console.log(
@@ -361,6 +365,13 @@ function stopMouseLocker() {
  * Open a persistent PC Automation session
  */
 export async function openPCSession() {
+  if (isSessionOpen) {
+    return JSON.stringify({
+      status: 'success',
+      message:
+        'PC Automation Session is ALREADY OPEN. Sesi PC Automation masih aktif! JANGAN panggil os-control-open lagi. LANGSUNG EKSEKUSI tool os-read, os-click, os-type, dll berikutnya di loop yang sama.'
+    })
+  }
   isSessionOpen = true
   isStoppedByUser = false
   showPCOverlay()

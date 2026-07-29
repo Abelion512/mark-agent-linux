@@ -14,7 +14,8 @@ import {
   focusWindow,
   askUserPC,
   openPCSession,
-  closePCSession
+  closePCSession,
+  isPCSessionOpen
 } from './pc-agent.js'
 
 const DANGEROUS_KEY_COMBOS = [
@@ -435,7 +436,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'os-control-open': {
-    needsApproval: true,
+    needsApproval: () => !isPCSessionOpen(),
     approvalMessage: () =>
       'Mark ingin mengontrol fisik PC/desktop-mu (mengunci sesi sementara dan memunculkan overlay kontrol PC). Apakah kamu mengizinkan?',
     handler: async () => {
