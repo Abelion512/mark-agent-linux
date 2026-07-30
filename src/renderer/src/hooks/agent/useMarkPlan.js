@@ -95,7 +95,8 @@ export const useMarkPlan = ({
     const userMessage = {
       role: 'user',
       content: finalContent,
-      timestamp: timestampStr
+      timestamp: timestampStr,
+      created_at: Date.now()
     }
 
     // ========== STEP 1: PERSIAPAN CHAT SESSION ==========
@@ -105,13 +106,25 @@ export const useMarkPlan = ({
           (item) =>
             item.role !== 'command' && !item.isThinking && !item.isSearching && !item.isSummarizing
         )
-        .map((item) => ({
-          role: item.role === 'ai' ? 'assistant' : 'user',
-          content: item.content,
-          mood: item.mood,
-          isProactive: item.isProactive,
-          timestamp: item.timestamp
-        }))
+        .map((item) => {
+          let msgContent = item.content || ''
+          if (item.role === 'ai' && item.executedTools && item.executedTools.length > 0) {
+            const toolLog = item.executedTools
+              .map(
+                (t) =>
+                  `  * [Tool: ${t.tool}] query: "${t.query || ''}" -> Hasil: ${t.resultSummary || 'OK'}`
+              )
+              .join('\n')
+            msgContent = `[RIWAYAT EKSEKUSI TOOL YANG SUDAH DILAKUKAN DI TURN INI]:\n${toolLog}\n\n[JAWABAN AKHIR KE USER]:\n${item.content}`
+          }
+          return {
+            role: item.role === 'ai' ? 'assistant' : 'user',
+            content: msgContent,
+            mood: item.mood,
+            isProactive: item.isProactive,
+            timestamp: item.timestamp
+          }
+        })
     ]
     let chatSession = []
     rawSession.forEach((item, index) => {
@@ -213,6 +226,7 @@ export const useMarkPlan = ({
       let lastActionQuery = null
       let duplicateActionCount = 0
       let lastToolExecution = null
+      let executedToolsList = []
 
       let execSteps = [{ task: 'Menganalisis Konteks...' }] // Initial node for hologram
 
@@ -384,6 +398,7 @@ export const useMarkPlan = ({
             const aiMsg = {
               role: 'ai',
               content: finalContent,
+              executedTools: executedToolsList.length > 0 ? executedToolsList : null,
               reasoning: decision.thought,
               mood: decision.mood || 'neutral',
               isMemorySaved: decision.memory?.action === 'insert',
@@ -391,7 +406,8 @@ export const useMarkPlan = ({
               isMemoryDeleted: decision.memory?.action === 'delete',
               pluginExecution: lastToolExecution,
               isProactive: isAutonomous,
-              timestamp: getCurrentTimeInfo()
+              timestamp: getCurrentTimeInfo(),
+              created_at: Date.now()
             }
             if (allSources.length > 0) {
               const uniqueSources = []
@@ -630,6 +646,8 @@ export const useMarkPlan = ({
               }
             } else if (
               [
+                'file-outline',
+                'read-document',
                 'read-file',
                 'write-file',
                 'replace-lines',
@@ -691,6 +709,34 @@ export const useMarkPlan = ({
               const res = await Promise.race([nativePromise, abortPromise])
               if (res.success) {
                 resultString = typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+
+                // --- ON-THE-FLY ORAMA HYBRID VECTOR SEARCH UNTUK READ-DOCUMENT ---
+                if (tool === 'read-document') {
+                  const parts = query.split('||')
+                  const searchQuery = parts[1] ? parts[1].trim() : ''
+                  let fullText = ''
+                  if (typeof res.data === 'object' && res.data !== null) {
+                    fullText = res.data.content || ''
+                  } else if (typeof res.data === 'string') {
+                    fullText = res.data
+                  }
+
+                  if (searchQuery && fullText) {
+                    try {
+                      const oramaHits = await searchDocumentWithOrama(fullText, searchQuery, 5)
+                      if (oramaHits && oramaHits.length > 0) {
+                        const formattedHits = oramaHits
+                          .map((h, i) => `[Orama Vector Match #${i + 1} (Score: ${h.score.toFixed(2)})]\n${h.content}`)
+                          .join('\n\n---\n\n')
+                        resultString = `[PENCARIAN SEMANTIK ORAMA VECTOR UNTUK "${searchQuery}"]:\n${formattedHits}`
+                      }
+                    } catch (oramaErr) {
+                      console.error('[useMarkPlan] Gagal Orama search untuk read-document:', oramaErr)
+                    }
+                  } else if (fullText && fullText.length > 2500) {
+                    resultString = `${fullText.slice(0, 2500)}\n\n[DOKUMEN DIPOTONG (Total: ${fullText.length} karakter). Jika ingin mencari bagian/topik spesifik di dokumen ini, panggil read-document dengan query: "${parts[0]}||kata_kunci"]`
+                  }
+                }
               } else {
                 resultString = `[ERROR] ${tool} gagal: ${res.error}`
               }
@@ -734,7 +780,21 @@ export const useMarkPlan = ({
             resultString = `[ERROR] Tool ${tool} crash: ${toolError.message}`
           }
 
+          executedToolsList.push({
+            tool: tool,
+            query: query,
+            resultSummary:
+              typeof resultString === 'string' && resultString.length > 250
+                ? resultString.slice(0, 250) + '...'
+                : resultString
+          })
+
           // --- FEED OBSERVATION BACK KE AI ---
+          let obsStr = resultString
+          if (typeof resultString === 'string' && resultString.length > 3000) {
+            obsStr = `${resultString.slice(0, 3000)}\n\n[SISA OUTPUT DIPOTONG (Total: ${resultString.length} karakter). Gunakan startLine||endLine atau grep-search untuk mencari bagian spesifik.]`
+          }
+
           loopMessages.push(
             {
               role: 'assistant',
@@ -742,7 +802,7 @@ export const useMarkPlan = ({
             },
             {
               role: 'user',
-              content: `[OBSERVATION] Hasil eksekusi tool "${tool}": ${resultString}`
+              content: `[OBSERVATION] Hasil eksekusi tool "${tool}": ${obsStr}`
             }
           )
 

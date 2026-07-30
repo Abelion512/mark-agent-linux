@@ -111,12 +111,24 @@ export const useMarkAgent = () => {
 
         if (chatData && chatData.length > 0) {
           const lastMsg = chatData[chatData.length - 1]
-          if (lastMsg && lastMsg.timestamp) {
-            const diffMs = Date.now() - lastMsg.timestamp
+          let lastTimeMs = null
+
+          if (lastMsg) {
+            if (typeof lastMsg.created_at === 'number' && !isNaN(lastMsg.created_at) && lastMsg.created_at > 0) {
+              lastTimeMs = lastMsg.created_at
+            } else if (typeof lastMsg.timestamp === 'number' && !isNaN(lastMsg.timestamp) && lastMsg.timestamp > 0) {
+              lastTimeMs = lastMsg.timestamp
+            }
+          }
+
+          if (lastTimeMs && lastTimeMs > 0) {
+            const diffMs = Date.now() - lastTimeMs
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
             const diffDays = Math.floor(diffHours / 24)
 
-            if (diffDays >= 3) {
+            if (diffDays >= 365 || diffDays < 0) {
+              timeContext = `\n[KONTEKS WAKTU & RIWAYAT]: Pengguna baru saja membuka kembali aplikasi.`
+            } else if (diffDays >= 3) {
               timeContext = `\n[KONTEKS WAKTU & RIWAYAT]: Pengguna sudah tidak membuka aplikasi/ngobrol selama ${diffDays} hari! Sapa dengan nada kaget, akrab, atau kangen bergaya santai (contoh: "Waduh kemana aja nih lama gak kelihatan", "Akhirnya nongkrong lagi kita", "Sibuk banget kayaknya baru kelihatan lagi", dll). JANGAN formal atau kaku!`
             } else if (diffDays >= 1) {
               timeContext = `\n[KONTEKS WAKTU & RIWAYAT]: Pengguna kembali setelah ${diffDays} hari tidak ngobrol. Beri sapaan santai dan ramah bahwa lu senang dia balik lagi.`
@@ -194,15 +206,17 @@ export const useMarkAgent = () => {
     }
   }, [isAgentBusy, chatData, setInputSource])
 
-  const handleSubmit = (e) => {
-    if (e) e.preventDefault()
+  const handleSubmit = (e, textPrompt) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault()
+    const textToSend = typeof textPrompt === 'string' ? textPrompt.trim() : (typeof e === 'string' ? e.trim() : '')
+    if (!textToSend) return
+
     if (isLoading || isAgentBusy) {
-      if (handleIntervention && message.trim()) {
-        handleIntervention(message.trim())
-        setMessage('')
+      if (handleIntervention) {
+        handleIntervention(textToSend)
       }
     } else {
-      handlePlanningCommand(message.trim())
+      handlePlanningCommand(textToSend)
     }
   }
 

@@ -36,10 +36,16 @@ export const fetchAI = async (messages, signal, isSmallTask = false, jsonSchema 
     console.groupEnd();
     // --- END DEBUG LOG ---
 
+    console.log('%c[fetchAI] FULL RAW REQUEST JSON:', 'color: #10b981; font-weight: bold;');
+    console.log(JSON.stringify({ messages, isSmallTask, jsonSchema }, null, 2));
+
     window.api.fetchAI({ messages, config: conf, isSmallTask, jsonSchema }).then(result => {
       if (hasResolved) return;
       hasResolved = true;
       if (signal) signal.removeEventListener('abort', onAbort);
+
+      console.log('%c[fetchAI] FULL RAW RESPONSE RESULT (JSON):', 'color: #10b981; font-weight: bold;');
+      console.log(result);
 
       if (result && result.error) {
         const err = new Error(result.error.message)

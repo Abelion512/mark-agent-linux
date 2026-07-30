@@ -185,12 +185,16 @@ export async function insertDocumentChunksToOrama(chunks) {
 }
 
 export async function deleteArchiveFromOrama(dexieId) {
-  if (!archiveIndex) return
-  // Orama requires internal ID for deletion. We can search by dexieId first if needed.
-  // A simpler way for a small DB is to just search exactly for that dexieId.
-  const res = await search(archiveIndex, { term: dexieId.toString(), properties: ['dexieId'], exact: true })
-  if (res.hits.length > 0) {
-     await remove(archiveIndex, res.hits[0].id)
+  if (!archiveIndex || !dexieId) return
+  try {
+    const res = await search(archiveIndex, { where: { dexieId: Number(dexieId) } })
+    if (res.hits.length > 0) {
+      for (let h of res.hits) {
+        await remove(archiveIndex, h.id)
+      }
+    }
+  } catch (err) {
+    console.error('[Orama] Error deleteArchiveFromOrama:', err)
   }
 }
 
@@ -251,7 +255,7 @@ export async function updateMemoryInOrama(dexieId, data) {
 export async function deleteMemoryFromOrama(dexieId) {
   if (!memoryIndex || !dexieId) return
   try {
-    const res = await search(memoryIndex, { term: dexieId.toString(), properties: ['dexieId'], exact: true })
+    const res = await search(memoryIndex, { where: { dexieId: Number(dexieId) } })
     if (res.hits.length > 0) {
       for (let h of res.hits) {
         await remove(memoryIndex, h.id)
@@ -341,6 +345,66 @@ export async function findSimilarMemoryClusters(threshold = 0.60) {
     return clusters
   } catch (err) {
     console.error('[Orama] Error in findSimilarMemoryClusters:', err)
+    return []
+  }
+}
+
+// On-the-fly Orama Hybrid Vector Search for read-document
+export async function searchDocumentWithOrama(rawText, searchQuery, limit = 5) {
+  try {
+    if (!rawText || !searchQuery) return []
+
+    // 1. Chunk text (500 chars with 50 overlap)
+    const chunks = []
+    let start = 0
+    const chunkSize = 500
+    const overlap = 50
+    while (start < rawText.length) {
+      const end = Math.min(start + chunkSize, rawText.length)
+      const chunkStr = rawText.slice(start, end).trim()
+      if (chunkStr) chunks.push(chunkStr)
+      start += chunkSize - overlap
+    }
+
+    if (chunks.length === 0) return []
+
+    // 2. Create in-memory Orama instance
+    const tempDb = await create({
+      schema: {
+        content: 'string',
+        vector: `vector[${VECTOR_SIZE}]`
+      }
+    })
+
+    // 3. Generate vectors and insert
+    for (let i = 0; i < chunks.length; i++) {
+      const vec = await generateVector(chunks[i])
+      if (vec && vec.length === VECTOR_SIZE) {
+        await insert(tempDb, {
+          content: chunks[i],
+          vector: vec
+        })
+      }
+    }
+
+    // 4. Generate query vector and search
+    const queryVec = await generateVector(searchQuery)
+    if (!queryVec || queryVec.length !== VECTOR_SIZE) return []
+
+    const searchRes = await search(tempDb, {
+      term: searchQuery,
+      mode: 'hybrid',
+      vector: { value: queryVec, property: 'vector' },
+      similarity: 0.15,
+      limit: limit
+    })
+
+    return searchRes.hits.map((h) => ({
+      content: h.document.content,
+      score: h.score
+    }))
+  } catch (err) {
+    console.error('[Orama] Error in searchDocumentWithOrama:', err)
     return []
   }
 }

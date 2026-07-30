@@ -2,8 +2,15 @@ import { pipeline, env } from '@huggingface/transformers';
 import { getAllConfig, getAllMemory, db } from './db';
 
 env.allowLocalModels = false;
-env.useBrowserCache = true;
-env.useFSCache = false;
+
+const isBrowserWithCache = typeof window !== 'undefined' && typeof caches !== 'undefined';
+if (isBrowserWithCache) {
+  env.useBrowserCache = true;
+  env.useFSCache = false;
+} else {
+  env.useBrowserCache = false;
+  env.useFSCache = true;
+}
 
 let extractor = null;
 let isDownloading = false;
@@ -13,8 +20,11 @@ export const getExtractor = async (onProgress) => {
   if (!extractor && !isDownloading) {
     isDownloading = true;
     try {
+      // 'wasm' hanya valid di Browser (Renderer Process).
+      // Di Node.js (Main Process) harus pakai 'cpu'.
+      const device = (typeof window !== 'undefined' && typeof caches !== 'undefined') ? 'wasm' : 'cpu';
       extractor = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
-        device: 'wasm',
+        device,
         progress_callback: onProgress
       });
     } catch (e) {

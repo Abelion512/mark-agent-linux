@@ -1,8 +1,12 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 const api = {
+  getPathForFile: (file) => {
+    try { return webUtils.getPathForFile(file) } catch { return file?.name || '' }
+  },
+  showOpenDialog: () => ipcRenderer.invoke('dialog:open-file'),
   fetchAI: (params) => ipcRenderer.invoke('ai:fetch', params),
   abortFetchAI: () => ipcRenderer.send('ai:abort-fetch'),
   syncConfig: (config) => ipcRenderer.send('sync-config', config),

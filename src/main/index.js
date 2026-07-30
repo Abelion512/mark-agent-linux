@@ -3,6 +3,7 @@ import {
   shell,
   BrowserWindow,
   ipcMain,
+  dialog,
   session,
   Tray,
   Menu,
@@ -198,6 +199,12 @@ ipcMain.handle('parse-document', async (event, arrayBuffer, isDocx) => {
   }
 })
 ipcMain.handle('wa:logout', async () => await logoutWhatsapp())
+
+ipcMain.handle('dialog:open-file', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] })
+  if (result.canceled) return []
+  return result.filePaths
+})
 
 import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
 import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'

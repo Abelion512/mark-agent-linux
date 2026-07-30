@@ -167,12 +167,13 @@ const MarkHome = () => {
     }
   }, [chatData, isLoading, isSpeak, setOrbStatus])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e, text) => {
     if (chatContext.handleSubmit) {
-      chatContext.handleSubmit(e)
+      chatContext.handleSubmit(e, text)
     } else {
-      if (message.trim()) {
-        handlePlanningCommand(message)
+      const sendText = typeof text === 'string' && text.trim() ? text.trim() : message.trim()
+      if (sendText) {
+        handlePlanningCommand(sendText)
       }
     }
   }
@@ -278,14 +279,9 @@ const MarkHome = () => {
 
       {/* Bottom Input Area */}
       <InputBar
-        value={message}
-        onChange={(e) => {
-          setMessage(e.target.value)
-          if (isSpeak) setIsSpeak(false) // Typing disables voice auto-reply
-        }}
-        onSubmit={() => {
+        onSubmit={(prompt) => {
           setIsSpeak(false) // Typing submit disables voice auto-reply
-          handleSubmit()
+          handleSubmit(prompt)
         }}
         isLoading={isLoading || isAgentBusy}
         isRecording={isRecording}

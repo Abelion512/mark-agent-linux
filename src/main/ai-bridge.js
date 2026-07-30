@@ -136,6 +136,11 @@ export const fetchAI = async (
 
       let response
       try {
+        console.log(`\n==================== [FETCH AI REQUEST JSON] ====================`)
+        console.log(`Endpoint: ${endpoint}`)
+        console.log(JSON.stringify(currentBody, null, 2))
+        console.log(`==================================================================\n`)
+
         response = await fetch(endpoint, {
           method: 'POST',
           headers: headers,
@@ -342,7 +347,9 @@ export const fetchAI = async (
         cleanText = cleanText.substring(firstBrace, lastBrace + 1)
       }
 
-      console.log(`[FetchAI] Raw Response from Router (Status: ${response.status}):`, cleanText)
+      console.log(`\n==================== [FETCH AI RESPONSE JSON] ====================`)
+      console.log(cleanText)
+      console.log(`===================================================================\n`)
       
       try {
         return JSON.parse(cleanText)

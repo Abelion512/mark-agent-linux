@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
 import util from 'util'
+import { searchDocumentWithOrama } from '../renderer/src/api/oramaStore.js'
 import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agent.js'
 import {
   readDesktop,
@@ -96,6 +97,287 @@ export const NATIVE_TOOLS = {
             totalLines > 400
               ? 'File panjang. Hanya menampilkan 400 baris awal. Gunakan read-file dengan argumen startLine||endLine untuk melihat sisa baris.'
               : ''
+        }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'file-outline': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const filePath = query.trim()
+        if (!fs.existsSync(filePath))
+          return { success: false, message: 'File tidak ditemukan di path tersebut.' }
+
+        const content = fs.readFileSync(filePath, 'utf8')
+        const lines = content.split('\n')
+        const totalLines = lines.length
+
+        // Regex for structural elements across JS, TS, Python, Go, HTML, Markdown, etc.
+        const structuralRegex =
+          /^(?:\s*)(?:export\s+|async\s+|function\s+|class\s+|const\s+\w+\s*=\s*(?:async\s*)?\(|let\s+\w+\s*=\s*(?:async\s*)?\(|var\s+\w+\s*=\s*(?:async\s*)?\(|def\s+|type\s+|interface\s+|struct\s+|#+\s+|ipcMain\.|window\.api\.|return\s+\()/i
+
+        const outlineItems = []
+        lines.forEach((line, index) => {
+          if (structuralRegex.test(line)) {
+            const trimmed = line.trim()
+            if (trimmed.length > 0) {
+              outlineItems.push(`[Baris ${index + 1}] ${trimmed.slice(0, 120)}`)
+            }
+          }
+        })
+
+        if (outlineItems.length === 0) {
+          const step = Math.max(1, Math.floor(totalLines / 20))
+          for (let i = 0; i < totalLines; i += step) {
+            const trimmed = lines[i].trim()
+            if (trimmed) {
+              outlineItems.push(`[Baris ${i + 1}] ${trimmed.slice(0, 100)}`)
+            }
+          }
+        }
+
+        return {
+          success: true,
+          totalLines,
+          outlineCount: outlineItems.length,
+          outline: outlineItems.join('\n')
+        }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'read-document': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const parts = query.split('||')
+        const filePath = parts[0].trim()
+        const param2 = parts[1] ? parts[1].trim() : ''
+        const param3 = parts[2] ? parts[2].trim() : ''
+
+        if (!fs.existsSync(filePath))
+          return { success: false, message: 'File tidak ditemukan di path tersebut.' }
+
+        const ext = path.extname(filePath).toLowerCase()
+        let rawText = ''
+
+        if (ext === '.pdf') {
+          const buffer = fs.readFileSync(filePath)
+          try {
+            const pdfParseModule = require('pdf-parse')
+            if (typeof pdfParseModule === 'function') {
+              const res = await pdfParseModule(buffer)
+              rawText = res.text
+            } else if (pdfParseModule.PDFParse) {
+              const parser = new pdfParseModule.PDFParse({ data: buffer })
+              const res = await parser.getText()
+              rawText = res.text
+            }
+          } catch (pdfErr) {
+            return { success: false, error: `Gagal membaca PDF: ${pdfErr.message}` }
+          }
+        } else if (ext === '.docx') {
+          const buffer = fs.readFileSync(filePath)
+          try {
+            const mammoth = require('mammoth')
+            const result = await mammoth.extractRawText({ buffer })
+            rawText = result.value
+          } catch (docxErr) {
+            return { success: false, error: `Gagal membaca DOCX: ${docxErr.message}` }
+          }
+        } else {
+          rawText = fs.readFileSync(filePath, 'utf8')
+        }
+
+        const cleanText = rawText.replace(/\r\n/g, '\n').trim()
+        const totalChars = cleanText.length
+
+        if (totalChars === 0) {
+          return { success: true, totalChars: 0, content: 'Dokumen kosong.' }
+        }
+
+        const allLines = cleanText.split('\n')
+        const totalLines = allLines.length
+
+        // MODE 1: Line Slicing (path||startLine||endLine)
+        if (param2 && !isNaN(param2) && param3 && !isNaN(param3)) {
+          const startLine = Math.max(1, parseInt(param2, 10))
+          const endLine = Math.min(totalLines, parseInt(param3, 10))
+          const sliced = allLines
+            .slice(startLine - 1, endLine)
+            .map((line, idx) => `${startLine + idx}: ${line}`)
+            .join('\n')
+
+          return {
+            success: true,
+            filePath,
+            totalLines,
+            startLine,
+            endLine,
+            content: `[RENTANG BARIS ${startLine} s/d ${endLine} DARI TOTAL ${totalLines} BARIS]:\n${sliced}`
+          }
+        }
+
+        // MODE 2: Keyword / Semantic Search (path||searchQuery)
+        const searchQuery = param2
+        if (searchQuery) {
+          let resultsHeader = `[PENCARIAN PADA DOKUMEN: "${searchQuery}"]\n`
+          let matchedSections = []
+
+          // 2a. Direct Line / Keyword Matching
+          const searchLower = searchQuery.toLowerCase()
+          for (let i = 0; i < allLines.length; i++) {
+            if (allLines[i].toLowerCase().includes(searchLower)) {
+              const ctxStart = Math.max(0, i - 2)
+              const ctxEnd = Math.min(allLines.length, i + 8)
+              const snippet = allLines
+                .slice(ctxStart, ctxEnd)
+                .map((l, idx) => `${ctxStart + idx + 1}: ${l}`)
+                .join('\n')
+              matchedSections.push(`[COCOK PERSIS PADA BARIS ${i + 1}]:\n${snippet}`)
+              if (matchedSections.length >= 4) break
+            }
+          }
+
+          // 2b. Orama Semantic Vector Search
+          let oramaText = ''
+          try {
+            const oramaHits = await searchDocumentWithOrama(cleanText, searchQuery, 5)
+            if (oramaHits && oramaHits.length > 0) {
+              oramaText = oramaHits
+                .map(
+                  (h, i) =>
+                    `[Orama Vector Match #${i + 1} (Score: ${h.score.toFixed(2)})]\n${h.content}`
+                )
+                .join('\n\n---\n\n')
+            }
+          } catch (oramaErr) {
+            console.error('[native-tools] Gagal Orama search untuk read-document:', oramaErr)
+          }
+
+          let combinedContent = ''
+          if (matchedSections.length > 0) {
+            combinedContent += `--- HASIL PENCOCOKAN KATAKUNCI PERSIS ---\n${matchedSections.join('\n\n')}\n\n`
+          }
+          if (oramaText) {
+            combinedContent += `--- HASIL VEKTOR SEMANTIK ORAMA ---\n${oramaText}`
+          }
+
+          if (combinedContent) {
+            return {
+              success: true,
+              filePath,
+              totalLines,
+              totalChars,
+              searchQuery,
+              content: resultsHeader + combinedContent
+            }
+          } else {
+            return {
+              success: true,
+              filePath,
+              totalLines,
+              totalChars,
+              searchQuery,
+              content: `Tidak ditemukan baris atau paragraf yang cocok dengan kata kunci "${searchQuery}".`
+            }
+          }
+        }
+
+        // MODE 3: Default Full / Smart Overview Read (tanpa query - Hybrid Structural + Strided)
+        if (totalLines > 80) {
+          // 3a. First 40 lines (Judul, Header, Intro)
+          const firstBlock = allLines
+            .slice(0, 40)
+            .map((l, idx) => `${idx + 1}: ${l}`)
+            .join('\n')
+
+          // 3b. Universal Structural Heading Detection across middle body (Lines 41 to totalLines - 30)
+          const middleStart = 40
+          const middleEnd = Math.max(middleStart + 1, totalLines - 30)
+
+          const structuralHeadings = []
+          for (let i = middleStart; i < middleEnd; i++) {
+            const line = allLines[i].trim()
+            if (!line) continue
+
+            // Universal structural patterns (Language-agnostic):
+            // 1. Markdown/HTML headings: #, ##, ###, <h1>, <h2>
+            // 2. Numbered sections in any language: 1., 1.1, 2.1.3, I., II., A., B.
+            // 3. Short standalone lines (< 65 chars) in ALL CAPS or ending with a colon ':'
+            const isMdHeading = /^#{1,6}\s+/.test(line) || /^<h[1-6]>/i.test(line)
+            const isNumberedSection = /^([0-9]+\.[0-9.]*|[A-Z]\.|[IVXLCDM]+\.)\s+[A-Z0-9]/i.test(line)
+            const isTitleStyle = line.length > 3 && line.length < 65 && ((line === line.toUpperCase() && /[A-Z]/.test(line)) || line.endsWith(':'))
+
+            if (isMdHeading || isNumberedSection || isTitleStyle) {
+              const snippetEnd = Math.min(totalLines, i + 3)
+              const snippetText = allLines
+                .slice(i, snippetEnd)
+                .map((l, idx) => `${i + idx + 1}: ${l}`)
+                .join('\n')
+              structuralHeadings.push(`[HEADING BARIS ${i + 1}]:\n${snippetText}`)
+              if (structuralHeadings.length >= 12) break
+            }
+          }
+
+          // 3c. Fallback / Complementary Uniform Strided Sampling if structural headings are few (< 4)
+          const sampledBody = []
+          if (structuralHeadings.length < 4) {
+            const middleTotal = middleEnd - middleStart
+            const numSamples = 8
+            const stepSize = Math.max(1, Math.floor(middleTotal / numSamples))
+
+            for (let i = 0; i < numSamples; i++) {
+              const targetLineIdx = middleStart + Math.min(i * stepSize, middleTotal - 1)
+              const snippetStart = targetLineIdx
+              const snippetEnd = Math.min(totalLines, snippetStart + 3)
+              const snippetText = allLines
+                .slice(snippetStart, snippetEnd)
+                .map((l, idx) => `${snippetStart + idx + 1}: ${l}`)
+                .join('\n')
+              sampledBody.push(`[CUPLIKAN INTERVAL BARIS ${snippetStart + 1}]:\n${snippetText}`)
+            }
+          }
+
+          // 3d. Last 30 lines (Kesimpulan / Penutup)
+          const lastStart = Math.max(40, totalLines - 30)
+          const lastBlock = allLines
+            .slice(lastStart)
+            .map((l, idx) => `${lastStart + idx + 1}: ${l}`)
+            .join('\n')
+
+          let summaryContent = `[RINGKASAN STRUKTUR DOKUMEN: Total ${totalLines} baris / ${totalChars} karakter]\n\n`
+          summaryContent += `--- BAGIAN AWAL (BARIS 1 - 40) ---\n${firstBlock}\n\n`
+
+          if (structuralHeadings.length > 0) {
+            summaryContent += `--- STRUKTUR BAB & HEADINGS UTAMA DOKUMEN ---\n${structuralHeadings.join('\n\n')}\n\n`
+          }
+          if (sampledBody.length > 0) {
+            summaryContent += `--- CUPLIKAN INTERVAL DARI SELURUH ISI DOKUMEN ---\n${sampledBody.join('\n\n')}\n\n`
+          }
+
+          summaryContent += `--- BAGIAN AKHIR / KESIMPULAN (BARIS ${lastStart + 1} - ${totalLines}) ---\n${lastBlock}\n\n`
+          summaryContent += `[PERINTAH KELENGKAPAN SELESAI]: INFORMASI DI ATAS SUDAH MENCAKUP AWAL, TENGAH, DAN AKHIR DOKUMEN! JANGAN MEMBACA ULANG POTONGAN BARIS! BILA TUGASMU MEMBUAT FILE (.md/.txt), LANGSUNG PANGGIL 'write-file' SEKARANG JUGA!`
+
+          return {
+            success: true,
+            filePath,
+            totalLines,
+            totalChars,
+            content: summaryContent
+          }
+        }
+
+        return {
+          success: true,
+          filePath,
+          totalLines,
+          totalChars,
+          content: allLines.map((l, idx) => `${idx + 1}: ${l}`).join('\n')
         }
       } catch (e) {
         return { success: false, error: e.message }
