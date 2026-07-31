@@ -193,7 +193,9 @@ export const NATIVE_TOOLS = {
           rawText = fs.readFileSync(filePath, 'utf8')
         }
 
-        const cleanText = rawText.replace(/\r\n/g, '\n').trim()
+        let cleanText = rawText.replace(/\r\n/g, '\n').trim()
+        // Format single giant lines (e.g. PDF text without newlines) to prevent V8 freezes
+        cleanText = cleanText.replace(/([^\n]{150,250})\s+/g, '$1\n')
         const totalChars = cleanText.length
 
         if (totalChars === 0) {

@@ -368,7 +368,39 @@ export async function searchDocumentWithOrama(rawText, searchQuery, limit = 5) {
 
     if (chunks.length === 0) return []
 
-    // 2. Create in-memory Orama instance
+    // 2. Pre-filter candidate chunks to avoid CPU freeze (Max 20 chunks)
+    const terms = searchQuery.toLowerCase().split(/\s+/).filter((t) => t.length > 2)
+    let candidateChunks = chunks
+    if (chunks.length > 20) {
+      if (terms.length > 0) {
+        const scored = chunks.map((c) => {
+          const lower = c.toLowerCase()
+          let score = 0
+          for (const term of terms) {
+            if (lower.includes(term)) score += 1
+          }
+          return { chunk: c, score }
+        })
+        const matching = scored
+          .filter((s) => s.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map((s) => s.chunk)
+
+        if (matching.length > 0) {
+          candidateChunks = matching.slice(0, 20)
+        } else {
+          const step = Math.max(1, Math.floor(chunks.length / 20))
+          candidateChunks = []
+          for (let i = 0; i < chunks.length && candidateChunks.length < 20; i += step) {
+            candidateChunks.push(chunks[i])
+          }
+        }
+      } else {
+        candidateChunks = chunks.slice(0, 20)
+      }
+    }
+
+    // 3. Create in-memory Orama instance
     const tempDb = await create({
       schema: {
         content: 'string',
@@ -376,18 +408,22 @@ export async function searchDocumentWithOrama(rawText, searchQuery, limit = 5) {
       }
     })
 
-    // 3. Generate vectors and insert
-    for (let i = 0; i < chunks.length; i++) {
-      const vec = await generateVector(chunks[i])
+    // 4. Generate vectors and insert with Event-Loop yielding
+    for (let i = 0; i < candidateChunks.length; i++) {
+      const vec = await generateVector(candidateChunks[i])
       if (vec && vec.length === VECTOR_SIZE) {
         await insert(tempDb, {
-          content: chunks[i],
+          content: candidateChunks[i],
           vector: vec
         })
       }
+      // Yield back to Electron Event Loop every 2 chunks to keep UI responsive
+      if (i % 2 === 0) {
+        await new Promise((r) => setTimeout(r, 0))
+      }
     }
 
-    // 4. Generate query vector and search
+    // 5. Generate query vector and search
     const queryVec = await generateVector(searchQuery)
     if (!queryVec || queryVec.length !== VECTOR_SIZE) return []
 

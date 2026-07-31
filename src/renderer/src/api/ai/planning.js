@@ -135,14 +135,10 @@ JANGAN isi keduanya! Boleh panggil tool berulang kali.
 - Jika user hanya ngobrol santai, LANGSUNG isi "answer" tanpa tool.
 - MENYIMPAN/MEMPERBARUI MEMORY: Untuk "profile" (identitas) & "preference" (kesukaan/gaya bicara), WAJIB PROAKTIF mendeteksi dari obrolan dan simpan tanpa perlu diminta. Untuk "notes" (catatan), HANYA simpan jika user eksplisit meminta. Sebelum insert, CEK daftar MEMORY USER — jika sudah ada atau memperbarui info lama, gunakan action "update" (sertakan ID). Jika info lama salah/tidak relevan, gunakan action "delete".
 ${activeCategories.some((c) => ['search', 'casual', 'coding'].includes(c)) ? `- PENGGUNAAN WEB SEARCH: Gunakan "browser-navigate" ke Google Search HANYA untuk info real-time/terbaru. Untuk coding/teori umum, langsung jawab di "answer".` : ''}
-# ATURAN VERIFIKASI SEBELUM MENYELESAIKAN TUGAS (WAJIB CHECKLIST SEBELUM "answer")
-1. VERIFIKASI EKSEKUSI FILE: Jika user meminta membuat/mengedit file (misal .md, .txt, .html), SEBELUM kamu mengisi "answer" (selesai), PASTIKAN tool 'write-file' atau 'replace-lines' SUDAH BENAR-BENAR DIEKSEKUSI di turn ini dan statusnya sukses! DILARANG KERAS mengaku "file sudah dibuat" jika kamu belum mengeksekusi tool penulisan file!
-2. VERIFIKASI NAMA FILE & PATH: Pastikan nama file, ekstensi (misal .md), dan lokasi folder target (misal folder Documents) sudah 100% tepat sesuai instruksi user.
-3. VERIFIKASI KUALITAS & KELENGKAPAN ISI FILE:
-   - Periksa kembali isi teks/kode yang kamu tulis. Pastikan isinya LENGKAP, MENDETAIL, dan MENJAWAB SELURUH PERMINTAAN USER!
-   - DILARANG KERAS menulis isi file yang setengah-setengah, terpotong, atau menggunakan placeholder seperti "[isi di sini]", "[tambah sendiri]", atau "...".
-   - Jika merangkum dokumen/PDF, pastikan seluruh bab/poin penting utama sudah terangkum dengan jelas, padat, dan berbobot di dalam isi file tersebut.
-4. STOPPING CONDITION: Jika tugas utama sudah selesai & seluruh poin di atas terverifikasi valid, JANGAN ngide merombak ulang! Langsung akhiri loop dengan mengisi "answer" laporan singkat ke user.
+# ATURAN VERIFIKASI & STOPPING CONDITION SETELAH WRITE-FILE (SANGAT KETAT)
+1. KETIKA TOOL 'write-file' ATAU 'replace-lines' SUDAH BERHASIL DIEKSEKUSI (success: true di riwayat tool): TUGAS PENULISAN FILE SUDAH 100% SELESAI! DILARANG KERAS MEMANGGIL TOOL 'write-file' LAGI ATAU MEROMBAK FILE LAGI!
+2. KAMU WAJIB LANGSUNG MENGAKHIRI LOOP PADA TURN BERIKUTNYA DENGAN MENGISI "answer" (Laporan singkat bahwa file berhasil dibuat) DAN MENGOSONGKAN "action" (set "action": null)!
+3. VERIFIKASI SEBELUM BALAS: Pastikan nama file, ekstensi (.md/.txt), dan folder target sudah sesuai permintaan user. Isi file wajib lengkap tanpa placeholder.
 ${
   activeCategories.includes('coding')
     ? `
@@ -240,7 +236,7 @@ ${
 # ATURAN EFISIENSI BACA FILE & TOKEN (WAJIB DIPATUHI)
 1. Untuk mendapatkan gambaran utuh dokumen/PDF (Judul, Peta Seluruh Bab, & Kesimpulan) sekaligus dalam 1 detik, panggil 'read-document path_file' TANPA QUERY!
 2. Jika butuh detail topik spesifik dari dokumen, gunakan 'read-document path||kata_kunci' ATAU 'read-document path||startLine||endLine'!
-3. STOPPING CONDITION RANGKUMAN: Jika user meminta merangkum/membuat file laporan (.md) dari dokumen/PDF, panggil 'read-document path_file' (Smart Overview) 1 KALI SAJA. Setelah itu KAMU WAJIB LANGSUNG MENGGUNAKAN 'write-file' untuk menulis hasilnya ke file target! DILARANG KERAS menyapu/membaca ulang potongan baris dokumen secara berulang-ulang tanpa menulis file!
+3. ALUR UTUH MERANGKUM FILE: panggil 'read-document path_file' (1 kali) -> panggil 'write-file path||rangkuman' (1 kali) -> SETELAH WRITE-FILE SUKSES, LANGSUNG BALAS "answer" LAPORAN SINGKAT & SET "action": null! DILARANG KERAS memanggil 'write-file' 2 kali atau mengulang penulisan file!
 4. Gunakan 'file-outline' TERLEBIH DAHULU saat ingin tahu struktur atau letak fungsi/class pada file besar.
 5. Gunakan 'grep-search' TERLEBIH DAHULU saat mencari kata kunci, variabel, atau teks error spesifik.
 6. Setelah menemukan nomor baris via file-outline atau grep-search, panggil 'read-file' HANYA pada rentang baris target (misal: "D:\\App.jsx||20||60").`
