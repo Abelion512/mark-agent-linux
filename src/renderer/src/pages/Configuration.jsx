@@ -15,7 +15,15 @@ import {
   FaDatabase,
   FaCog
 } from 'react-icons/fa'
-import { getAllMemory, getAllConfig, saveConfiguration, deleteMemory, db, getRelationship, saveRelationship } from '../api/db'
+import {
+  getAllMemory,
+  getAllConfig,
+  saveConfiguration,
+  deleteMemory,
+  db,
+  getRelationship,
+  saveRelationship
+} from '../api/db'
 import { getExtractor } from '../api/vectorMemory'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
@@ -25,20 +33,22 @@ import { useChat } from '../contexts/ChatContext'
 
 const ConfigCameraPreview = ({ deviceId, enabled }) => {
   const videoRef = useRef(null)
-  
+
   useEffect(() => {
     if (!enabled) return
     let stream = null
     let isMounted = true
     const startCamera = async () => {
       try {
-        const constraints = { video: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true }
+        const constraints = {
+          video: deviceId && deviceId !== 'default' ? { deviceId: { exact: deviceId } } : true
+        }
         stream = await navigator.mediaDevices.getUserMedia(constraints)
         if (videoRef.current && isMounted) {
           videoRef.current.srcObject = stream
-          videoRef.current.play().catch(e => console.error(e))
+          videoRef.current.play().catch((e) => console.error(e))
         } else {
-          stream.getTracks().forEach(t => t.stop())
+          stream.getTracks().forEach((t) => t.stop())
         }
       } catch (err) {
         console.error('Preview camera error:', err)
@@ -47,7 +57,7 @@ const ConfigCameraPreview = ({ deviceId, enabled }) => {
     startCamera()
     return () => {
       isMounted = false
-      if (stream) stream.getTracks().forEach(t => t.stop())
+      if (stream) stream.getTracks().forEach((t) => t.stop())
     }
   }, [deviceId, enabled])
 
@@ -93,7 +103,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
   const chatContext = useChat()
 
   const [showGroqKey, setShowGroqKey] = useState(false)
-  const [showCerebrasKey, setShowCerebrasKey] = useState(false)
   const [showCustomKey, setShowCustomKey] = useState(false)
 
   const handleTestVoice = async () => {
@@ -132,9 +141,9 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
             setVideoDevices(cameras)
           })
           .catch((err) => console.error('Error enumerating devices', err))
-          
+
         // Stop stream immediately since we just needed permission
-        stream.getTracks().forEach(track => track.stop())
+        stream.getTracks().forEach((track) => track.stop())
       })
       .catch((err) => console.error('Mic/Cam permission denied', err))
   }, [])
@@ -301,7 +310,8 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
   const handleResetTraits = async () => {
     const result = await confirm({
       title: 'Reset Sifat Hubungan?',
-      message: 'Ini akan mereset memori sifat kepribadian Mark terhadap Anda (Owner) kembali ke netral (0.5). Lanjutkan?',
+      message:
+        'Ini akan mereset memori sifat kepribadian Mark terhadap Anda (Owner) kembali ke netral (0.5). Lanjutkan?',
       isError: true,
       confirmText: 'Ya, Reset'
     })
@@ -382,16 +392,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
       })
       return
     }
-    if (config.aiProvider === 'cerebras' && !config.cerebrasApiKey?.trim()) {
-      await confirm({
-        title: 'API Key Kosong',
-        message: 'Tolong isi Cerebras API Key terlebih dahulu untuk menggunakan provider Cerebras!',
-        isError: true,
-        hideCancel: true,
-        confirmText: 'Tutup'
-      })
-      return
-    }
 
     if (config.aiProvider === 'custom') {
       const endpoint = config.customEndpoint?.trim() || ''
@@ -431,7 +431,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
     }
     setIsDownloadingModel(false)
     await saveConfiguration(config)
-    
+
     // Update global state without reloading the page
     if (chatContext && chatContext.setConfig) {
       chatContext.setConfig([config])
@@ -464,45 +464,65 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
     other: 'badge-ghost'
   }
 
-  const handleAiProviderChange = (provider) => setConfig((prev) => ({ ...prev, aiProvider: provider }))
+  const handleAiProviderChange = (provider) =>
+    setConfig((prev) => ({ ...prev, aiProvider: provider }))
   const handleModelChange = (e) => setConfig((prev) => ({ ...prev, model: e.target.value }))
-  const handleGroqModelChange = (e) => setConfig((prev) => ({ ...prev, groqModel: e.target.value }))
-  const handleCerebrasModelChange = (e) => setConfig((prev) => ({ ...prev, cerebrasModel: e.target.value }))
-  const handleUseSecondaryModelChange = (e) => setConfig((prev) => ({ ...prev, useSecondaryModel: e.target.checked }))
-  const handleGroqApiKeyChange = (e) => setConfig((prev) => ({ ...prev, groqApiKey: e.target.value }))
-  const handleCerebrasApiKeyChange = (e) => setConfig((prev) => ({ ...prev, cerebrasApiKey: e.target.value }))
-  const handleCustomEndpointChange = (e) => setConfig((prev) => ({ ...prev, customEndpoint: e.target.value }))
-  const handleCustomApiKeyChange = (e) => setConfig((prev) => ({ ...prev, customApiKey: e.target.value }))
-  const handleCustomModelChange = (e) => setConfig((prev) => ({ ...prev, customModel: e.target.value }))
-  const handleAwarenessEnabledChange = (e) => setConfig((prev) => ({ ...prev, awarenessEnabled: e.target.checked }))
-  const handlePersonalityChange = (e) => setConfig((prev) => ({ ...prev, personality: e.target.value }))
-  const handleTemperatureChange = (e) => setConfig((prev) => ({ ...prev, temperature: e.target.value }))
+  const handleGroqApiKeyChange = (e) =>
+    setConfig((prev) => ({ ...prev, groqApiKey: e.target.value }))
+  const handleCustomEndpointChange = (e) =>
+    setConfig((prev) => ({ ...prev, customEndpoint: e.target.value }))
+  const handleCustomApiKeyChange = (e) =>
+    setConfig((prev) => ({ ...prev, customApiKey: e.target.value }))
+  const handleCustomModelChange = (e) =>
+    setConfig((prev) => ({ ...prev, customModel: e.target.value }))
+  const handleAwarenessEnabledChange = (e) =>
+    setConfig((prev) => ({ ...prev, awarenessEnabled: e.target.checked }))
+  const handlePersonalityChange = (e) =>
+    setConfig((prev) => ({ ...prev, personality: e.target.value }))
+  const handleTemperatureChange = (e) =>
+    setConfig((prev) => ({ ...prev, temperature: e.target.value }))
   const handleContextChange = (e) => setConfig((prev) => ({ ...prev, context: e.target.value }))
-  const handleMicDeviceIdChange = (e) => setConfig((prev) => ({ ...prev, micDeviceId: e.target.value }))
+  const handleMicDeviceIdChange = (e) =>
+    setConfig((prev) => ({ ...prev, micDeviceId: e.target.value }))
   const handleCameraDeviceIdChange = (e) => {
-    console.log('[Config] Camera device changed to:', e.target.value, '| label:', e.target.options[e.target.selectedIndex]?.text)
+    console.log(
+      '[Config] Camera device changed to:',
+      e.target.value,
+      '| label:',
+      e.target.options[e.target.selectedIndex]?.text
+    )
     setConfig((prev) => ({ ...prev, cameraDeviceId: e.target.value }))
   }
-  const handleCameraEnabledChange = (e) => setConfig((prev) => ({ ...prev, cameraEnabled: e.target.checked }))
+  const handleCameraEnabledChange = (e) =>
+    setConfig((prev) => ({ ...prev, cameraEnabled: e.target.checked }))
   const handleTtsRateChange = (e) => setConfig((prev) => ({ ...prev, ttsRate: e.target.value }))
   const handleTtsPitchChange = (e) => setConfig((prev) => ({ ...prev, ttsPitch: e.target.value }))
   const handleBack = () => window.history.back()
   const handleToggleGroqKey = () => setShowGroqKey(!showGroqKey)
-  const handleToggleCerebrasKey = () => setShowCerebrasKey(!showCerebrasKey)
   const handleToggleCustomKey = () => setShowCustomKey(!showCustomKey)
 
   const handleApproveAdmin = async (admin) => {
-    const currentAdmins = config.waAdminNumber ? config.waAdminNumber.split(',').map((n) => n.trim()) : []
+    const currentAdmins = config.waAdminNumber
+      ? config.waAdminNumber.split(',').map((n) => n.trim())
+      : []
     if (!currentAdmins.includes(admin.id)) currentAdmins.push(admin.id)
     const newPending = config.waPendingAdmins.filter((p) => p.id !== admin.id)
     const newApproved = [...(config.waApprovedAdmins || []), admin]
-    const newConfig = { ...config, waAdminNumber: currentAdmins.join(', '), waPendingAdmins: newPending, waApprovedAdmins: newApproved }
+    const newConfig = {
+      ...config,
+      waAdminNumber: currentAdmins.join(', '),
+      waPendingAdmins: newPending,
+      waApprovedAdmins: newApproved
+    }
     setConfig(newConfig)
     const { saveConfiguration } = await import('../api/db')
     await saveConfiguration(newConfig)
     if (window.api && window.api.syncConfig) window.api.syncConfig(newConfig)
     if (window.api && window.api.sendWaMessage) {
-      window.api.sendWaMessage(admin.jid, `🎉 Selamat *${admin.name}*! Akses Admin kamu telah disetujui. Sekarang kamu bisa memiliki akses pada fitur khusus tertentu.`)
+      window.api.sendWaMessage(
+        admin.jid,
+        `🎉 Selamat *${admin.name}*! Akses Admin kamu telah disetujui. Sekarang kamu bisa memiliki akses pada fitur khusus tertentu.`
+      )
     }
   }
 
@@ -513,26 +533,44 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
     const { saveConfiguration } = await import('../api/db')
     await saveConfiguration(newConfig)
     if (window.api && window.api.sendWaMessage) {
-      window.api.sendWaMessage(admin.jid, `Maaf *${admin.name}*, permintaan akses Admin kamu ditolak oleh Owner.`)
+      window.api.sendWaMessage(
+        admin.jid,
+        `Maaf *${admin.name}*, permintaan akses Admin kamu ditolak oleh Owner.`
+      )
     }
   }
 
   const handleRemoveApprovedAdmin = async (admin) => {
-    const currentAdmins = config.waAdminNumber ? config.waAdminNumber.split(',').map((n) => n.trim()).filter(Boolean) : []
+    const currentAdmins = config.waAdminNumber
+      ? config.waAdminNumber
+          .split(',')
+          .map((n) => n.trim())
+          .filter(Boolean)
+      : []
     const newAdmins = currentAdmins.filter((a) => a !== admin.id)
     const newApproved = (config.waApprovedAdmins || []).filter((a) => a.id !== admin.id)
-    const newConfig = { ...config, waAdminNumber: newAdmins.join(', '), waApprovedAdmins: newApproved }
+    const newConfig = {
+      ...config,
+      waAdminNumber: newAdmins.join(', '),
+      waApprovedAdmins: newApproved
+    }
     setConfig(newConfig)
     const { saveConfiguration } = await import('../api/db')
     await saveConfiguration(newConfig)
     if (window.api && window.api.syncConfig) window.api.syncConfig(newConfig)
     if (window.api && window.api.sendWaMessage && admin.jid) {
-      window.api.sendWaMessage(admin.jid, `⚠️ *Pemberitahuan:* Akses Admin kamu telah dicabut oleh Owner.`)
+      window.api.sendWaMessage(
+        admin.jid,
+        `⚠️ *Pemberitahuan:* Akses Admin kamu telah dicabut oleh Owner.`
+      )
     }
   }
 
   const handleRemoveLegacyAdmin = async (cleanId) => {
-    const currentAdmins = config.waAdminNumber.split(',').map((n) => n.trim()).filter(Boolean)
+    const currentAdmins = config.waAdminNumber
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean)
     const newAdmins = currentAdmins.filter((a) => a !== cleanId)
     const newConfig = { ...config, waAdminNumber: newAdmins.join(', ') }
     setConfig(newConfig)
@@ -541,7 +579,10 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
     if (window.api && window.api.syncConfig) window.api.syncConfig(newConfig)
     if (window.api && window.api.sendWaMessage) {
       const guessedJid = cleanId.length > 14 ? `${cleanId}@lid` : `${cleanId}@s.whatsapp.net`
-      window.api.sendWaMessage(guessedJid, `⚠️ *Pemberitahuan:* Akses Admin kamu telah dicabut oleh Owner.`)
+      window.api.sendWaMessage(
+        guessedJid,
+        `⚠️ *Pemberitahuan:* Akses Admin kamu telah dicabut oleh Owner.`
+      )
     }
   }
 
@@ -557,10 +598,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
           {/* Page Header */}
           <div className="flex items-center gap-4">
             {!isFirstSetup && (
-              <button
-                onClick={handleBack}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
+              <button onClick={handleBack} className="btn btn-ghost btn-sm btn-circle">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="1.2em"
@@ -612,66 +650,16 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                     type="radio"
                     name="aiProvider"
                     className="radio radio-primary radio-sm"
-                    value="groq"
-                    checked={config.aiProvider === 'groq'}
-                    onChange={() => handleAiProviderChange('groq')}
-                  />
-                  <span className="label-text">Groq API</span>
-                </label>
-                <label className="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="aiProvider"
-                    className="radio radio-primary radio-sm"
-                    value="cerebras"
-                    checked={config.aiProvider === 'cerebras'}
-                    onChange={() => handleAiProviderChange('cerebras')}
-                  />
-                  <span className="label-text">Cerebras API</span>
-                </label>
-                <label className="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="aiProvider"
-                    className="radio radio-primary radio-sm"
                     value="custom"
                     checked={config.aiProvider === 'custom'}
                     onChange={() => handleAiProviderChange('custom')}
                   />
-                  <span className="label-text">Custom API</span>
+                  <span className="label-text">Custom API (OpenAI-Compatible)</span>
                 </label>
               </div>
             </div>
 
-            {config.aiProvider === 'lm-studio' || !config.aiProvider ? (
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold">Model Selector (LM Studio)</p>
-                <input
-                  type="text"
-                  placeholder="Contoh: google/gemma-3-4b"
-                  className="input input-bordered w-full"
-                  value={config.model || ''}
-                  onChange={handleModelChange}
-                />
-                <p className="text-xs opacity-40">
-                  Nama model yang aktif di LM Studio. Pastikan sudah ter-load.
-                </p>
-              </div>
-            ) : config.aiProvider === 'groq' ? (
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold">Groq Model</p>
-                <input
-                  type="text"
-                  placeholder="Contoh: llama-3.1-8b-instant"
-                  className="input input-bordered w-full"
-                  value={config.groqModel || 'llama-3.1-8b-instant'}
-                  onChange={handleGroqModelChange}
-                />
-                <p className="text-xs opacity-40">
-                  Model Groq yang ingin digunakan. (Pastikan API Key Groq di bawah diisi).
-                </p>
-              </div>
-            ) : config.aiProvider === 'custom' ? (
+            {config.aiProvider === 'custom' ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <p className="text-sm font-semibold">Custom Endpoint URL</p>
@@ -760,53 +748,28 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
               </div>
             ) : (
               <div className="space-y-1.5">
-                <p className="text-sm font-semibold">Cerebras Model</p>
+                <p className="text-sm font-semibold">Model Selector (LM Studio)</p>
                 <input
                   type="text"
-                  placeholder="Contoh: llama3.1-8b"
+                  placeholder="Contoh: google/gemma-3-4b"
                   className="input input-bordered w-full"
-                  value={config.cerebrasModel || 'llama3.1-8b'}
-                  onChange={handleCerebrasModelChange}
+                  value={config.model || ''}
+                  onChange={handleModelChange}
                 />
                 <p className="text-xs opacity-40">
-                  Model Cerebras yang ingin digunakan. (Pastikan API Key Cerebras di bawah diisi).
+                  Nama model yang aktif di LM Studio. Pastikan sudah ter-load.
                 </p>
               </div>
             )}
 
-            {/* Secondary Model Toggle */}
-            {config.aiProvider === 'groq' && (
-              <div className="space-y-1.5 pt-2">
-                <label className="label cursor-pointer justify-start gap-2 max-w-fit">
-                  <input
-                    type="checkbox"
-                    className="checkbox checkbox-sm checkbox-primary"
-                    checked={config.useSecondaryModel || false}
-                    onChange={handleUseSecondaryModelChange}
-                  />
-                  <span className="label-text text-sm">
-                    Gunakan Model Ringan untuk Tugas Latar Belakang (Lebih Cepat)
-                  </span>
-                </label>
-
-                {config.useSecondaryModel && (
-                  <div className="pl-6 pt-1 mb-4 border-l-2 border-white/10 ml-2">
-                    <p className="text-xs opacity-40 leading-relaxed">
-                      Semua tugas belakang layar (action, parsing, merangkum) akan otomatis
-                      dialihkan ke model <b>openai/gpt-oss-20b</b> via Groq API.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-
-
-            {/* Groq API Key (Always visible for STT) */}
+            {/* Groq API Key (Khusus Voice STT) */}
             <div id="tour-groq-key" className="space-y-1.5 p-2 -mx-2 rounded-lg">
               <div className="flex justify-between items-center">
                 <p className="text-sm font-semibold">
-                  Groq API Key {config.aiProvider !== 'groq' && '(Khusus untuk fitur Voice/STT)'}
+                  Groq API Key{' '}
+                  <span className="text-xs font-normal opacity-60">
+                    (Khusus untuk Voice Speech-to-Text)
+                  </span>
                 </p>
                 <a
                   href="https://console.groq.com/keys"
@@ -866,96 +829,25 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                   )}
                 </button>
               </div>
-              {config.aiProvider !== 'groq' && (
-                <p className="text-xs opacity-40">
-                  Karena kamu memakai{' '}
-                  {config.aiProvider === 'lm-studio'
-                    ? 'LM Studio'
-                    : config.aiProvider === 'custom'
-                      ? 'Custom API'
-                      : 'Cerebras'}
-                  , API Key Groq ini hanya akan dipakai saat kamu ngobrol via suara
-                  (Speech-to-Text).
-                </p>
-              )}
+              <p className="text-xs opacity-40">
+                API Key Groq ini digunakan khusus untuk fitur transkripsi suara mikrofon (Whisper
+                STT).
+              </p>
             </div>
-
-            {/* Cerebras API Key */}
-            {config.aiProvider === 'cerebras' && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold">Cerebras API Key</p>
-                  <a
-                    href="https://cloud.cerebras.ai/platform/org_5y4rkhf62v2mvwyvd6kwm9yx/get-started?onboarding=true"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-xs btn-outline btn-primary"
-                  >
-                    Ambil API Key
-                  </a>
-                </div>
-                <div className="relative w-full">
-                  <input
-                    type={showCerebrasKey ? 'text' : 'password'}
-                    placeholder="Contoh: c-xxxxxxxxxxxxxxxxx"
-                    className="input input-bordered w-full pr-10"
-                    value={config.cerebrasApiKey || ''}
-                    onChange={handleCerebrasApiKeyChange}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
-                    onClick={handleToggleCerebrasKey}
-                    title={showCerebrasKey ? 'Sembunyikan API Key' : 'Tampilkan API Key'}
-                  >
-                    {showCerebrasKey ? (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                        <line x1="2" x2="22" y1="2" y2="22" />
-                      </svg>
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Awareness Engine Toggle */}
             <div className="space-y-1.5 p-2 -mx-2 rounded-lg bg-base-200">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold">Awareness Engine</p>
-                  <p className="text-xs opacity-50 mt-1">Mengizinkan Mark membaca log sistem/aktivitas dan memulai obrolan secara proaktif di latar belakang.</p>
+                  <p className="text-xs opacity-50 mt-1">
+                    Mengizinkan Mark membaca log sistem/aktivitas dan memulai obrolan secara
+                    proaktif di latar belakang.
+                  </p>
                 </div>
-                <input 
-                  type="checkbox" 
-                  className="toggle toggle-primary" 
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
                   checked={config.awarenessEnabled !== false}
                   onChange={handleAwarenessEnabledChange}
                 />
@@ -968,7 +860,9 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold">Relational Growth (Sifat Hubungan)</p>
-                    <p className="text-xs opacity-50 mt-1">Sifat dan sikap Mark ke kamu yang berkembang otomatis dari pola obrolan.</p>
+                    <p className="text-xs opacity-50 mt-1">
+                      Sifat dan sikap Mark ke kamu yang berkembang otomatis dari pola obrolan.
+                    </p>
                   </div>
                   <button onClick={handleResetTraits} className="btn btn-xs btn-error btn-outline">
                     Reset
@@ -976,17 +870,37 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   {[
-                    { label: 'Warmth (Kehangatan)', val: relationalTraits.warmth, color: 'progress-error' },
-                    { label: 'Sarcasm (Sarkas)', val: relationalTraits.sarcasm_level, color: 'progress-warning' },
-                    { label: 'Trust (Kepercayaan)', val: relationalTraits.trust, color: 'progress-success' },
-                    { label: 'Energy (Energi)', val: relationalTraits.energy, color: 'progress-info' },
+                    {
+                      label: 'Warmth (Kehangatan)',
+                      val: relationalTraits.warmth,
+                      color: 'progress-error'
+                    },
+                    {
+                      label: 'Sarcasm (Sarkas)',
+                      val: relationalTraits.sarcasm_level,
+                      color: 'progress-warning'
+                    },
+                    {
+                      label: 'Trust (Kepercayaan)',
+                      val: relationalTraits.trust,
+                      color: 'progress-success'
+                    },
+                    {
+                      label: 'Energy (Energi)',
+                      val: relationalTraits.energy,
+                      color: 'progress-info'
+                    }
                   ].map((trait, i) => (
                     <div key={i} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span>{trait.label}</span>
                         <span className="font-mono">{trait.val}</span>
                       </div>
-                      <progress className={`progress ${trait.color} w-full`} value={trait.val} max="1"></progress>
+                      <progress
+                        className={`progress ${trait.color} w-full`}
+                        value={trait.val}
+                        max="1"
+                      ></progress>
                     </div>
                   ))}
                 </div>
@@ -1102,7 +1016,10 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
               )}
 
               {config.cameraEnabled !== false && (
-                <ConfigCameraPreview deviceId={config.cameraDeviceId} enabled={config.cameraEnabled !== false} />
+                <ConfigCameraPreview
+                  deviceId={config.cameraDeviceId}
+                  enabled={config.cameraEnabled !== false}
+                />
               )}
             </div>
 
@@ -1337,7 +1254,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                     </button>
                   </div>
                 </div>
-
               </section>
             </>
           )}

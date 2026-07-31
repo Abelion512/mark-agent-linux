@@ -53,10 +53,6 @@ export const fetchAI = async (
       'Content-Type': 'application/json'
     }
 
-    // Only use secondary model if primary provider is Groq
-    const useSecondary =
-      isSmallTask && conf.useSecondaryModel && conf.aiProvider === 'groq' && conf.groqApiKey
-
     let body = {
       temperature: Number(conf.temperature) || 0,
       messages: messages.map((m, index) => {
@@ -73,32 +69,15 @@ export const fetchAI = async (
       })
     }
 
-    if (useSecondary) {
-      endpoint = 'https://api.groq.com/openai/v1/chat/completions'
-      headers['Authorization'] = `Bearer ${conf.groqApiKey}`
-      body.model = 'openai/gpt-oss-20b'
-    } else if (conf.aiProvider === 'groq') {
-      endpoint = 'https://api.groq.com/openai/v1/chat/completions'
-      headers['Authorization'] = `Bearer ${conf.groqApiKey}`
-      body.model = conf.groqModel || 'openai/gpt-oss-20b'
-    } else if (conf.aiProvider === 'cerebras') {
-      endpoint = 'https://api.cerebras.ai/v1/chat/completions'
-      headers['Authorization'] = `Bearer ${conf.cerebrasApiKey}`
-      body.model = conf.cerebrasModel || 'llama3.1-8b'
-      body.max_completion_tokens = 2048 // Fix for Cerebras TPM assuming 8k/128k tokens
-    } else if (conf.aiProvider === 'custom') {
+    if (conf.aiProvider === 'custom') {
       endpoint = conf.customEndpoint || 'http://localhost:1234/v1/chat/completions'
       if (conf.customApiKey) {
         headers['Authorization'] = `Bearer ${conf.customApiKey}`
       }
       body.model = conf.customModel || 'default-model'
     } else {
+      endpoint = 'http://localhost:1234/v1/chat/completions'
       body.model = conf.model || 'google/gemma-3-4b'
-    }
-
-    // Set max_tokens to prevent truncation, tapi jangan terlalu gede buat API gratisan Groq/OpenRouter
-    if (conf.aiProvider === 'groq') {
-      body.max_tokens = 2048 // Diubah dari 8192 ke 2048 biar ga meledak TPM-nya Groq
     }
 
     const parentAbortController = new AbortController()
@@ -107,22 +86,6 @@ export const fetchAI = async (
     const executeFetch = async (currentBody, isRetry = false, trafficRetryCount = 0) => {
       if (parentAbortController.signal.aborted) {
         throw new Error('AbortError')
-      }
-      // --- RATE LIMIT THROTLLING LOGIC (Berlaku buat SEMUA API cloud/berbayar/gratis biar gak jebol) ---
-      if (!endpoint.includes('localhost') && !endpoint.includes('127.0.0.1')) {
-        let requiredDelay = 0
-        if (conf.aiProvider === 'groq') requiredDelay = 3000
-        else if (conf.aiProvider === 'cerebras') requiredDelay = 1000
-        else requiredDelay = 0
-
-        const now = Date.now()
-        const timeSinceLastFetch = now - lastCloudFetchTime
-        if (requiredDelay > 0 && timeSinceLastFetch < requiredDelay) {
-          const delay = requiredDelay - timeSinceLastFetch
-          console.log(`[Rate Limit Guard] Waiting ${delay}ms before next Cloud request...`)
-          await new Promise((resolve) => setTimeout(resolve, delay))
-        }
-        lastCloudFetchTime = Date.now()
       }
 
       // --- TIMEOUT LOGIC ---
@@ -245,14 +208,7 @@ export const fetchAI = async (
           return executeFetch(fallbackBody, true, trafficRetryCount) // Retry tanpa constraint format
         }
 
-        const errorProvider =
-          conf.aiProvider === 'groq'
-            ? 'Groq API'
-            : conf.aiProvider === 'cerebras'
-              ? 'Cerebras API'
-              : conf.aiProvider === 'custom'
-                ? 'Custom API'
-                : 'LM Studio'
+        const errorProvider = conf.aiProvider === 'custom' ? 'Custom API' : 'LM Studio'
         let finalErrorMessage = typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg)
 
         // Auto-retry fallback untuk High Traffic / Rate Limits (503, 429, 500)
@@ -260,49 +216,23 @@ export const fetchAI = async (
           response.status === 429 ||
           response.status >= 500 ||
           finalErrorMessage.toLowerCase().includes('high traffic') ||
-          finalErrorMessage.toLowerCase().includes('rate limit') ||
-          finalErrorMessage.toLowerCase().includes('tpm')
+          finalErrorMessage.toLowerCase().includes('rate limit')
 
-        // PENTING: Kalau errornya "Request too large", ini bukan masalah server sibuk yang bisa selesai dengan nunggu!
-        // Ini berarti ukuran pesan (tokens) lebih besar dari batasan maksimal tier (misal tier gratis cuma 6000 TPM).
-        // Nunggu sampai lebaran pun request ini nggak bakal lolos, jadi jangan dilooping!
         if (finalErrorMessage.toLowerCase().includes('request too large')) {
           isHighTraffic = false
         }
 
-        if (isHighTraffic && trafficRetryCount < 5) {
-          // Cek apakah server ngasih tau harus nunggu berapa detik (khusus Groq 429)
-          let backoffDelay = (trafficRetryCount + 1) * 3000
-          const timeMatch = finalErrorMessage.match(/Please try again in ([0-9.]+)s/)
-          if (timeMatch) {
-            // Kalau disuruh nunggu 14 detik, kita nunggu 14.5 detik biar aman
-            backoffDelay = Math.ceil(parseFloat(timeMatch[1]) * 1000) + 500
-          }
-
+        if (isHighTraffic && trafficRetryCount < 3) {
+          let backoffDelay = (trafficRetryCount + 1) * 2000
           let retryBody = { ...currentBody }
-
-          // Kalau server ngasih instruksi nunggu (timeMatch ada), HARGAI instruksi server.
-          // Jangan maksa nge-spam tiap 1 detik karena API gateway akan terus nge-blokir.
-          if (endpoint.includes('groq.com')) {
-            const backupModels = ['openai/gpt-oss-20b'] // Hanya gunakan model yang didukung!
-            const nextModel = backupModels[trafficRetryCount % backupModels.length]
-            retryBody.model = nextModel
-            console.log(`[Model Swap] Mark ganti haluan instan ke ${nextModel}`)
-
-            // Kalau nggak ada timeMatch (nggak disuruh nunggu spesifik), boleh jeda cepat
-            if (!timeMatch) {
-              backoffDelay = 2000
-            }
-          }
 
           if (onStatus)
             onStatus(`Server sibuk, mencoba ulang dalam ${Math.round(backoffDelay / 1000)}s...`)
 
           console.log(
-            `[High Traffic Auto-Retry] Server sibuk (${response.status}). Menunggu ${backoffDelay}ms... (Percobaan ${trafficRetryCount + 1}/5)`
+            `[High Traffic Auto-Retry] Server sibuk (${response.status}). Menunggu ${backoffDelay}ms... (Percobaan ${trafficRetryCount + 1}/3)`
           )
 
-          // Abortable sleep
           await new Promise((resolve, reject) => {
             const timer = setTimeout(resolve, backoffDelay)
             if (parentAbortController.signal.aborted) {
@@ -318,19 +248,6 @@ export const fetchAI = async (
           return executeFetch(retryBody, isRetry, trafficRetryCount + 1)
         }
 
-        if (
-          finalErrorMessage.includes('Rate limit reached') ||
-          finalErrorMessage.includes('Too Many Requests') ||
-          finalErrorMessage.includes('limit exceeded')
-        ) {
-          const timeMatch = finalErrorMessage.match(/Please try again in ([0-9.]+s)/)
-          if (timeMatch) {
-            finalErrorMessage = `Limit token Anda habis. Silakan coba lagi dalam ${timeMatch[1]}.`
-          } else {
-            finalErrorMessage = `Limit token ${errorProvider} Anda habis. Silakan tunggu beberapa saat.`
-          }
-        }
-
         const err = new Error(`Gagal memuat AI (${errorProvider}): ${finalErrorMessage}`)
         err.status = response.status
         throw err
@@ -338,7 +255,6 @@ export const fetchAI = async (
 
       let rawText = await response.text()
       
-      // [ROUTER FIX] Ambil murni dari { pertama sampai } terakhir untuk mengabaikan teks sampah dari router
       let cleanText = rawText.trim()
       const firstBrace = cleanText.indexOf('{')
       const lastBrace = cleanText.lastIndexOf('}')
@@ -354,23 +270,15 @@ export const fetchAI = async (
       try {
         return JSON.parse(cleanText)
       } catch (parseError) {
-        console.error('[FetchAI] Gagal mem-parsing response body JSON dari router:', parseError.message)
+        console.error('[FetchAI] Gagal mem-parsing response body JSON:', parseError.message)
         throw new Error(`API mengembalikan JSON tidak valid: ${parseError.message}\nRaw Text: ${cleanText.slice(0, 100)}...`)
       }
     }
 
     if (jsonSchema) {
-      if (
-        conf.aiProvider === 'cerebras' ||
-        conf.aiProvider === 'groq' ||
-        conf.aiProvider === 'custom'
-      ) {
-        // Fallback for providers that might struggle with strict json_schema
-        if (conf.aiProvider === 'groq') {
-          body.response_format = { type: 'json_object' }
-        }
-        // Inject schema instructions manually
-        body.messages = body.messages.map((m) => ({ ...m })) // Clone array
+      if (conf.aiProvider === 'custom') {
+        // Inject schema instructions manually for Custom API
+        body.messages = body.messages.map((m) => ({ ...m }))
         let sysIdx = body.messages.findIndex((m) => m.role === 'system')
         const instruction = `\n\n[CRITICAL] YOU MUST RETURN ONLY VALID JSON THAT STRICTLY MATCHES THIS EXACT SCHEMA:\n${JSON.stringify(jsonSchema)}\n`
         if (sysIdx >= 0) {
@@ -453,11 +361,7 @@ export const fetchAI = async (
     return { content, reasoning }
   } catch (error) {
     const conf = config || {}
-    if (
-      conf.aiProvider !== 'groq' &&
-      conf.aiProvider !== 'cerebras' &&
-      isLMStudioOfflineError(error)
-    ) {
+    if (conf.aiProvider !== 'custom' && isLMStudioOfflineError(error)) {
       if (
         conf.aiProvider === 'custom' &&
         conf.customEndpoint &&

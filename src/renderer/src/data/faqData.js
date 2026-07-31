@@ -41,15 +41,15 @@ export const faqs = [
   },
   {
     q: "Bagaimana cara mengubah otak pintar (AI Provider) Mark?",
-    a: "Buka menu Configuration. Di sana Anda bisa memilih antara LM Studio (Offline, berat di laptop) atau Groq (Online, super cepat). Pastikan pengaturan URL atau API Key-nya sudah benar."
+    a: "Buka menu Configuration. Di sana Anda bisa memilih antara LM Studio (Offline lokal) atau Custom API (Online / OpenAI-Compatible Endpoint). Pastikan pengaturan URL atau API Key-nya sudah benar."
   },
   {
     q: "Kenapa balasan Mark kadang sangat lambat?",
     a: "Jika Anda pakai mode Offline (LM Studio), kecepatan mikir Mark 100% bergantung pada kekuatan prosesor (CPU) dan VGA laptop Anda. Semakin besar memori otak (model AI) yang dipakai, semakin berat kerja laptopnya."
   },
   {
-    q: "Apa bedanya pakai Groq dan LM Studio?",
-    a: "Groq mikirnya lewat internet super ngebut dari pusat data raksasa, jadi Mark balasnya instan. LM Studio mikirnya pakai mesin laptop Anda sendiri, jalannya offline tanpa butuh kuota internet, tapi bikin laptop kerja keras."
+    q: "Untuk apa Groq API Key di pengaturan?",
+    a: "Groq API Key digunakan khusus untuk fitur Speech-to-Text (Voice STT via Whisper), sehingga Mark dapat mendengarkan ucapan suara Anda dari mikrofon secara cepat dan akurat."
   },
   {
     q: "Bisakah saya menghapus ingatan Mark tentang saya?",
