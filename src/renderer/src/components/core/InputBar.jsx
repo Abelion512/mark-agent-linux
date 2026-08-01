@@ -57,6 +57,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
   const [showAbortConfirm, setShowAbortConfirm] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState([])
   const [isDragging, setIsDragging] = useState(false)
+  const lastPromptRef = useRef('')
 
   useEffect(() => {
     if (!isLoading && inputRef.current) {
@@ -163,7 +164,10 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
       setAttachedFiles([])
     }
 
-    if (finalPrompt.trim() && !isLoading) {
+    if (finalPrompt.trim()) {
+      if (!isLoading) {
+        lastPromptRef.current = inputText
+      }
       setInputText('')
       if (typeof onSubmit === 'function') {
         onSubmit(finalPrompt)
@@ -300,7 +304,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
-              if (!isSendDisabled && !isLoading) {
+              if (!isSendDisabled) {
                 handleFormSubmit()
               }
             }
@@ -347,6 +351,9 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
         isError={true}
         onConfirm={() => {
           setShowAbortConfirm(false)
+          if (lastPromptRef.current) {
+            setInputText(lastPromptRef.current)
+          }
           if (onStop) onStop()
         }}
         onCancel={() => setShowAbortConfirm(false)}
