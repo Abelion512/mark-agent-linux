@@ -98,25 +98,57 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
     fileInputRef.current?.click()
   }
 
-  const addFiles = (newFiles) => {
-    const parsedFiles = newFiles.map((f) => {
-      let resolvedPath = ''
-      if (window.api && window.api.getPathForFile) {
-        try {
-          resolvedPath = window.api.getPathForFile(f)
-        } catch (e) {
-          console.error('[InputBar] getPathForFile error:', e)
+  const addFiles = async (newFiles) => {
+    const parsedFiles = await Promise.all(
+      newFiles.map(async (f) => {
+        let resolvedPath = ''
+        if (window.api && window.api.getPathForFile) {
+          try {
+            resolvedPath = window.api.getPathForFile(f)
+          } catch (e) {
+            console.error('[InputBar] getPathForFile error:', e)
+          }
         }
-      }
-      if (!resolvedPath) resolvedPath = f.path || f.name
 
-      return {
-        name: f.name,
-        path: resolvedPath,
-        size: f.size,
-        type: f.type
-      }
-    })
+        const isRealDiskPath =
+          resolvedPath &&
+          resolvedPath !== f.name &&
+          (resolvedPath.includes('/') || resolvedPath.includes('\\'))
+
+        if (!isRealDiskPath && f.path && f.path !== f.name && (f.path.includes('/') || f.path.includes('\\'))) {
+          resolvedPath = f.path
+        }
+
+        // Jika file berasal dari drag & drop web / memory tanpa local path asli
+        if (
+          (!resolvedPath ||
+            resolvedPath === f.name ||
+            (!resolvedPath.includes('/') && !resolvedPath.includes('\\'))) &&
+          window.api?.saveTempFile
+        ) {
+          try {
+            const buffer = await f.arrayBuffer()
+            if (buffer && buffer.byteLength > 0) {
+              const tempPath = await window.api.saveTempFile(buffer, f.name)
+              if (tempPath) {
+                resolvedPath = tempPath
+              }
+            }
+          } catch (err) {
+            console.error('[InputBar] Failed to save dragged file to temp:', err)
+          }
+        }
+
+        if (!resolvedPath) resolvedPath = f.name
+
+        return {
+          name: f.name,
+          path: resolvedPath,
+          size: f.size,
+          type: f.type
+        }
+      })
+    )
 
     setAttachedFiles((prev) => {
       const existingPaths = new Set(prev.map((p) => p.path))

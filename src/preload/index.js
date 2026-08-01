@@ -6,6 +6,7 @@ const api = {
   getPathForFile: (file) => {
     try { return webUtils.getPathForFile(file) } catch { return file?.name || '' }
   },
+  saveTempFile: (arrayBuffer, fileName) => ipcRenderer.invoke('save-temp-file', arrayBuffer, fileName),
   showOpenDialog: () => ipcRenderer.invoke('dialog:open-file'),
   fetchAI: (params) => ipcRenderer.invoke('ai:fetch', params),
   abortFetchAI: () => ipcRenderer.send('ai:abort-fetch'),

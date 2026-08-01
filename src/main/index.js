@@ -206,6 +206,23 @@ ipcMain.handle('dialog:open-file', async () => {
   return result.filePaths
 })
 
+ipcMain.handle('save-temp-file', async (event, arrayBuffer, fileName) => {
+  try {
+    const tempDir = path.join(app.getPath('temp'), 'mark-attachments')
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true })
+    }
+    const cleanName = (fileName || `attachment_${Date.now()}.png`).replace(/[^a-zA-Z0-9._-]/g, '_')
+    const finalPath = path.join(tempDir, `${Date.now()}_${cleanName}`)
+    const buffer = Buffer.from(arrayBuffer)
+    fs.writeFileSync(finalPath, buffer)
+    return finalPath
+  } catch (err) {
+    console.error('[Main] save-temp-file error:', err)
+    return null
+  }
+})
+
 import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
 import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 
