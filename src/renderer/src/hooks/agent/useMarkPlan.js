@@ -175,14 +175,7 @@ export const useMarkPlan = ({
           }
         })
     ]
-    let chatSession = []
-    rawSession.forEach((item, index) => {
-      if (index > 0 && item.role === chatSession[chatSession.length - 1].role) {
-        chatSession[chatSession.length - 1].content += `\n ${item.content}`
-      } else {
-        chatSession.push(item)
-      }
-    })
+    let chatSession = [...rawSession]
     // Tetap bawa history pesan sebelumnya walaupun mode disableTools (misal saat boot greeting)
     // agar AI bisa menyapa dengan konteks ("sudah lama tidak ngobrol", dll)
     chatSession = [...chatSession].slice(-1 * (config[0]?.context || 10))

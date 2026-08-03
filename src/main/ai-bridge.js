@@ -317,23 +317,7 @@ export const fetchAI = async (
           })
         }
 
-        if (
-          normalizedMessages.length > 0 &&
-          normalizedMessages[normalizedMessages.length - 1].role === currentRole
-        ) {
-          const prevMsg = normalizedMessages[normalizedMessages.length - 1]
-          if (Array.isArray(prevMsg.content) || Array.isArray(currentContent)) {
-            // Gabung array vision
-            const prevArr = Array.isArray(prevMsg.content) ? prevMsg.content : [{ type: 'text', text: prevMsg.content }]
-            const currArr = Array.isArray(currentContent) ? currentContent : [{ type: 'text', text: currentContent }]
-            prevMsg.content = [...prevArr, ...currArr]
-          } else {
-            // Gabung string biasa
-            prevMsg.content += `\n\n${currentContent}`
-          }
-        } else {
-          normalizedMessages.push({ role: currentRole, content: currentContent })
-        }
+        normalizedMessages.push({ role: currentRole, content: currentContent })
       }
       body.messages = normalizedMessages
     }
