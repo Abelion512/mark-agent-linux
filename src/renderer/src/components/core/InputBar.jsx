@@ -155,6 +155,10 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
       const unique = parsedFiles.filter((p) => !existingPaths.has(p.path))
       return [...prev, ...unique]
     })
+
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus()
+    }, 50)
   }
 
   const removeFile = (indexToRemove) => {

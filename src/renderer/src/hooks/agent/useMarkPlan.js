@@ -46,6 +46,31 @@ export const useMarkPlan = ({
     }
   }, [setChatData])
 
+  const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
+  const isImagePath = (filePath = '') => {
+    const ext = filePath.split('.').pop().toLowerCase()
+    return IMAGE_EXTS.includes(`.${ext}`)
+  }
+
+  const convertFilePathToBase64 = async (filePath) => {
+    try {
+      const formattedUrl = filePath.startsWith('file://')
+        ? filePath
+        : `file:///${filePath.replace(/\\/g, '/')}`
+      const res = await fetch(formattedUrl)
+      const blob = await res.blob()
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    } catch (err) {
+      console.error('[useMarkPlan] Failed to convert image file to Base64:', filePath, err)
+      return null
+    }
+  }
+
   const isExecutingRef = useRef(false)
   const interventionBufferRef = useRef([])
   const lastUserPromptRef = useRef('')
@@ -92,9 +117,33 @@ export const useMarkPlan = ({
     if (isSystem) finalContent = `[SYSTEM INSTRUCTION]: ${userInput}`
     if (isAutonomous) finalContent = `[SISTEM INTERNAL - INISIATIF OTONOM]: Otak bawah sadarmu berinisiatif untuk melakukan tindakan berikut: "${userInput}". LAKUKAN TUGAS INI! Bicaralah seolah-olah kamu yang memiliki inisiatif itu sendiri tanpa disuruh. PENTING: DILARANG KERAS menggunakan tool 'os-*' (seperti os-control-open, os-click, os-type, dll) untuk interaksi PC secara otonom! Respons "answer"-mu HARUS SANGAT SINGKAT, santai, dan cuek (Maks 1-2 kalimat pendek). DILARANG KERAS menggunakan sapaan kaku (seperti "Yoi Mada") ATAU menawarkan bantuan di akhir kalimat! Boleh kosongkan (null) jika tidak perlu bicara.`
 
+    let imageVisionPayloads = []
+    if (userInput.includes('[FILE TERLAMPIR]:')) {
+      const matches = userInput.match(/"([^"]+)"/g)
+      if (matches && matches.length > 0) {
+        const paths = matches.map((m) => m.replace(/^"|"$/g, ''))
+        for (const p of paths) {
+          if (isImagePath(p)) {
+            const b64 = await convertFilePathToBase64(p)
+            if (b64) {
+              imageVisionPayloads.push({
+                type: 'image_url',
+                image_url: { url: b64 }
+              })
+            }
+          }
+        }
+      }
+    }
+
+    let payloadContent = finalContent
+    if (imageVisionPayloads.length > 0) {
+      payloadContent = [{ type: 'text', text: finalContent }, ...imageVisionPayloads]
+    }
+
     const userMessage = {
       role: 'user',
-      content: finalContent,
+      content: payloadContent,
       timestamp: timestampStr,
       created_at: Date.now()
     }

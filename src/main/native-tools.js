@@ -63,6 +63,20 @@ export const NATIVE_TOOLS = {
         if (!fs.existsSync(filePath))
           return { success: false, message: 'File tidak ditemukan di path tersebut.' }
 
+        const ext = path.extname(filePath).toLowerCase()
+        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
+        if (IMAGE_EXTENSIONS.includes(ext)) {
+          const fileBuffer = fs.readFileSync(filePath)
+          const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
+          const b64 = fileBuffer.toString('base64')
+          return {
+            success: true,
+            isImage: true,
+            message: `File '${path.basename(filePath)}' adalah gambar visual (${ext}). Konten visual telah dikonversi dan dikirim ke mesin AI Vision.`,
+            dataUrl: `data:${mimeType};base64,${b64}`
+          }
+        }
+
         const content = fs.readFileSync(filePath, 'utf8')
         const lines = content.split('\n')
         const totalLines = lines.length
