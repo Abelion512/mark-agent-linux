@@ -649,7 +649,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
             {config.aiProvider === 'gemini-web' || !config.aiProvider ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <p className="text-sm font-semibold">Model Gemini Web</p>
+                  <p className="text-sm font-semibold">Model Gemini</p>
                   <select
                     className="select select-bordered w-full"
                     value={config.geminiWebModel || 'gemini-3.6-flash'}

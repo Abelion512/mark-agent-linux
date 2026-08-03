@@ -138,9 +138,6 @@ export const useMarkPlan = ({
 
     let payloadContent = finalContent
     if (imageVisionPayloads.length > 0) {
-      if (conf.aiProvider === 'gemini-web' || !conf.aiProvider) {
-        onStatus?.('⚠️ Provider Gemini Web belum mendukung analisis visual/gambar.')
-      }
       payloadContent = [{ type: 'text', text: finalContent }, ...imageVisionPayloads]
     }
 
