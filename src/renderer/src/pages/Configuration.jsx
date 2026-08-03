@@ -83,7 +83,8 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
     ttsRate: 0,
     ttsPitch: 0,
     groqApiKey: '',
-    aiProvider: 'lm-studio',
+    aiProvider: 'gemini-web',
+    geminiWebModel: 'gemini-3.6-flash',
     groqModel: 'llama-3.1-8b-instant',
     waAdminNumber: '',
     micDeviceId: 'default',
@@ -295,7 +296,8 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
       setConfig((prev) => ({
         ...prev,
         ...data[0],
-        aiProvider: data[0].aiProvider || 'lm-studio',
+        aiProvider: data[0].aiProvider || 'gemini-web',
+        geminiWebModel: data[0].geminiWebModel || 'gemini-3.6-flash',
         micDeviceId: data[0].micDeviceId || 'default',
         awarenessEnabled: data[0].awarenessEnabled ?? true
       }))
@@ -631,35 +633,47 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
             </h2>
 
             {/* AI Provider Selector */}
-            <div id="tour-ai-provider" className="space-y-1.5 p-2 -mx-2 rounded-lg">
+            <div id="tour-ai-provider" className="space-y-1.5">
               <p className="text-sm font-semibold">AI Provider</p>
-              <div className="flex gap-4">
-                <label className="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="aiProvider"
-                    className="radio radio-primary radio-sm"
-                    value="lm-studio"
-                    checked={config.aiProvider === 'lm-studio' || !config.aiProvider}
-                    onChange={() => handleAiProviderChange('lm-studio')}
-                  />
-                  <span className="label-text">LM Studio (Local)</span>
-                </label>
-                <label className="label cursor-pointer justify-start gap-2">
-                  <input
-                    type="radio"
-                    name="aiProvider"
-                    className="radio radio-primary radio-sm"
-                    value="custom"
-                    checked={config.aiProvider === 'custom'}
-                    onChange={() => handleAiProviderChange('custom')}
-                  />
-                  <span className="label-text">Custom API (OpenAI-Compatible)</span>
-                </label>
-              </div>
+              <select
+                className="select select-bordered w-full font-medium"
+                value={config.aiProvider || 'gemini-web'}
+                onChange={(e) => handleAiProviderChange(e.target.value)}
+              >
+                <option value="gemini-web">Gemini (Gratis)</option>
+                <option value="lm-studio">LM Studio (Local Offline)</option>
+                <option value="custom">Custom API (OpenAI-Compatible)</option>
+              </select>
             </div>
 
-            {config.aiProvider === 'custom' ? (
+            {config.aiProvider === 'gemini-web' || !config.aiProvider ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold">Model Gemini Web</p>
+                  <select
+                    className="select select-bordered w-full"
+                    value={config.geminiWebModel || 'gemini-3.6-flash'}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, geminiWebModel: e.target.value }))
+                    }
+                  >
+                    <option value="gemini-3.6-flash">gemini-3.6-flash (Model Utama Terbaru)</option>
+                    <option value="gemini-3.5-flash">gemini-3.5-flash (Stabil & Seimbang)</option>
+                    <option value="gemini-3.5-flash-thinking">
+                      gemini-3.5-flash-thinking (Penalaran Mendalam)
+                    </option>
+                    <option value="gemini-3.5-flash-thinking-lite">
+                      gemini-3.5-flash-thinking-lite (Penalaran Cepat)
+                    </option>
+                    <option value="gemini-auto">gemini-auto (Otomatis Server)</option>
+                    <option value="gemini-flash-lite">gemini-flash-lite (Super Cepat)</option>
+                  </select>
+                  <p className="text-xs opacity-50 mt-1">
+                    Provider bawaan tanpa API Key. Membutuhkan koneksi internet (tidak mendukung input gambar).
+                  </p>
+                </div>
+              </div>
+            ) : config.aiProvider === 'custom' ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <p className="text-sm font-semibold">Custom Endpoint URL</p>

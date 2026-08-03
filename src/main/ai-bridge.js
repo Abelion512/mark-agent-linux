@@ -1,4 +1,5 @@
 import { jsonrepair } from 'jsonrepair'
+import { generateGeminiResponse } from './services/gemini-web'
 
 const LM_STUDIO_OFFLINE_MESSAGE = 'LM Studio mati atau belum jalan. Nyalakan dulu di port 1234.'
 
@@ -47,6 +48,74 @@ export const fetchAI = async (
 ) => {
   try {
     const conf = config || globalConfig
+
+    if (conf.aiProvider === 'gemini-web') {
+      const now = Date.now()
+      const timeSinceLast = now - lastCloudFetchTime
+      if (timeSinceLast < CLOUD_DELAY_MS) {
+        const waitMs = CLOUD_DELAY_MS - timeSinceLast
+        onStatus?.(`Rate limit protection: menunggu ${Math.ceil(waitMs / 1000)}s...`)
+        await new Promise((resolve) => setTimeout(resolve, waitMs))
+      }
+      lastCloudFetchTime = Date.now()
+
+      let workMessages = messages.map((m) => ({ ...m }))
+
+      if (jsonSchema) {
+        let sysIdx = workMessages.findIndex((m) => m.role === 'system')
+        const instruction = `\n\n[CRITICAL] YOU MUST RETURN ONLY VALID JSON THAT STRICTLY MATCHES THIS EXACT SCHEMA:\n${JSON.stringify(jsonSchema)}\n`
+        if (sysIdx >= 0) {
+          workMessages[sysIdx].content += instruction
+        } else {
+          workMessages.unshift({ role: 'system', content: instruction })
+        }
+      }
+
+      let fullPrompt = ''
+      for (const m of workMessages) {
+        if (Array.isArray(m.content)) {
+          for (const part of m.content) {
+            if (part.type === 'text') {
+              fullPrompt += `[${m.role.toUpperCase()}]: ${part.text}\n`
+            }
+          }
+        } else {
+          fullPrompt += `[${m.role.toUpperCase()}]: ${m.content || ''}\n`
+        }
+      }
+      fullPrompt += '\n[ASSISTANT]:'
+
+      const modelName = conf.geminiWebModel || 'gemini-3.6-flash'
+
+      try {
+        console.log(`\n==================== [GEMINI WEB REQUEST] ====================`)
+        console.log(`Model: ${modelName}`)
+        console.log(`Prompt length: ${fullPrompt.length} chars`)
+        console.log(`==============================================================\n`)
+
+        let answer = await generateGeminiResponse(fullPrompt, modelName)
+
+        let reasoning = null
+        if (answer.includes('<think>')) {
+          const match = answer.match(/<think>([\s\S]*?)<\/think>/)
+          if (match) {
+            reasoning = match[1].trim()
+            answer = answer.replace(/<think>[\s\S]*?<\/think>/, '').trim()
+          }
+        }
+
+        console.log(`[GEMINI WEB SUCCESS] Content length: ${answer.length}`)
+        return { content: answer, reasoning }
+      } catch (err) {
+        console.error('[Gemini Web Error]', err)
+        if (err.message?.includes('Session') || err.message?.includes('BardErrorInfo')) {
+          onStatus?.('⚠️ Session Gemini Web bermasalah, mencoba fallback ke gemini-flash-lite...')
+          let answer = await generateGeminiResponse(fullPrompt, 'gemini-flash-lite')
+          return { content: answer, reasoning: null }
+        }
+        throw err
+      }
+    }
 
     let endpoint = 'http://localhost:1234/v1/chat/completions'
     let headers = {

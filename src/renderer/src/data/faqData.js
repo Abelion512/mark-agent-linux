@@ -41,7 +41,7 @@ export const faqs = [
   },
   {
     q: "Bagaimana cara mengubah otak pintar (AI Provider) Mark?",
-    a: "Buka menu Configuration. Di sana Anda bisa memilih antara LM Studio (Offline lokal) atau Custom API (Online / OpenAI-Compatible Endpoint). Pastikan pengaturan URL atau API Key-nya sudah benar."
+    a: "Buka menu Configuration. Di sana Anda bisa memilih antara Gemini (Gratis tanpa API Key), LM Studio (Offline lokal), atau Custom API (OpenAI-Compatible Endpoint). Pilih model dari dropdown yang tersedia."
   },
   {
     q: "Kenapa balasan Mark kadang sangat lambat?",

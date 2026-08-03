@@ -78,6 +78,10 @@ db.version(13).stores({
 db.version(14).stores({
   relationships: 'userId, warmth, sarcasm_level, trust, energy, lastEvaluation, evalCount'
 })
+
+db.version(15).stores({
+  config: 'id, personality, model, temperature, context, ttsRate, ttsPitch, aiProvider, groqApiKey, groqModel, embedProvider, lmStudioEmbedModel, cerebrasApiKey, cerebrasModel, waAdminNumber, waPendingAdmins, waApprovedAdmins, customEndpoint, customApiKey, customModel, awarenessEnabled, cameraDeviceId, cameraEnabled, geminiWebModel'
+})
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 
@@ -193,6 +197,14 @@ export async function getAllMemory() {
 export async function getAllConfig() {
   try {
     const data = await db.config.toArray()
+    if (data && data.length > 0) {
+      if (!data[0].geminiWebModel) {
+        data[0].geminiWebModel = 'gemini-3.6-flash'
+      }
+      if (!data[0].aiProvider) {
+        data[0].aiProvider = 'gemini-web'
+      }
+    }
     return data || []
   } catch (error) {
     console.error('Error in getAllConfig logic:', error)
