@@ -7,13 +7,14 @@ import Plugins from './pages/Plugins'
 import Knowledge from './pages/Knowledge'
 import Guidebook from './pages/Guidebook'
 import RelationalGrowth from './pages/RelationalGrowth'
-import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { ChatProvider } from './contexts/ChatContext'
 import { YoutubeMusicProvider } from './contexts/YoutubeMusicContext'
 import { ApprovalProvider } from './contexts/ApprovalContext'
 import { YoutubeMusicPlayer } from './components/YoutubeMusicPlayer'
 import { GlobalCameraManager } from './components/GlobalCameraManager'
 import { getAllConfig } from './api/db'
+import { initOramaIndices, hydrateFromDexie } from './api/oramaStore'
 
 const GlobalListener = () => {
   const navigate = useNavigate()
@@ -48,7 +49,34 @@ const GlobalListener = () => {
   return null
 }
 
-import { initOramaIndices, hydrateFromDexie } from './api/oramaStore'
+const MainLayout = () => {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-base-300">
+      {/* Base Home Page - Always Mounted so AI Agent & Telegram Listeners Never Die */}
+      <div className="h-full w-full">
+        <MarkHome />
+      </div>
+
+      {/* Floating Glass Sub-page Overlay */}
+      {!isHome && (
+        <div className="fixed inset-0 z-50 bg-base-300/90 backdrop-blur-2xl flex flex-col animate-fade-in">
+          <Routes>
+            <Route path="/config" element={<Configuration />} />
+            <Route path="/plugins" element={<Plugins />} />
+            <Route path="/live-audio" element={<LiveAudio />} />
+            <Route path="/telegram-bot" element={<TelegramBot />} />
+            <Route path="/knowledge" element={<Knowledge />} />
+            <Route path="/guidebook" element={<Guidebook />} />
+            <Route path="/relational" element={<RelationalGrowth />} />
+          </Routes>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function App() {
   const [hasConfig, setHasConfig] = useState(true)
@@ -135,20 +163,7 @@ function App() {
         <ChatProvider>
           <HashRouter>
             <GlobalListener />
-            <div className="h-screen flex flex-col overflow-hidden">
-              <div className="h-screen w-full">
-                <Routes>
-                  <Route path="/" element={<MarkHome />} />
-                  <Route path="/config" element={<Configuration />} />
-                  <Route path="/plugins" element={<Plugins />} />
-                  <Route path="/live-audio" element={<LiveAudio />} />
-                  <Route path="/telegram-bot" element={<TelegramBot />} />
-                  <Route path="/knowledge" element={<Knowledge />} />
-                  <Route path="/guidebook" element={<Guidebook />} />
-                  <Route path="/relational" element={<RelationalGrowth />} />
-                </Routes>
-              </div>
-            </div>
+            <MainLayout />
             <div style={{ display: isStandalone ? 'none' : 'block' }}>
               <YoutubeMusicPlayer />
             </div>

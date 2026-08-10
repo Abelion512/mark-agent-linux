@@ -4,7 +4,7 @@
 [![Download Terbaru](https://img.shields.io/badge/Download-Versi_Terbaru-blue?style=for-the-badge&logo=windows)](https://github.com/Mazees/mark-agent/releases/)
 
 > **Mark BUKAN sekadar asisten virtual biasa. Mark adalah entitas AI yang dirancang untuk memiliki emosi dan bertindak selayaknya manusia.**
-> Lebih dari sekadar chatbot kaku, Mark adalah _Personal AI Assistant_ yang berjalan di ekosistem lokal Anda—dilengkapi dengan sistem memori jangka panjang berbasis _Vector Memory_ dan **Relational Growth System** untuk mempelajari kebiasaan serta beradaptasi dengan gaya komunikasi Anda tanpa mengorbankan privasi sedikit pun. Ditenagai oleh _Hybrid AI Engine_, Mark dapat beroperasi secara lokal untuk privasi maksimal, atau menggunakan _Cloud APIs_ untuk mengeksekusi tugas kompleks, menyusun rencana (_Agentic Planning_), merangkum video YouTube, mengobservasi layar atau dunia nyata (_Vision_), melakukan riset internet, hingga berinteraksi melalui suara secara _real-time_.
+> Lebih dari sekadar chatbot kaku, Mark adalah _Personal AI Assistant_ yang berjalan di ekosistem lokal Anda—dilengkapi dengan sistem memori jangka panjang berbasis _Vector Memory_ dan **Relational Growth System** untuk mempelajari kebiasaan serta beradaptasi dengan gaya komunikasi Anda tanpa mengorbankan privasi sedikit pun. Ditenagai oleh _Hybrid AI Engine_, Mark dapat beroperasi secara lokal untuk privasi maksimal, atau menggunakan _Cloud APIs_ untuk mengeksekusi tugas kompleks, menyusun rencana (_Agentic Planning_), merangkum video YouTube, mengobservasi layar atau dunia nyata (_Vision_), melakukan riset internet, kendali jarak jauh via **Telegram Bot**, hingga berinteraksi melalui suara secara _real-time_.
 
 > [!IMPORTANT]
 > Proyek ini secara khusus dioptimasi untuk **Windows** (Windows 10/11).
@@ -18,9 +18,10 @@
 - **Live Thought Process (Neural Flow):** Perhatikan Mark berpikir! Setiap kali sistem mengeksekusi rencana (_Agentic Planning_), antarmuka akan memancarkan animasi _3D Neuron_ yang terbang mengorbit inti pikiran (Orb) untuk interaktivitas tingkat _Sci-Fi_.
 - **Relational Growth System & Dynamic Persona:** Hubungan Anda dengan Mark dievaluasi layaknya dengan manusia sungguhan melalui 4 parameter krusial (_Warmth, Sarcasm, Trust, Energy_). Tingkat kesopanan, kelancangan (_toxicity_), dan kepribadian Mark akan berevolusi organik. Jika Anda sering bersarkasme, Mark bebas menggunakan bahasa _tongkrongan_ dan men-_roasting_ Anda. Didukung oleh **9 Inside Out 2 Emotions** (Joy, Sadness, Fear, Anger, Disgust, Anxiety, Envy, Embarrassment, Ennui) yang secara dinamis mengubah warna UI Orb di layar.
 - **Multi AI Provider (Built-in Gemini / Local / Cloud):** Mark hadir dengan **Google Gemini Engine (Gratis)** sebagai _provider_ bawaan yang siap pakai tanpa membutuhkan API Key. Anda juga memiliki fleksibilitas penuh untuk menggunakan **Local AI** (LM Studio berjalan di PC Anda), **Cloud AI** (Groq/Cerebras), maupun _Custom OpenAI-Compatible API_.
-- **Asisten Bot WhatsApp Mandiri:** Mark mampu memproses tugas rumit melalui WhatsApp dengan menyusun rencana terstruktur, mengeksekusi langkah demi langkah (mencari data, merangkum, dll), dan memberi laporan akhir berkat arsitektur `waAutonomous.js`.
+- **Asisten Bot Telegram Mandiri (Telegraf Engine):** Mark terhubung langsung dengan Telegram Bot API melalui pustaka `telegraf`. Mark dapat dikontrol jarak jauh via Telegram, merangkum obrolan, mengunduh MP3 YouTube, mengambil screenshot PC, dan secara otomatis menyinkronkan seluruh balasan PC & *Awareness Engine* ke Telegram Admin secara *real-time*.
 - **Physical PC & Desktop Automation (Windows UIAutomation):** Menggunakan mesin otomatisasi Windows lokal (`read-ui.ps1` & UIAutomation API), Mark dapat membaca elemen GUI desktop secara struktural, mengklik tombol, mengetik teks, menekan _shortcut_, hingga mengelola jendela aplikasi di Windows secara fisik tanpa biaya vision API yang tinggi (_Zero-Vision Cost_). Dilengkapi dengan _Security Floating Overlay_, sistem konfirmasi keamanan berlapis, serta tombol **Emergency Stop (`Ctrl+Shift+S`)** untuk keamanan kendali mutlak.
-- **Proaktif dengan Awareness Engine:** Sistem Mark tidak hanya pasif merespons. Mark bisa proaktif menegur, menyapa, atau memutarkan musik di latar belakang. Aksi proaktif intrusif dibatasi oleh _Proactive Proposal Boundary_, dan kini dilengkapi fitur **Toggle** (bisa dimatikan kapan saja).
+- **Proaktif dengan Awareness Engine:** Sistem Mark tidak hanya pasif merespons. Mark bisa proaktif menegur, menyapa, atau memutarkan musik di latar belakang. Dilengkapi fitur **Toggle** (bisa dimatikan kapan saja) dan integrasi sinkronisasi pesan proaktif ke Telegram Admin.
+- **Floating Sub-Pages Glass UI:** Arsitektur antarmuka baru tempat `MarkHome` dan *AI Brain* terus berjalan 100% aktif di latar belakang, sementara halaman lain (`TelegramBot`, `Configuration`, `Plugins`, `Knowledge`, `Guidebook`) dirender sebagai *Floating Glass Layer* di atasnya tanpa memutus koneksi atau mematikan agen.
 
 ## Kemampuan Utama (Tools)
 
@@ -35,7 +36,7 @@ Mark dibekali dengan berbagai integrasi alat untuk mengeksekusi tugas di luar se
 - **Riset Internet Mendalam (Deep Web Search):** Mark dapat menelusuri web secara mandiri untuk mencari informasi akurat dan memberikan ringkasan yang dilengkapi dengan tautan kutipan (_citations_).
 - **Perangkum YouTube Kilat:** Cukup berikan tautan video YouTube, dan Mark akan mengekstrak transkrip asli, memproses teks, dan memberikan ringkasan akurat tanpa Anda harus menonton video tersebut.
 - **Pemutar YouTube Music Terintegrasi:** Terhubung langsung dengan ekosistem YouTube Music (tanpa iklan). Perintahkan Mark untuk memutar lagu, dan ia akan mencari serta memutarnya di latar belakang sembari menampilkan sampul album pada antarmuka.
-- **Integrasi Bot WhatsApp (Baileys):** Mark dapat bertindak sebagai asisten pribadi di akun WhatsApp Anda. Dengan arsitektur _Auto-Retry_ yang andal, Mark kebal terhadap masalah jaringan. Ia dapat merangkum obrolan grup, merespons _mention_, mencari informasi di web, atau bahkan mengunduh lagu YouTube sebagai berkas MP3 langsung ke obrolan WhatsApp.
+- **Integrasi Bot Telegram:** Cukup masukkan API Token dari `@BotFather` dan Username Telegram (`@username`) Anda. Bot akan otomatis menyala di latar belakang saat aplikasi Mark dibuka di PC. Mark dapat mengeksekusi instruksi jarak jauh via Telegram (`tg-send`, `screenshot-to-tg`), mengirim hasil tangkapan layar, mengunduh musik MP3, serta menyinkronkan balasan obrolan PC & *Awareness Engine* langsung ke HP Anda.
 - **Sistem Plugin Kustom:** Tambahkan fitur atau kemampuan baru langsung dari antarmuka aplikasi tanpa perlu memodifikasi kode sumber inti. Anda dapat membuat skrip Node.js (misalnya, _plugin_ untuk mengatur volume atau mematikan PC) dan Mark akan langsung memahami cara menggunakannya.
 
 ## Arsitektur Proyek
@@ -44,10 +45,8 @@ Mark dibekali dengan berbagai integrasi alat untuk mengeksekusi tugas di luar se
 mark/
 ├── src/
 │   ├── main/              # Proses Utama Electron (Window, IPC, TTS, Tray, Global Shortcut)
-│   │   ├── whatsapp/      # Layanan WhatsApp WebSocket Asli (@whiskeysockets/baileys)
-│   │   │   ├── baileys-service.js     # Koneksi, Parsing Pesan, IPC Routing & Perintah
-│   │   │   ├── message-store.js       # Penyimpanan histori chat di RAM
-│   │   │   └── media-downloader.js    # Modul pengunduh media MP3 untuk WA (ytdl-exec)
+│   │   ├── telegram/      # Layanan Telegram Bot API (Telegraf Engine)
+│   │   │   └── telegram-service.js  # Long-polling Bot, Filter Admin, Pengiriman Media & Sync IPC
 │   │   ├── pc-agent.js            # Mesin Otomatisasi PC & Desktop Windows (UIAutomation)
 │   │   ├── pc-agent-scripts/      # Skrip PowerShell untuk pembacaan UI & kontrol Windows
 │   │   └── ai-bridge.js   # Penghubung utama ke AI API, Rate Limit, & Auto-Repair JSON
@@ -59,11 +58,10 @@ mark/
 │           │   ├── db.js           # Skema & Migrasi Database Lokal (Dexie/IndexedDB)
 │           │   ├── scraping.js     # Mesin pencari Google & web scraper
 │           │   ├── vectorMemory.js # Sistem Memori Vektor (Transformers.js / LM Studio)
-│           │   ├── oramaStore.js   # Hybrid Full-Text & Vector Search, Memory Clustering
-│           │   └── waAutonomous.js # Logika otonom & eksekusi plugin untuk Bot WhatsApp
-│           ├── components/         # Komponen UI modular
-│           ├── hooks/              # Custom Hooks React (useMarkPlan, useMemoryGroomer, dll)
-│           └── pages/              # Halaman UI (Chat, Configuration, WhatsApp Bot)
+│           │   └── oramaStore.js   # Hybrid Full-Text & Vector Search, Memory Clustering
+│           ├── components/         # Komponen UI modular (CodeBlock, ResponseArea, HoloCard, dll)
+│           ├── hooks/              # Custom Hooks React (useMarkPlan, useTelegramBot, useAwareness, dll)
+│           └── pages/              # Halaman UI Floating (MarkHome, Configuration, TelegramBot, Plugins, dll)
 ```
 
 ## Teknologi Terkait
@@ -76,7 +74,7 @@ mark/
 | **Memori Vektor**  | `@orama/orama` (Hybrid Search), Transformers.js (`@huggingface/transformers`) |
 | **Pencarian Web**  | Electron Webview (Bypass Anti-Bot)                                            |
 | **Suara & Audio**  | Groq API (STT), Transformers.js (Local STT), Edge-TTS, Web Audio API (VAD)    |
-| **Integrasi**      | `youtube-transcript-plus`, `youtube-dl-exec`, `ffmpeg-static`, Baileys WA     |
+| **Integrasi**      | `youtube-transcript-plus`, `youtube-dl-exec`, `ffmpeg-static`, `telegraf` Telegram Bot API |
 | **Database/RAG**   | Dexie.js (IndexedDB), `pdf-parse` (Document Extraction)                       |
 
 ## Instalasi & Penggunaan
@@ -93,8 +91,8 @@ mark/
 1.  **Kloning repositori:**
 
     ```bash
-    git clone https://github.com/username/mark-project.git
-    cd mark-project/mark
+    git clone https://github.com/Mazees/mark-agent.git
+    cd mark-agent/mark
     ```
 
 2.  **Instalasi dependensi:**

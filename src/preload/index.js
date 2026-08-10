@@ -74,7 +74,7 @@ const api = {
   togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
   deletePlugin: (name) => ipcRenderer.invoke('plugin:delete', name),
   removeTgListeners: () => {
-    ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking', 'tg:request-agent-execution']
+    ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking']
       .forEach(ch => ipcRenderer.removeAllListeners(ch))
   },
   

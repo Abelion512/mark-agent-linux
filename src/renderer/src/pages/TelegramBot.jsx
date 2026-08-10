@@ -220,9 +220,9 @@ const TelegramBot = () => {
         ))}
 
         {isThinking && (
-          <div className="chat chat-start animate-fade-in">
+          <div className="chat chat-end animate-fade-in">
             <div className="chat-header opacity-50 text-xs mb-1">
-              Memproses pesan {currentSender}...
+              Mark sedang memproses pesan {currentSender}...
             </div>
             <div className="chat-bubble chat-bubble-info bg-info/20 text-info border border-info/30">
               <span className="loading loading-dots loading-sm"></span>
