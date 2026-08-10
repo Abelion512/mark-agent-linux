@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import MarkHome from './pages/MarkHome'
 import Configuration from './pages/Configuration'
 import LiveAudio from './pages/LiveAudio'
-import WhatsappBot from './pages/WhatsappBot'
+import TelegramBot from './pages/TelegramBot'
 import Plugins from './pages/Plugins'
 import Knowledge from './pages/Knowledge'
 import Guidebook from './pages/Guidebook'
@@ -14,7 +14,6 @@ import { ApprovalProvider } from './contexts/ApprovalContext'
 import { YoutubeMusicPlayer } from './components/YoutubeMusicPlayer'
 import { GlobalCameraManager } from './components/GlobalCameraManager'
 import { getAllConfig } from './api/db'
-import { runWhatsappAgent } from './api/waAgent'
 
 const GlobalListener = () => {
   const navigate = useNavigate()
@@ -29,47 +28,11 @@ const GlobalListener = () => {
       window.api.onLiveAudioShortcut(handleShortcut)
     }
 
-    if (window.api?.onWaAdminRequest) {
-      window.api.onWaAdminRequest(async (data) => {
-        // Simpan ke DB agar Configuration.jsx bisa membaca
-        const { getAllConfig, saveConfiguration } = await import('./api/db')
-        const configs = await getAllConfig()
-        if (configs && configs[0]) {
-          const cfg = configs[0]
-          const pending = cfg.waPendingAdmins || []
-          const existingIdx = pending.findIndex((p) => p.id === data.id)
-          if (existingIdx !== -1) {
-            pending[existingIdx] = data
-          } else {
-            pending.push(data)
-          }
-          await saveConfiguration({ ...cfg, waPendingAdmins: pending })
-        }
+    if (window.api?.onTgRequestAgentExecution) {
+      window.api.onTgRequestAgentExecution((data) => {
+        window.dispatchEvent(new CustomEvent('tg-admin-message', { detail: data }))
       })
     }
-
-    const handleRouteToConfig = () => {
-      navigate('/config', { state: { highlightAdmin: true } })
-    }
-
-    if (window.electron?.ipcRenderer) {
-      window.electron.ipcRenderer.on('route-to-config', handleRouteToConfig)
-    }
-
-    if (window.api?.onWaRequestAgentExecution) {
-      window.api.onWaRequestAgentExecution(async (data) => {
-        const { text, isAdmin, senderName, jid, isGroup, msgId, chatSession } = data
-        if (isAdmin) {
-          window.dispatchEvent(new CustomEvent('wa-admin-message', { detail: data }))
-        } else {
-          // Single Fetch Agent for Non-Admin via waAgent
-          const result = await runWhatsappAgent(text, senderName, jid, isGroup, chatSession)
-          window.api.sendWaAgentExecutionDone({ jid, result, msgId })
-        }
-      })
-    }
-
-    // Web search logic moved to waAutonomous.js for better modularity
 
     return () => {
       if (window.api?.removeLiveAudioShortcut) {
@@ -77,8 +40,7 @@ const GlobalListener = () => {
       }
       if (window.electron?.ipcRenderer) {
         window.electron.ipcRenderer.removeAllListeners('route-to-config')
-        window.electron.ipcRenderer.removeAllListeners('wa:admin-request') // if this is the actual channel name
-        window.electron.ipcRenderer.removeAllListeners('wa:request-agent-execution') // if this is the channel name
+        window.electron.ipcRenderer.removeAllListeners('tg:request-agent-execution')
       }
     }
   }, [navigate])
@@ -165,7 +127,7 @@ function App() {
     return <Configuration isFirstSetup={true} onSetupComplete={() => window.location.reload()} />
   }
 
-  const isStandalone = window.location.hash.includes('whatsapp-bot')
+  const isStandalone = window.location.hash.includes('telegram-bot')
 
   return (
     <ApprovalProvider>
@@ -180,7 +142,7 @@ function App() {
                   <Route path="/config" element={<Configuration />} />
                   <Route path="/plugins" element={<Plugins />} />
                   <Route path="/live-audio" element={<LiveAudio />} />
-                  <Route path="/whatsapp-bot" element={<WhatsappBot />} />
+                  <Route path="/telegram-bot" element={<TelegramBot />} />
                   <Route path="/knowledge" element={<Knowledge />} />
                   <Route path="/guidebook" element={<Guidebook />} />
                   <Route path="/relational" element={<RelationalGrowth />} />

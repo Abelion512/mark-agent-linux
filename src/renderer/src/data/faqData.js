@@ -32,8 +32,8 @@ export const faqs = [
     a: "Ya! Anda bisa bilang, 'Putarkan lagu Nadin Amizah'. Mark otomatis mencari dan memutar lagunya secara tersembunyi di latar belakang tanpa Anda harus repot buka aplikasi musik visual."
   },
   {
-    q: "Mark bisa dihubungi lewat WhatsApp?",
-    a: "Sangat bisa! Mark punya fitur bot WhatsApp khusus. Dia bisa merangkum obrolan grup yang tertinggal panjang, membalas chat, atau bahkan mendownload lagu YouTube lalu dikirim ke WA Anda sebagai MP3. Tinggal scan QR Code-nya."
+    q: "Mark bisa dihubungi lewat Telegram?",
+    a: "Sangat bisa! Mark punya fitur bot Telegram khusus. Cukup masukkan API Token dari @BotFather dan Telegram User ID kamu di menu Pengaturan. Mark bisa mendownload lagu YouTube lalu dikirim ke Telegram Anda sebagai MP3 atau mengirimkan screenshot PC."
   },
   {
     q: "Apakah Mark bisa membantu saya ngoding dan ngecek file kerjaan di laptop?",
@@ -72,12 +72,12 @@ export const faqs = [
     a: "Bisa, asalkan video tersebut punya teks *subtitle/transkrip* bawaan. Jika durasinya berjam-jam, Mark akan memotong-motongnya perlahan untuk dibaca dan dirangkum secara mandiri."
   },
   {
-    q: "Kenapa bot WhatsApp Mark cuma diam saja pas grup lagi rame?",
-    a: "Mark memang diprogram agar tidak nyepam dan sok tahu di grup. Dia cuma mau balas dan merangkum kalau ada orang yang dengan sengaja me-mention atau memanggil namanya di grup tersebut."
+    q: "Siapa saja yang bisa mengakses bot Telegram Mark saya?",
+    a: "Hanya user yang ID Telegram-nya terdaftar di menu Pengaturan (Telegram Admin User IDs). Orang lain yang mencoba chat ke bot akan ditolak otomatis."
   },
   {
-    q: "Bolehkah bot WhatsApp Mark pakai nomor WA asli saya sehari-hari?",
-    a: "Bisa saja, tapi saran terbaik adalah pakai nomor HP baru yang khusus, biar orang nggak bingung mana chat yang dibalas oleh Anda betulan dan mana chat yang dibalas otomatis oleh Mark."
+    q: "Bagaimana cara mendapatkan Telegram Bot Token?",
+    a: "Buka aplikasi Telegram, cari akun resmi @BotFather, ketik /newbot, ikuti petunjuk pembuatan nama bot, lalu copy API Token yang diberikan ke halaman Configuration di Mark."
   },
   {
     q: "Kok Mark kadang bisa tiba-tiba nanya 'Lagi sibuk ngerjain dokumen ya?'",

@@ -81,28 +81,28 @@ export const useMarkPlan = ({
 
   const handlePlanningCommand = async (
     userInput,
-    waContext = null,
+    tgContext = null,
     isAutonomous = false,
     autonomousInitialMessage = null,
     options = {},
     isSystem = false
   ) => {
-    if (!waContext && isExecutingRef.current) {
+    if (!tgContext && isExecutingRef.current) {
       console.log('[useMarkPlan] Menolak prompt masuk karena proses lain sedang berjalan (Lock active).')
       return
     }
-    if (!waContext) {
+    if (!tgContext) {
       isExecutingRef.current = true
       interventionBufferRef.current = [] // Bersihkan sisa intervensi lama
     }
     const finalIsSpeak = options.forceSpeak !== undefined ? options.forceSpeak : isSpeak
     if (!userInput) {
-      if (!waContext) isExecutingRef.current = false
+      if (!tgContext) isExecutingRef.current = false
       return
     }
 
-    // Jangan blokir UI Desktop jika perintah datang dari background/WhatsApp
-    if (!waContext && !isAutonomous) {
+    // Jangan blokir UI Desktop jika perintah datang dari background/Telegram
+    if (!tgContext && !isAutonomous) {
       setIsLoading(true)
       if (!isSystem) {
         lastUserPromptRef.current = userInput // Simpan prompt terakhir untuk dikembalikan ke input jika gagal/abort
@@ -214,8 +214,8 @@ export const useMarkPlan = ({
 
       let contextMsgStr = ''
 
-      if (waContext)
-        contextMsgStr += `Permintaan ini berasal dari WhatsApp (JID: ${waContext.jid}).\n`
+      if (tgContext)
+        contextMsgStr += `Permintaan ini berasal dari Telegram (Chat ID: ${tgContext.chatId}).\n`
       if (isSystem)
         contextMsgStr += `[SYSTEM INSTRUCTION]: Pesan ini adalah instruksi internal dari sistem, bukan dari user.\n`
       if (isAutonomous)
@@ -239,7 +239,7 @@ export const useMarkPlan = ({
       }
 
       // Jika AI memiliki inisiatif (autonomous), tampilkan pesannya sebagai chat permanen sebelum masuk loop mikir
-      if (isAutonomous && autonomousInitialMessage && !waContext) {
+      if (isAutonomous && autonomousInitialMessage && !tgContext) {
         const initMsg = {
           role: 'ai',
           content: autonomousInitialMessage,
@@ -320,7 +320,7 @@ export const useMarkPlan = ({
           unifiedContext,
           contextMsgStr,
           activeTopic,
-          { ...options, intentQuery: searchQuery, waContext, currentMusicTrack }
+          { ...options, intentQuery: searchQuery, tgContext, currentMusicTrack }
         )
 
         if (options.disableTools) {
@@ -530,16 +530,16 @@ export const useMarkPlan = ({
             } else if (tool.startsWith('music')) {
               // --- MUSIC ---
               resultString = await handleMusic(tool, query)
-            } else if (tool === 'wa-send') {
-              // --- WHATSAPP SEND ---
-              const [targetJid, targetText] = (query || '').split('|')
-              if (targetJid && targetText) {
-                const res = await window.api.sendWaMessage(targetJid.trim(), targetText.trim())
+            } else if (tool === 'tg-send') {
+              // --- TELEGRAM SEND ---
+              const [targetChatId, targetText] = (query || '').split('|')
+              if (targetChatId && targetText) {
+                const res = await window.api.tgSendMessage(targetChatId.trim(), targetText.trim())
                 resultString = res?.success
-                  ? `Berhasil mengirim pesan WhatsApp ke ${targetJid}`
+                  ? `Berhasil mengirim pesan Telegram ke ${targetChatId}`
                   : `Gagal: ${res?.error || 'Unknown'}`
               } else {
-                resultString = `Gagal: format query salah (harus "JID|pesan"): ${query}`
+                resultString = `Gagal: format query salah (harus "ChatID|pesan"): ${query}`
               }
             } else if (tool === 'memory-search') {
               // --- MEMORY SEARCH ---
@@ -565,13 +565,13 @@ export const useMarkPlan = ({
               } else {
                 resultString = 'Gagal: teks yang mau diucapkan kosong.'
               }
-            } else if (tool === 'screenshot-to-wa') {
-              if (waContext) {
-                window.api.waTakeScreenshot(waContext.jid, waContext.msgId)
-                resultString = 'Screenshot berhasil diambil dan dikirimkan ke WhatsApp user.'
+            } else if (tool === 'screenshot-to-tg') {
+              if (tgContext) {
+                window.api.tgTakeScreenshot(tgContext.chatId)
+                resultString = 'Screenshot berhasil diambil dan dikirimkan ke Telegram user.'
               } else {
                 resultString =
-                  'Tool screenshot-to-wa HANYA tersedia jika user sedang chat dari WhatsApp.'
+                  'Tool screenshot-to-tg HANYA tersedia jika user sedang chat dari Telegram.'
               }
             } else if (tool === 'analyze-screen') {
               // --- SCREENSHOT FOR VISION ---
@@ -881,7 +881,7 @@ export const useMarkPlan = ({
         }
       }
 
-      if (!waContext && !isAutonomous) {
+      if (!tgContext && !isAutonomous) {
         setIsLoading(false)
         lastUserPromptRef.current = '' // Sukses, bersihkan simpanan prompt
       }
@@ -899,7 +899,7 @@ export const useMarkPlan = ({
         console.error('Planning Error:', error)
       }
 
-      if (!waContext && !isAutonomous) {
+      if (!tgContext && !isAutonomous) {
         setIsLoading(false)
         if (!isSystem && lastUserPromptRef.current) {
           setMessage(lastUserPromptRef.current) // Kembalikan prompt sebelumnya yang gagal/di-abort ke input bar
@@ -961,7 +961,7 @@ export const useMarkPlan = ({
         }
       }
     } finally {
-      if (!waContext) {
+      if (!tgContext) {
         isExecutingRef.current = false
       }
     }

@@ -37,40 +37,32 @@ const api = {
     ipcRenderer.removeAllListeners('execute-music-command')
     ipcRenderer.on('execute-music-command', (event, command, payload) => callback(command, payload))
   },
-  onExecuteMusicCommandWa: (callback) => {
-    ipcRenderer.removeAllListeners('execute-music-command-wa')
-    ipcRenderer.on('execute-music-command-wa', (event, command, payload) => callback(command, payload))
+  onExecuteMusicCommandTg: (callback) => {
+    ipcRenderer.removeAllListeners('execute-music-command-tg')
+    ipcRenderer.on('execute-music-command-tg', (event, command, payload) => callback(command, payload))
   },
-  sendWaReady: undefined, // Removed
-  waStart: () => ipcRenderer.send('wa:start'),
-  waStop: () => ipcRenderer.send('wa:stop'),
-  waGetStatus: () => ipcRenderer.invoke('wa:get-status'),
-  waGetHistory: () => ipcRenderer.invoke('wa:get-history'),
-  waLogout: () => ipcRenderer.invoke('wa:logout'),
-  onWaQr: (cb) => ipcRenderer.on('wa:qr', (_, data) => cb(data)),
-  onWaConnection: (cb) => ipcRenderer.on('wa:connection', (_, status) => cb(status)),
-  onWaMessage: (cb) => ipcRenderer.on('wa:message', (_, data) => cb(data)),
-  onWaReplySent: (cb) => ipcRenderer.on('wa:reply-sent', (_, data) => cb(data)),
-  onWaThinking: (cb) => ipcRenderer.on('wa:thinking', (_, data) => cb(data)),
-  onWaRequestWebSearch: (cb) => ipcRenderer.on('wa:request-web-search', (_, data) => cb(data)),
-  sendWaSearchResult: (id, result) => ipcRenderer.send('wa:web-search-result', { id, result }),
-  onWaAdminRequest: (cb) => {
-    ipcRenderer.removeAllListeners('wa:admin-request')
-    ipcRenderer.on('wa:admin-request', (_, data) => cb(data))
+  tgStart: (token) => ipcRenderer.send('tg:start', token),
+  tgStop: () => ipcRenderer.send('tg:stop'),
+  tgGetStatus: () => ipcRenderer.invoke('tg:get-status'),
+  tgGetHistory: () => ipcRenderer.invoke('tg:get-history'),
+  onTgConnection: (cb) => ipcRenderer.on('tg:connection', (_, status) => cb(status)),
+  onTgMessage: (cb) => ipcRenderer.on('tg:message', (_, data) => cb(data)),
+  onTgReplySent: (cb) => ipcRenderer.on('tg:reply-sent', (_, data) => cb(data)),
+  onTgThinking: (cb) => ipcRenderer.on('tg:thinking', (_, data) => cb(data)),
+  onTgRequestAgentExecution: (cb) => {
+    ipcRenderer.removeAllListeners('tg:request-agent-execution')
+    ipcRenderer.on('tg:request-agent-execution', (_, data) => cb(data))
   },
-  onWaRequestAgentExecution: (cb) => {
-    ipcRenderer.removeAllListeners('wa:request-agent-execution')
-    ipcRenderer.on('wa:request-agent-execution', (_, data) => cb(data))
-  },
-  sendWaAgentExecutionDone: (data) => ipcRenderer.send('wa:agent-execution-done', data),
-  sendWaMessage: (jid, text) => ipcRenderer.invoke('wa:send-message', { jid, text }),
+  sendTgAgentExecutionDone: (data) => ipcRenderer.send('tg:agent-execution-done', data),
+  tgSendMessage: (chatId, text) => ipcRenderer.invoke('tg:send-message', { chatId, text }),
+  tgBroadcastToAdmins: (text) => ipcRenderer.send('tg:broadcast-to-admins', text),
   
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),
 
-  waTakeScreenshot: (jid, msgId) => ipcRenderer.send('wa:trigger-screenshot', { jid, msgId }),
-  waDownloadMusic: (jid, msgId, query) => ipcRenderer.send('wa:trigger-music-download', { jid, msgId, query }),
-  waPlayMusicUi: (command, query) => ipcRenderer.send('wa:trigger-music-ui', { command, query }),
+  tgTakeScreenshot: (chatId) => ipcRenderer.send('tg:trigger-screenshot', { chatId }),
+  tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
+  tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),
   getPlugins: () => ipcRenderer.invoke('plugin:get-list'),
   executeNativeTool: (toolName, query) => ipcRenderer.invoke('native-tool:execute', toolName, query),
   checkToolApproval: (toolName, query) => ipcRenderer.invoke('native-tool:needs-approval', toolName, query),
@@ -81,8 +73,8 @@ const api = {
   createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
   togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
   deletePlugin: (name) => ipcRenderer.invoke('plugin:delete', name),
-  removeWaListeners: () => {
-    ['wa:qr', 'wa:connection', 'wa:message', 'wa:reply-sent', 'wa:thinking', 'wa:request-web-search', 'wa:admin-request', 'wa:request-agent-execution']
+  removeTgListeners: () => {
+    ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking', 'tg:request-agent-execution']
       .forEach(ch => ipcRenderer.removeAllListeners(ch))
   },
   

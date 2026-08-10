@@ -7,7 +7,7 @@ import { useMarkState, useMarkYoutube, useMarkMusic, useMarkPlan } from './agent
 import { useAwareness } from './useAwareness'
 import { useRelationalGrowth } from './agent/useRelationalGrowth'
 import { useChatArchiver } from './useChatArchiver'
-import { formatForWhatsApp } from '../api/ai/utils'
+import { formatForTelegram } from '../api/ai/utils'
 
 export const useMarkAgent = () => {
   const { requestApproval } = useApproval()
@@ -96,7 +96,7 @@ export const useMarkAgent = () => {
 
   useChatArchiver({ chatData, activeTopic, config, pushNotification, isLoading })
 
-  const activeWaRequestRef = useRef(null)
+  const activeTgRequestRef = useRef(null)
   const hasGreetedRef = useRef(false)
 
   // Welcome Greeting on Startup
@@ -172,7 +172,7 @@ export const useMarkAgent = () => {
   }, [isChatLoaded, chatData])
 
   useEffect(() => {
-    const handleWaAdminMessage = (e) => {
+    const handleTgAdminMessage = (e) => {
       const data = e.detail
       
       if (data.text.trim().toLowerCase() === '/stop') {
@@ -180,31 +180,61 @@ export const useMarkAgent = () => {
         return
       }
 
-      activeWaRequestRef.current = data
-      setInputSource('wa')
+      activeTgRequestRef.current = data
+      setInputSource('tg')
       handlePlanningCommand(data.text, data)
     }
 
-    window.addEventListener('wa-admin-message', handleWaAdminMessage)
-    return () => window.removeEventListener('wa-admin-message', handleWaAdminMessage)
+    window.addEventListener('tg-admin-message', handleTgAdminMessage)
+    return () => window.removeEventListener('tg-admin-message', handleTgAdminMessage)
   }, [handlePlanningCommand, setInputSource, handleStop])
 
+  const isInitialSyncDoneRef = useRef(false)
+  const lastSyncedMsgIdRef = useRef(null)
+
   useEffect(() => {
-    if (!isAgentBusy && activeWaRequestRef.current && chatData.length > 0) {
+    if (!isChatLoaded) return
+
+    // Pada render pertama setelah chat DB dimuat, tandai pesan AI terakhir sebagai "sudah tersinkron" agar pesan histori tidak terkirim ulang
+    if (!isInitialSyncDoneRef.current) {
+      isInitialSyncDoneRef.current = true
+      if (chatData && chatData.length > 0) {
+        const lastAiMsg = [...chatData]
+          .reverse()
+          .find((m) => m.role === 'ai' && !m.isThinking && !m.isSearching && !m.isSummarizing)
+        if (lastAiMsg) {
+          lastSyncedMsgIdRef.current = lastAiMsg.timestamp || lastAiMsg.content
+        }
+      }
+      return
+    }
+
+    if (!isAgentBusy && activeTgRequestRef.current && chatData.length > 0) {
       const lastAiMsg = [...chatData]
         .reverse()
         .find((m) => m.role === 'ai' && !m.isThinking && !m.isSearching && !m.isSummarizing)
       if (lastAiMsg) {
-        window.api?.sendWaAgentExecutionDone({
-          jid: activeWaRequestRef.current.jid,
-          result: { answer: formatForWhatsApp(lastAiMsg.content) },
-          msgId: activeWaRequestRef.current.msgId
+        window.api?.sendTgAgentExecutionDone({
+          chatId: activeTgRequestRef.current.chatId,
+          result: { answer: formatForTelegram(lastAiMsg.content) },
+          msgId: activeTgRequestRef.current.msgId
         })
-        activeWaRequestRef.current = null
+        activeTgRequestRef.current = null
         setInputSource('pc')
       }
+    } else if (!isAgentBusy && chatData.length > 0) {
+      const lastAiMsg = [...chatData]
+        .reverse()
+        .find((m) => m.role === 'ai' && !m.isThinking && !m.isSearching && !m.isSummarizing)
+      const msgKey = lastAiMsg ? (lastAiMsg.timestamp || lastAiMsg.content) : null
+      if (lastAiMsg && lastAiMsg.content && lastSyncedMsgIdRef.current !== msgKey) {
+        lastSyncedMsgIdRef.current = msgKey
+        if (window.api?.tgBroadcastToAdmins) {
+          window.api.tgBroadcastToAdmins(`💻 *Mark (PC)*:\n${lastAiMsg.content}`)
+        }
+      }
     }
-  }, [isAgentBusy, chatData, setInputSource])
+  }, [isAgentBusy, chatData, isChatLoaded, setInputSource])
 
   const handleSubmit = (e, textPrompt) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault()

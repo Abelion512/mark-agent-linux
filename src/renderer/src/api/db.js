@@ -82,6 +82,18 @@ db.version(14).stores({
 db.version(15).stores({
   config: 'id, personality, model, temperature, context, ttsRate, ttsPitch, aiProvider, groqApiKey, groqModel, embedProvider, lmStudioEmbedModel, cerebrasApiKey, cerebrasModel, waAdminNumber, waPendingAdmins, waApprovedAdmins, customEndpoint, customApiKey, customModel, awarenessEnabled, cameraDeviceId, cameraEnabled, geminiWebModel'
 })
+
+db.version(16).stores({
+  config: 'id, personality, model, temperature, context, ttsRate, ttsPitch, aiProvider, groqApiKey, groqModel, embedProvider, lmStudioEmbedModel, cerebrasApiKey, cerebrasModel, tgBotToken, tgAdminIds, customEndpoint, customApiKey, customModel, awarenessEnabled, cameraDeviceId, cameraEnabled, geminiWebModel'
+}).upgrade(async tx => {
+  return tx.table('config').toCollection().modify(config => {
+    config.tgBotToken = config.tgBotToken || ''
+    config.tgAdminIds = config.tgAdminIds || ''
+    delete config.waAdminNumber
+    delete config.waPendingAdmins
+    delete config.waApprovedAdmins
+  })
+})
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 

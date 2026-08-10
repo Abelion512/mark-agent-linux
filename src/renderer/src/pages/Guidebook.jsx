@@ -24,7 +24,7 @@ import {
   FaHeartbeat,
   FaCamera,
   FaMicrophoneAlt,
-  FaWhatsapp
+  FaTelegram
 } from 'react-icons/fa'
 import { faqs } from '../data/faqData'
 
@@ -711,7 +711,7 @@ const Guidebook = () => {
                 {/* Kategori Communication */}
                 <div>
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
-                    <FaWhatsapp className="text-success" /> Komunikasi & Suara
+                    <FaTelegram className="text-info" /> Komunikasi & Suara
                   </h3>
                   <div className="space-y-3">
                     <ToolCard
@@ -722,18 +722,18 @@ const Guidebook = () => {
                       howItWorks="Mensintesis suara Mark lewat speaker menggunakan teknologi Edge-TTS yang natural."
                     />
                     <ToolCard
-                      name="wa-send"
-                      description="Mengirim pesan WhatsApp ke nomor tertentu."
+                      name="tg-send"
+                      description="Mengirim pesan Telegram ke User ID tertentu."
                       needsPermission={false}
-                      queryFormat="JID||Isi Pesan"
-                      howItWorks="Nomor tujuan (JID) harus diawali kode negara seperti 62 (contoh: 62812xxx)."
+                      queryFormat="ChatID||Isi Pesan"
+                      howItWorks="Chat ID Telegram tujuan (contoh: 123456789)."
                     />
                     <ToolCard
-                      name="screenshot-to-wa"
-                      description="Mengambil screenshot dan mengirimnya ke chat WA."
+                      name="screenshot-to-tg"
+                      description="Mengambil screenshot dan mengirimnya ke chat Telegram."
                       needsPermission={false}
                       queryFormat="(kosong)"
-                      howItWorks="Hanya bisa dipanggil saat user chatting dengan Mark lewat WhatsApp."
+                      howItWorks="Hanya bisa dipanggil saat user chatting dengan Mark lewat Telegram."
                     />
                   </div>
                 </div>

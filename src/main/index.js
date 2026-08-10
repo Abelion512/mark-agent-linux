@@ -24,7 +24,7 @@ import YTMusic from 'ytmusic-api'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import { startTracking, getBuffer, flushBuffer } from './awareness/window-tracker.js'
 import { NATIVE_TOOLS } from './native-tools.js'
-// Matikan semua optimasi throttling Chromium agar webview WhatsApp tidak tertidur di hasil Build (.exe)
+// Matikan semua optimasi throttling Chromium agar background task Telegram tidak tertidur di hasil Build (.exe)
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
@@ -101,6 +101,10 @@ import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
 
 ipcMain.on('sync-config', (event, config) => {
   setGlobalConfig(config)
+  if (config?.tgBotToken && config.tgBotToken.trim() && getConnectionStatus().status === 'disconnected') {
+    console.log('[Main] Auto-starting Telegram Bot from synced config...')
+    startTelegramBot(config.tgBotToken.trim(), mainWindow)
+  }
 })
 
 // --- NATIVE TOOLS IPC ---
@@ -168,17 +172,16 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 })
 
 import {
-  startWhatsappBot,
-  stopWhatsappBot,
+  startTelegramBot,
+  stopTelegramBot,
   getConnectionStatus,
-  logoutWhatsapp,
   uiMessageHistory
-} from './whatsapp/baileys-service.js'
+} from './telegram/telegram-service.js'
 
-ipcMain.on('wa:start', () => startWhatsappBot(mainWindow))
-ipcMain.on('wa:stop', () => stopWhatsappBot())
-ipcMain.handle('wa:get-status', () => getConnectionStatus())
-ipcMain.handle('wa:get-history', () => uiMessageHistory)
+ipcMain.on('tg:start', (event, token) => startTelegramBot(token, mainWindow))
+ipcMain.on('tg:stop', () => stopTelegramBot())
+ipcMain.handle('tg:get-status', () => getConnectionStatus())
+ipcMain.handle('tg:get-history', () => uiMessageHistory)
 
 ipcMain.handle('parse-document', async (event, arrayBuffer, isDocx) => {
   try {
@@ -198,7 +201,6 @@ ipcMain.handle('parse-document', async (event, arrayBuffer, isDocx) => {
     throw new Error('Gagal mem-parsing dokumen: ' + error.message)
   }
 })
-ipcMain.handle('wa:logout', async () => await logoutWhatsapp())
 
 ipcMain.handle('dialog:open-file', async () => {
   const result = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] })
@@ -295,9 +297,6 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  // Langsung jalankan WhatsApp Bot di background secara rahasia (Tray Mode) saat aplikasi utama dibuka
-  startWhatsappBot(mainWindow)
-
   // Setup System Tray
   // Cara paling aman dan ampuh di Windows: Ekstrak icon 16x16 langsung dari file .exe aplikasi!
   // Ini menghindari semua masalah pathing ASAR dan masalah format .ico yang rusak.
@@ -310,16 +309,16 @@ app.whenReady().then(async () => {
       const contextMenu = Menu.buildFromTemplate([
         { label: 'Buka Mark', click: () => mainWindow.show() },
         {
-          label: 'Monitor WhatsApp',
+          label: 'Telegram Bot',
           click: () => {
             mainWindow.show()
-            mainWindow.webContents.send('navigate', '/whatsapp-bot')
+            mainWindow.webContents.send('navigate', '/telegram-bot')
           }
         },
         {
-          label: 'Matikan WhatsApp Bot',
+          label: 'Matikan Telegram Bot',
           click: () => {
-            stopWhatsappBot()
+            stopTelegramBot()
           }
         },
         {

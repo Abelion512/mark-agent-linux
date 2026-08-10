@@ -101,6 +101,10 @@ export const useAwareness = ({
             window.api.showNotification('Mark', result.message)
           }
 
+          if (result.message && window.api?.tgBroadcastToAdmins) {
+            window.api.tgBroadcastToAdmins(`🔔 *Mark (Awareness)*:\n${result.message}`)
+          }
+
           // Jika ada perintah autonomus, bypass chat bubble biasa dan langsung eksekusi plan siluman
           if (result.autonomous_prompt && handlePlanningCommandRef.current) {
             handlePlanningCommandRef.current(

@@ -12,7 +12,7 @@ const CATEGORY_TEXTS = {
   music: 'putar lagu musik youtube yt music cari video mp3 play lagu puter',
   search: 'cari di internet google penelusuran web berita terbaru cuaca informasi terkini',
   system:
-    'screenshot kirim pesan whatsapp wa operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram'
+    'screenshot kirim pesan telegram tg operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram'
 }
 
 let categoryVectors = null
@@ -219,8 +219,8 @@ ${
   activeCategories.some((c) => ['system', 'casual'].includes(c))
     ? `- analyze-screen: Mengambil screenshot LAYAR LAPTOP saat ini untuk dianalisis oleh "Mata AI" (Vision). ATURAN MUTLAK: DILARANG KERAS menggunakan tool ini JIKA user SUDAH melampirkan file gambar di pesan (karena kamu sudah bisa melihat gambar terlampir tersebut secara langsung!). Gunakan tool ini HANYA jika kamu perlu melihat tampilan layar monitor/aplikasi yang sedang aktif di PC user. Query: Isi dengan prompt instruksi visual spesifikmu (misal: "Tolong bacakan teks error di layar" atau "Cari tombol warna biru").
 - camera-look: Mengaktifkan kamera webcam untuk melihat dunia nyata di depan user. Gunakan tool ini JIKA user meminta kamu melihat sesuatu secara fisik (bukan layar), ATAU jika kamu menerima instruksi dari sistem (autonomous_prompt) untuk mengecek kondisi user secara visual. Query: Isi dengan prompt instruksi visual spesifikmu (misal: "Apa objek yang dipegang user?" atau "Baca tulisan di kertas ini").
-- screenshot-to-wa: Mengambil screenshot layar komputer dan MENGIRIMNYA SECARA FISIK ke WhatsApp user (Hanya jika chat berasal dari WA). Query: KOSONGKAN SAJA.
-- wa-send: Mengirim pesan WhatsApp. Format query: "JID|Isi Pesan". PENTING: JID WAJIB diawali dengan kode negara (contoh Indonesia: mulai dengan "62", BUKAN "0"). Contoh format yang benar: "6282332392616@s.whatsapp.net|Halo!".
+- screenshot-to-tg: Mengambil screenshot layar komputer dan MENGIRIMNYA SECARA FISIK ke Telegram user (Hanya jika chat berasal dari Telegram). Query: KOSONGKAN SAJA.
+- tg-send: Mengirim pesan Telegram. Format query: "ChatID|Isi Pesan". Contoh format yang benar: "123456789|Halo!".
 - speak: Bicarakan teks secara lisan (Text-to-Speech) lewat speaker komputer user. Query: "Teks yang ingin kamu ucapkan". Gunakan ini jika kamu ingin memanggil user atau berbicara langsung.`
     : ''
 }
@@ -277,7 +277,7 @@ ${
    - MODE TUGAS (Merangkum, Analisis Dokumen, Laporan, Koding, Tugas Formal): BERIKAN JAWABAN YANG RAPI, TERSTRUKTUR, FORMAL/PROFESIONAL, LENGKAP DENGAN BULLET POINTS, HEADING, DAN NOMOR BARIS SESUAI PERMINTAAN USER! DILARANG KERAS mengubah laporan/rangkuman teknis menjadi obrolan santai bertele-tele atau narasi cerita!
    - MODE OBROLAN (Ngobrol biasa, Curhat, Bercanda, Menyapa): Berbicaralah secara natural, rileks, proaktif, dan asik layaknya teman sejati.
 2. EKSPRESIF TANPA EMOJI: Tulis "answer" secara langsung. **DILARANG KERAS MENGGUNAKAN EMOJI APAPUN (seperti 😊, 😂) ATAUPUN ICON TEKS (seperti <FaLock />).**
-3. CLOSING YANG NATURAL & ANTI-ROBOTIK: JANGAN PERNAH menutup obrolan dengan kalimat tawaran bantuan kaku ala customer service ("Ada yang bisa saya bantu lagi?" atau "Semoga bermanfaat"). Cukup tutup dengan luwes, singkat, dan profesional/santai sesuai konteks tugas.
+3. PANJANG JAWABAN ADAPTIF: Sesuaikan kedalaman jawaban dengan jenis pertanyaan. Untuk penjelasan, ilmu pengetahuan, koding, tutorial, atau analisis, berikan jawaban yang LENGKAP, JELAS, & TERSTRUKTUR (gunakan markdown/bullet points jika membantu). Untuk obrolan ringan atau konfirmasi sederhana, jawab santai secukupnya tanpa bertele-tele. JANGAN PERNAH menutup obrolan dengan kalimat tawaran bantuan kaku ala customer service ("Ada yang bisa saya bantu lagi?").
 4. DILARANG ROLEPLAY NARATIF: Jangan pernah menuliskan tindakan naratif seperti *tersenyum*, *mengangguk*, *berpikir sebentar*, dll.
 
 # FORMAT OUTPUT WAJIB (JSON)
@@ -294,7 +294,7 @@ DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA 
 # CONTOH (HANYA TEMPLAT STRUKTUR JSON. JANGAN MENIRU ISI PESAN ATAU KATA SAPAANNYA!)
 Chat santai (Tanpa tool): {"thought":"Gue dengerin aja dan kasih respons santai.","action":null,"answer":"Siap bro, gue dengerin. Gimana kelanjutannya?","mood":"neutral","active_topic":"Ngobrol Santai","memory":null}
 Butuh tool: {"thought":"cari dulu","action":{"tool":"browser-navigate","query":"https://www.google.com/search?q=harga+rtx+5090"},"answer":null,"mood":"neutral","active_topic":"Cari Info","memory":null}
-Setelah observation: {"thought":"done","action":null,"answer":"Harganya sekitar 30jt","mood":"joy","active_topic":"Cari Info","memory":null}
+Setelah observation: {"thought":"done","action":null,"answer":"Kartu grafis RTX 5090 memiliki spesifikasi utama VRAM 32GB GDDR7 dan konsumsi daya sekitar 600W. Harganya diperkirakan mulai dari Rp 30.000.000 untuk versi standar.","mood":"joy","active_topic":"Cari Info","memory":null}
 
 # KONTEKS DINAMIS
 Kepribadian: ${conf.personality || 'Santai layaknya teman.'}
@@ -401,8 +401,8 @@ ${
                 'yt-summary',
                 'analyze-screen',
                 'camera-look',
-                'screenshot-to-wa',
-                'wa-send',
+                'screenshot-to-tg',
+                'tg-send',
                 'speak',
                 'file-outline',
                 'read-document',

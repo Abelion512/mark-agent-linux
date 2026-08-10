@@ -6,14 +6,14 @@ import {
   FaPuzzlePiece,
   FaMicrophoneAlt,
   FaHistory,
-  FaWhatsapp,
+  FaTelegram,
   FaDatabase,
   FaNetworkWired,
   FaHeartbeat,
   FaBook
 } from 'react-icons/fa'
 
-const FloatingMenu = ({ onOpenHistory, waStatus = 'disconnected' }) => {
+const FloatingMenu = ({ onOpenHistory, tgStatus = 'disconnected' }) => {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef(null)
   const navigate = useNavigate()
@@ -110,13 +110,13 @@ const FloatingMenu = ({ onOpenHistory, waStatus = 'disconnected' }) => {
           <div className="h-px w-full bg-white/10 my-1" />
 
           <button
-            onClick={() => handleNav('/whatsapp-bot')}
+            onClick={() => handleNav('/telegram-bot')}
             className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/80 text-sm font-medium"
           >
-            <FaWhatsapp className={waStatus === 'connected' ? 'text-success' : 'text-white/30'} />
-            <div className="flex-1 text-left">WhatsApp Bot</div>
+            <FaTelegram className={tgStatus === 'connected' ? 'text-info' : 'text-white/30'} />
+            <div className="flex-1 text-left">Telegram Bot</div>
             <div
-              className={`w-2 h-2 rounded-full ${waStatus === 'connected' ? 'bg-success shadow-[0_0_8px_oklch(var(--su))]' : waStatus === 'qr' ? 'bg-warning' : 'bg-error'}`}
+              className={`w-2 h-2 rounded-full ${tgStatus === 'connected' ? 'bg-info shadow-[0_0_8px_oklch(var(--in))]' : 'bg-error'}`}
             />
           </button>
         </div>
