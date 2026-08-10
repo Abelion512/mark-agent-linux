@@ -566,12 +566,12 @@ export const useMarkPlan = ({
                 resultString = 'Gagal: teks yang mau diucapkan kosong.'
               }
             } else if (tool === 'screenshot-to-tg') {
-              if (tgContext) {
-                window.api.tgTakeScreenshot(tgContext.chatId)
-                resultString = 'Screenshot berhasil diambil dan dikirimkan ke Telegram user.'
+              if (window.api && window.api.tgTakeScreenshot) {
+                const targetChatId = tgContext?.chatId || null
+                window.api.tgTakeScreenshot(targetChatId)
+                resultString = 'Screenshot layar PC berhasil diambil dan dikirimkan ke Telegram Admin.'
               } else {
-                resultString =
-                  'Tool screenshot-to-tg HANYA tersedia jika user sedang chat dari Telegram.'
+                resultString = 'Gagal: Fitur Telegram Bot belum tersedia.'
               }
             } else if (tool === 'analyze-screen') {
               // --- SCREENSHOT FOR VISION ---

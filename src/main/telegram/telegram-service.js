@@ -340,27 +340,54 @@ ipcMain.handle('tg:send-message', async (event, { chatId, text }) => {
 })
 
 ipcMain.removeAllListeners('tg:trigger-screenshot')
-ipcMain.on('tg:trigger-screenshot', async (event, { chatId }) => {
-  if (!bot || !chatId) return
+ipcMain.on('tg:trigger-screenshot', async (event, { chatId } = {}) => {
+  if (!bot || currentStatus !== 'connected') return
+
+  const targetChatIds = new Set()
+  if (chatId) {
+    targetChatIds.add(chatId)
+  } else {
+    const config = getGlobalConfig()
+    const adminInputs = (config.tgAdminIds || '')
+      .split(',')
+      .map((id) => id.trim().toLowerCase().replace(/^@/, ''))
+      .filter(Boolean)
+
+    adminChatIdsSet.forEach((id) => targetChatIds.add(id))
+    for (const input of adminInputs) {
+      if (/^\d+$/.test(input)) {
+        targetChatIds.add(input)
+      } else if (usernameToChatIdMap.has(input)) {
+        targetChatIds.add(usernameToChatIdMap.get(input))
+      }
+    }
+  }
+
+  if (targetChatIds.size === 0) {
+    console.warn('[Telegram Screenshot] Gagal: Tidak ada Chat ID admin yang ditemukan.')
+    return
+  }
+
   try {
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: { width: 1920, height: 1080 }
     })
-    for (const [index, source] of sources.entries()) {
-      const imageBuffer = source.thumbnail.toPNG()
-      const tempPath = path.join(app.getPath('temp'), `tg-ss-${Date.now()}-${index}.png`)
-      fs.writeFileSync(tempPath, imageBuffer)
-      await bot.telegram.sendPhoto(
-        chatId,
-        { source: tempPath },
-        { caption: `📸 Layar ${index + 1} (${source.name})` }
-      )
-      fs.unlink(tempPath, () => {})
+    for (const targetId of targetChatIds) {
+      for (const [index, source] of sources.entries()) {
+        const imageBuffer = source.thumbnail.toPNG()
+        const tempPath = path.join(app.getPath('temp'), `tg-ss-${Date.now()}-${index}.png`)
+        fs.writeFileSync(tempPath, imageBuffer)
+        await bot.telegram.sendPhoto(
+          targetId,
+          { source: tempPath },
+          { caption: `📸 Layar ${index + 1} (${source.name})` }
+        )
+        fs.unlink(tempPath, () => {})
+      }
     }
   } catch (err) {
-    console.error('[Telegram] Error sending screenshot:', err)
-    await bot.telegram.sendMessage(chatId, `❌ Gagal mengambil screenshot: ${err.message}`)
+    console.error('[Telegram] Gagal mengirim screenshot:', err)
   }
 })
 
