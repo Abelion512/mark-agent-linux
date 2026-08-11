@@ -130,6 +130,7 @@ Kamu dalam loop. Setiap giliran, pilih SATU:
 - Butuh data/aksi → isi "action", "answer" null.
 - Sudah cukup/ngobrol → isi "answer", "action" null.
 JANGAN isi keduanya! Boleh panggil tool berulang kali.
+- BATCH ACTIONS: Kamu BOLEH mengirim BANYAK aksi sekaligus dalam satu giliran menggunakan format array jika tugas membutuhkan eksekusi berurutan yang sudah pasti (misal: "action": [{"tool": "nama-tool1", "query": "..."}]). Semua aksi dalam array akan dieksekusi berurutan. Gunakan ini HANYA untuk aksi yang tidak perlu mengecek hasil/observasi dari aksi sebelumnya. Jika kamu butuh melihat hasil dari aksi pertama sebelum melakukan aksi selanjutnya, JANGAN gunakan batch!
 - Gunakan "thought" untuk alasan keputusanmu. isi dengan detail
 - Jika tool sebelumnya GAGAL/ERROR, analisis errornya di "thought" lalu coba strategi lain.
 - Jika user hanya ngobrol santai, LANGSUNG isi "answer" tanpa tool.
@@ -190,7 +191,7 @@ ATURAN BROWSER AUTOMATION:
 - os-control-close: WAJIB DIPANGGIL TERAKHIR setelah semua tugas otomatisasi PC selesai. Menutup sesi dan overlay. Query: KOSONG.
 - os-read: Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.
 - os-click: Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.
-- os-type: Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung.
+- os-type: Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung. PENTING: DILARANG KERAS menggunakan format markdown link seperti [teks](url) saat mengetik URL! Ketik raw URL-nya saja.
 - os-key: Tekan kombinasi tombol keyboard shortcut. Query: combo (misal: ctrl+c, alt+tab, win+e, ctrl+s, enter).
 - os-scroll: Scroll mouse wheel di aplikasi aktif. Query: direction||amount (misal: down||5 atau up||3).
 - os-open: Membuka aplikasi Windows dari Start Menu atau path. Query: nama app/path (misal: notepad, winword, C:\\app.exe).
@@ -284,7 +285,7 @@ ${
 DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA BOLEH mengeluarkan tepat satu buah objek JSON murni. JANGAN tambahkan "Berikut adalah JSON-nya", JANGAN tambahkan penjelasan di luar JSON. Responsmu HARUS diawali dengan karakter "{" dan diakhiri dengan "}". Pelanggaran terhadap aturan ini akan merusak sistem!
 {
   "thought": "string (Alasan/logika keputusanmu, tidak ditampilkan ke user)",
-  "action": { "tool": "nama-tool", "query": "parameter" } atau null,
+  "action": { "tool": "nama-tool", "query": "parameter" } ATAU [{"tool": "...", "query": "..."}] atau null,
   "answer": "string (Jawaban lengkap untuk user)" atau null,
   "mood": "joy|sadness|fear|anger|disgust|anxiety|envy|embarrassment|ennui|neutral",
   "active_topic": "string",
@@ -386,7 +387,8 @@ ${
           description: 'Alasan/logika keputusan, tidak ditampilkan ke user'
         },
         action: {
-          type: ['object', 'null'],
+          type: ['object', 'array', 'null'],
+          description: 'Object tool tunggal ATAU Array of objects untuk BATCH ACTIONS PC automation',
           properties: {
             tool: {
               type: 'string',

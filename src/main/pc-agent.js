@@ -8,6 +8,13 @@ import { app, BrowserWindow, globalShortcut, screen } from 'electron'
 import fs from 'fs'
 
 let lastReadResult = null
+let lastReadTimestamp = 0
+let stateChanged = false  // Set to true after click/type/key/scroll/open actions
+const CACHE_TTL = 10000   // 10 seconds
+let daemonProcess = null
+let daemonReady = false
+let pendingResolve = null
+let daemonBuffer = ''
 let overlayWindow = null
 let activeChildProcess = null
 let isStoppedByUser = false
@@ -134,9 +141,14 @@ function getOverlayHTML() {
     </div>
     <div class="modal-subtitle">Menunggu respon atau instruksi...</div>
     <input type="text" id="reason-input" placeholder="Add a comment for Mark (optional)..." autocomplete="off" />
-    <button class="btn-send" id="btn-send" onclick="onSend()">
-      Resume Automation
-    </button>
+    <div style="display: flex; gap: 8px; margin-top: auto;">
+      <button style="flex: 1; padding: 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.25)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.15)'" onclick="onCancel()">
+        Batalkan Otomasi
+      </button>
+      <button style="flex: 1;" class="btn-send" id="btn-send" onclick="onSend()">
+        Lanjutkan
+      </button>
+    </div>
   </div>
 
   <script>
@@ -158,6 +170,9 @@ function getOverlayHTML() {
     function onSend() {
       const val = document.getElementById('reason-input').value;
       document.title = 'MARK_PC_STOP_REASON:' + (val.trim() || 'User stopped PC automation without comment.');
+    }
+    function onCancel() {
+      document.title = 'MARK_PC_ABORT_SESSION';
     }
     function resetBanner() {
       document.getElementById('modal').style.display = 'none';
@@ -228,6 +243,13 @@ function showPCOverlay() {
           resolveFn(reason)
         }
         hidePCOverlay()
+      } else if (title.startsWith('MARK_PC_ABORT_SESSION')) {
+        closePCSession()
+        if (pendingAskResolve) {
+          const resolveFn = pendingAskResolve
+          pendingAskResolve = null
+          resolveFn("SISTEM: USER MEMBATALKAN OTOMASI PC. SEGERA BERHENTI DARI LOOP.")
+        }
       }
     })
 
@@ -298,6 +320,11 @@ function triggerEmergencyStop() {
       mouseLockerProcess.kill()
     } catch (err) {}
     mouseLockerProcess = null
+  }
+  if (daemonProcess) {
+    try { daemonProcess.kill() } catch(e){}
+    daemonProcess = null
+    daemonReady = false
   }
   isStoppedByUser = true
   lastStopTime = Date.now()
@@ -376,6 +403,11 @@ export async function openPCSession() {
   isStoppedByUser = false
   showPCOverlay()
   startMouseLocker()
+  try {
+    await startDaemon()
+  } catch (err) {
+    console.warn('[PC-Agent] Failed to start daemon, will use fallback mode:', err)
+  }
   return JSON.stringify({
     status: 'success',
     message:
@@ -391,6 +423,7 @@ export async function closePCSession() {
   isStoppedByUser = false
   hidePCOverlay()
   stopMouseLocker()
+  stopDaemon()
   return JSON.stringify({
     status: 'success',
     message: 'PC Automation Session CLOSED.'
@@ -414,7 +447,7 @@ export async function askUserPC(query = '') {
     try {
       overlayWindow.setFocusable(true)
       overlayWindow.show()
-      overlayWindow.setSize(380, 260)
+      overlayWindow.setSize(420, 360)
       const cleanMsg = query.replace(/'/g, "\\'").replace(/"/g, '\\"')
       overlayWindow.webContents.executeJavaScript(
         `showAskModal("❓ MARK Needs Your Help", "${cleanMsg}", "#3b82f6")`
@@ -424,16 +457,160 @@ export async function askUserPC(query = '') {
   const comment = await new Promise((resolve) => {
     pendingAskResolve = (val) => resolve(val)
   })
+  
+  // Restart mouse locker because the automation is resuming
+  // (unless the user clicked cancel, which closes the session)
+  if (isSessionOpen) {
+    startMouseLocker()
+  }
+  
   return JSON.stringify({
     status: 'success',
     user_response: comment
   })
 }
 
+function getDaemonScriptPath() {
+  let scriptPath = join(__dirname, '../../src/main/pc-agent-scripts/pc-daemon.ps1')
+  if (app.isPackaged) {
+    const unpackedPath = join(
+      process.resourcesPath, 'app.asar.unpacked', 'src', 'main', 'pc-agent-scripts', 'pc-daemon.ps1'
+    )
+    if (fs.existsSync(unpackedPath)) scriptPath = unpackedPath
+    else scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked')
+  } else if (!fs.existsSync(scriptPath)) {
+    scriptPath = join(__dirname, 'pc-agent-scripts', 'pc-daemon.ps1')
+  }
+  return scriptPath
+}
+
+function startDaemon() {
+  return new Promise((resolve, reject) => {
+    if (daemonProcess && !daemonProcess.killed) {
+      resolve()
+      return
+    }
+    
+    const scriptPath = getDaemonScriptPath()
+    daemonProcess = spawn('powershell.exe', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath
+    ])
+    daemonBuffer = ''
+    daemonReady = false
+    
+    // Handle daemon stdout - accumulate until ---MARK_DONE--- delimiter
+    daemonProcess.stdout.on('data', (chunk) => {
+      daemonBuffer += chunk.toString()
+      
+      let delimiterIndex;
+      while ((delimiterIndex = daemonBuffer.indexOf('---MARK_DONE---')) !== -1) {
+        const response = daemonBuffer.substring(0, delimiterIndex).trim()
+        daemonBuffer = daemonBuffer.substring(delimiterIndex + '---MARK_DONE---'.length).trimStart()
+        
+        if (!daemonReady) {
+          // First response is the startup {"status":"ready"} message
+          daemonReady = true
+          console.log('[PC-Agent] Daemon started and ready')
+          resolve()
+          continue
+        }
+        
+        if (pendingResolve) {
+          const resolveFn = pendingResolve
+          pendingResolve = null
+          resolveFn(response)
+        }
+      }
+    })
+    
+    daemonProcess.stderr.on('data', (data) => {
+      console.warn('[PC-Agent] Daemon stderr:', data.toString())
+    })
+    
+    daemonProcess.on('close', (code) => {
+      console.log('[PC-Agent] Daemon process exited with code', code)
+      daemonProcess = null
+      daemonReady = false
+      if (pendingResolve) {
+        const resolveFn = pendingResolve
+        pendingResolve = null
+        resolveFn('')
+      }
+    })
+    
+    daemonProcess.on('error', (err) => {
+      console.error('[PC-Agent] Daemon spawn error:', err)
+      daemonProcess = null
+      reject(err)
+    })
+    
+    // Timeout: if daemon doesn't respond within 15s, reject
+    setTimeout(() => {
+      if (!daemonReady) {
+        reject(new Error('Daemon startup timeout'))
+      }
+    }, 15000)
+  })
+}
+
+function stopDaemon() {
+  if (daemonProcess && !daemonProcess.killed) {
+    try {
+      daemonProcess.stdin.write(JSON.stringify({ cmd: 'exit' }) + '\n')
+    } catch (e) {}
+    setTimeout(() => {
+      if (daemonProcess && !daemonProcess.killed) {
+        try { daemonProcess.kill() } catch (e) {}
+      }
+      daemonProcess = null
+      daemonReady = false
+    }, 1000)
+  }
+}
+
+function sendCommand(cmd) {
+  return new Promise((resolve, reject) => {
+    if (!daemonProcess || daemonProcess.killed || !daemonReady) {
+      resolve(JSON.stringify({ status: 'error', message: 'Daemon not running' }))
+      return
+    }
+    
+    if (isStopActive()) {
+      resolve(JSON.stringify({
+        status: 'stopped_by_user',
+        message: `PC automation stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`,
+        user_message: lastStopReason || 'User pressed Ctrl+S / Stop button',
+        action: 'os-ask'
+      }))
+      return
+    }
+    
+    pendingResolve = resolve
+    try {
+      daemonProcess.stdin.write(JSON.stringify(cmd) + '\n')
+    } catch (err) {
+      pendingResolve = null
+      resolve(JSON.stringify({ status: 'error', message: 'Failed to write to daemon: ' + err.message }))
+    }
+    
+    // Timeout: 30s per command
+    setTimeout(() => {
+      if (pendingResolve === resolve) {
+        pendingResolve = null
+        resolve(JSON.stringify({ status: 'error', message: 'Command timeout (30s)' }))
+      }
+    }, 30000)
+  })
+}
+
+function isDaemonAlive() {
+  return daemonProcess && !daemonProcess.killed && daemonReady
+}
+
 /**
- * Run a PowerShell script from pc-agent-scripts
+ * Run a PowerShell script from pc-agent-scripts as fallback
  */
-function runScript(scriptName, args = []) {
+function runScriptFallback(scriptName, args = []) {
   return new Promise((resolve) => {
     let scriptPath = join(__dirname, '../../src/main/pc-agent-scripts', scriptName)
     if (app.isPackaged) {
@@ -509,7 +686,7 @@ function runScript(scriptName, args = []) {
 /**
  * Read the active desktop GUI elements (UIAutomation with OCR fallback)
  */
-export async function readDesktop() {
+export async function readDesktop(options = {}) {
   if (!isSessionOpen) {
     return {
       window: 'error',
@@ -525,8 +702,20 @@ export async function readDesktop() {
     isStoppedByUser = false
   }
   showPCOverlay()
+  
+  if (!stateChanged && lastReadResult && (Date.now() - lastReadTimestamp < CACHE_TTL)) {
+    scheduleHidePCOverlay()
+    return { ...lastReadResult, method: 'cached' }
+  }
+
   try {
-    const uiText = await runScript('read-ui.ps1')
+    let uiText = ''
+    if (isDaemonAlive()) {
+      uiText = await sendCommand({ cmd: 'read-ui', maxElements: options.maxElements || 300, roles: options.roles })
+    } else {
+      uiText = await runScriptFallback('read-ui.ps1')
+    }
+
     let parsed = null
     if (uiText) {
       try {
@@ -541,7 +730,12 @@ export async function readDesktop() {
       console.log(
         '[PC-Agent] UIAutomation returned 0 elements. Executing local WinRT OCR fallback...'
       )
-      const ocrText = await runScript('ocr-region.ps1')
+      let ocrText = ''
+      if (isDaemonAlive()) {
+        ocrText = await sendCommand({ cmd: 'ocr' })
+      } else {
+        ocrText = await runScriptFallback('ocr-region.ps1')
+      }
       if (ocrText) {
         try {
           parsed = JSON.parse(ocrText)
@@ -551,6 +745,8 @@ export async function readDesktop() {
 
     if (parsed && parsed.elements) {
       lastReadResult = parsed
+      lastReadTimestamp = Date.now()
+      stateChanged = false
     } else {
       parsed = { window: 'unknown', method: 'none', elements: [], element_count: 0 }
     }
@@ -608,14 +804,21 @@ export async function executeClick(query) {
     scheduleHidePCOverlay()
     return `[PC-Agent] Error: Element ID or coordinates '${query}' not found. Try os-read first.`
   }
-  const result = await runScript('win-action.ps1', [
-    '-Action',
-    'click',
-    '-X',
-    coords.x.toString(),
-    '-Y',
-    coords.y.toString()
-  ])
+  
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'click', x: coords.x, y: coords.y })
+  } else {
+    result = await runScriptFallback('win-action.ps1', [
+      '-Action',
+      'click',
+      '-X',
+      coords.x.toString(),
+      '-Y',
+      coords.y.toString()
+    ])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Clicked at (${coords.x}, ${coords.y}). ${result}`
 }
@@ -643,17 +846,27 @@ export async function executeType(query) {
 
   // If element ID was provided, click it first to focus
   if (coords) {
-    await runScript('win-action.ps1', [
-      '-Action',
-      'click',
-      '-X',
-      coords.x.toString(),
-      '-Y',
-      coords.y.toString()
-    ])
+    if (isDaemonAlive()) {
+      await sendCommand({ cmd: 'click', x: coords.x, y: coords.y })
+    } else {
+      await runScriptFallback('win-action.ps1', [
+        '-Action',
+        'click',
+        '-X',
+        coords.x.toString(),
+        '-Y',
+        coords.y.toString()
+      ])
+    }
   }
 
-  const result = await runScript('win-action.ps1', ['-Action', 'type', '-Text', text])
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'type', text })
+  } else {
+    result = await runScriptFallback('win-action.ps1', ['-Action', 'type', '-Text', text])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Typed "${text}". ${result}`
 }
@@ -669,7 +882,13 @@ export async function executeKey(combo) {
     return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
-  const result = await runScript('win-action.ps1', ['-Action', 'key', '-Combo', combo])
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'key', combo })
+  } else {
+    result = await runScriptFallback('win-action.ps1', ['-Action', 'key', '-Combo', combo])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Pressed key combo "${combo}". ${result}`
 }
@@ -695,14 +914,21 @@ export async function executeScroll(query) {
   } else if (query) {
     direction = query.trim().toLowerCase()
   }
-  const result = await runScript('win-action.ps1', [
-    '-Action',
-    'scroll',
-    '-Direction',
-    direction,
-    '-Amount',
-    amount.toString()
-  ])
+  
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'scroll', direction, amount })
+  } else {
+    result = await runScriptFallback('win-action.ps1', [
+      '-Action',
+      'scroll',
+      '-Direction',
+      direction,
+      '-Amount',
+      amount.toString()
+    ])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Scrolled ${direction} by ${amount}. ${result}`
 }
@@ -718,7 +944,13 @@ export async function openApp(target) {
     return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
-  const result = await runScript('win-action.ps1', ['-Action', 'open', '-Target', target])
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'open', target })
+  } else {
+    result = await runScriptFallback('win-action.ps1', ['-Action', 'open', '-Target', target])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Opened application "${target}". ${result}`
 }
@@ -740,7 +972,12 @@ export async function listWindows() {
     return { status: 'stopped_by_user', windows: [], count: 0, message: lastStopReason }
   }
   showPCOverlay()
-  const result = await runScript('win-action.ps1', ['-Action', 'list-windows'])
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'list-windows' })
+  } else {
+    result = await runScriptFallback('win-action.ps1', ['-Action', 'list-windows'])
+  }
   scheduleHidePCOverlay()
   try {
     const parsed = JSON.parse(result)
@@ -761,7 +998,13 @@ export async function focusWindow(title) {
     return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }
   showPCOverlay()
-  const result = await runScript('win-action.ps1', ['-Action', 'focus-window', '-Target', title])
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'focus-window', title })
+  } else {
+    result = await runScriptFallback('win-action.ps1', ['-Action', 'focus-window', '-Target', title])
+  }
+  stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Focus window "${title}". ${result}`
 }

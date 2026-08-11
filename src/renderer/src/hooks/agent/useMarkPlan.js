@@ -474,10 +474,81 @@ export const useMarkPlan = ({
         }
 
         // --- OPSI B: AI mau EKSEKUSI TOOL (action ada) → LANJUT LOOP ---
-        if (decision.action && decision.action.tool) {
+        if (decision.action && (decision.action.tool || Array.isArray(decision.action))) {
+          // --- BATCH ACTION SUPPORT ---
+          if (Array.isArray(decision.action)) {
+            const batchActions = decision.action
+            const batchResults = []
+            
+            // Push initial batch step to ProcessPanel
+            for (let i = 0; i < batchActions.length; i++) {
+              execSteps.push({ task: `Batch [${i + 1}/${batchActions.length}] ${batchActions[i]?.tool || '?'}`, query: batchActions[i]?.query || '' })
+            }
+            pushProcess({
+              id: agenticProcessId,
+              type: 'planning',
+              status: 'active',
+              data: {
+                steps: [...execSteps],
+                currentStep: execSteps.length - batchActions.length,
+                reasoning: decision.thought || `Menjalankan ${batchActions.length} aksi sekaligus`
+              }
+            })
+
+            for (let i = 0; i < batchActions.length; i++) {
+              const batchTool = batchActions[i]?.tool
+              const batchQuery = batchActions[i]?.query || ''
+              
+              if (!batchTool) continue
+              
+              // Check abort
+              if (abortControllerRef.current.signal.aborted) break
+
+              // Update ProcessPanel progress for current sub-action
+              pushProcess({
+                id: agenticProcessId,
+                type: 'planning',
+                status: 'active',
+                data: {
+                  steps: [...execSteps],
+                  currentStep: execSteps.length - batchActions.length + i,
+                  reasoning: decision.thought || `Menjalankan ${batchTool} [${i + 1}/${batchActions.length}]`
+                }
+              })
+              
+              // Execute each action through the native tool system
+              try {
+                const res = await window.api.executeNativeTool(batchTool, batchQuery)
+                if (res.success) {
+                  const resultStr = typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+                  batchResults.push(`[${batchTool}] ${resultStr}`)
+                } else {
+                  batchResults.push(`[${batchTool} ERROR] ${res.error}`)
+                }
+              } catch (err) {
+                batchResults.push(`[${batchTool} ERROR] ${err.message}`)
+              }
+            }
+            
+            const resultString = `[BATCH ${batchActions.length} actions]\n${batchResults.join('\n')}`
+            
+            // Feed observation back
+            let obsStr = resultString
+            if (resultString.length > 3000) {
+              obsStr = resultString.slice(0, 3000) + `\n\n[SISA OUTPUT DIPOTONG (Total: ${resultString.length} karakter)]`
+            }
+            
+            loopMessages.push(
+              { role: 'assistant', content: JSON.stringify({ thought: decision.thought, action: decision.action }) },
+              { role: 'user', content: `[OBSERVATION] Hasil eksekusi batch ${batchActions.length} tools: ${obsStr}` }
+            )
+            
+            continue
+          }
+          // --- END BATCH ACTION SUPPORT ---
+
           const tool = decision.action.tool
           const query = decision.action.query || ''
-
           lastActionTool = tool
           lastActionQuery = query
 
