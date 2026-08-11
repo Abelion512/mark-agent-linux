@@ -475,14 +475,13 @@ export const useMarkPlan = ({
 
         // --- OPSI B: AI mau EKSEKUSI TOOL (action ada) → LANJUT LOOP ---
         if (decision.action && (decision.action.tool || Array.isArray(decision.action))) {
-          // --- BATCH ACTION SUPPORT ---
-          if (Array.isArray(decision.action)) {
-            const batchActions = decision.action
-            const batchResults = []
-            
-            // Push initial batch step to ProcessPanel
-            for (let i = 0; i < batchActions.length; i++) {
-              execSteps.push({ task: `Batch [${i + 1}/${batchActions.length}] ${batchActions[i]?.tool || '?'}`, query: batchActions[i]?.query || '' })
+          const actionList = Array.isArray(decision.action) ? decision.action : [decision.action]
+          const isBatch = actionList.length > 1
+          const batchResults = []
+          
+          if (isBatch) {
+            for (let i = 0; i < actionList.length; i++) {
+              execSteps.push({ task: `Batch [${i + 1}/${actionList.length}] ${actionList[i]?.tool || '?'}`, query: actionList[i]?.query || '' })
             }
             pushProcess({
               id: agenticProcessId,
@@ -490,90 +489,55 @@ export const useMarkPlan = ({
               status: 'active',
               data: {
                 steps: [...execSteps],
-                currentStep: execSteps.length - batchActions.length,
-                reasoning: decision.thought || `Menjalankan ${batchActions.length} aksi sekaligus`
+                currentStep: execSteps.length - actionList.length,
+                reasoning: decision.thought || `Menjalankan ${actionList.length} aksi sekaligus`
               }
             })
-
-            for (let i = 0; i < batchActions.length; i++) {
-              const batchTool = batchActions[i]?.tool
-              const batchQuery = batchActions[i]?.query || ''
-              
-              if (!batchTool) continue
-              
-              // Check abort
-              if (abortControllerRef.current.signal.aborted) break
-
-              // Update ProcessPanel progress for current sub-action
+          }
+          
+          for (let actionIdx = 0; actionIdx < actionList.length; actionIdx++) {
+            const tool = actionList[actionIdx].tool
+            const query = actionList[actionIdx].query || ''
+            
+            if (!tool) continue
+            if (abortControllerRef.current.signal.aborted) break
+            
+            lastActionTool = tool
+            lastActionQuery = query
+            
+            if (isBatch) {
               pushProcess({
                 id: agenticProcessId,
                 type: 'planning',
                 status: 'active',
                 data: {
                   steps: [...execSteps],
-                  currentStep: execSteps.length - batchActions.length + i,
-                  reasoning: decision.thought || `Menjalankan ${batchTool} [${i + 1}/${batchActions.length}]`
+                  currentStep: execSteps.length - actionList.length + actionIdx,
+                  reasoning: decision.thought || `Menjalankan ${tool} [${actionIdx + 1}/${actionList.length}]`
                 }
               })
-              
-              // Execute each action through the native tool system
-              try {
-                const res = await window.api.executeNativeTool(batchTool, batchQuery)
-                if (res.success) {
-                  const resultStr = typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
-                  batchResults.push(`[${batchTool}] ${resultStr}`)
-                } else {
-                  batchResults.push(`[${batchTool} ERROR] ${res.error}`)
+            } else {
+              execSteps.push({ task: `Eksekusi ${tool}`, query: query })
+              pushProcess({
+                id: agenticProcessId,
+                type: 'planning',
+                status: 'active',
+                data: {
+                  steps: [...execSteps],
+                  currentStep: execSteps.length - 1,
+                  reasoning: decision.thought || `Menjalankan ${tool}`
                 }
-              } catch (err) {
-                batchResults.push(`[${batchTool} ERROR] ${err.message}`)
-              }
+              })
             }
-            
-            const resultString = `[BATCH ${batchActions.length} actions]\n${batchResults.join('\n')}`
-            
-            // Feed observation back
-            let obsStr = resultString
-            if (resultString.length > 3000) {
-              obsStr = resultString.slice(0, 3000) + `\n\n[SISA OUTPUT DIPOTONG (Total: ${resultString.length} karakter)]`
-            }
-            
-            loopMessages.push(
-              { role: 'assistant', content: JSON.stringify({ thought: decision.thought, action: decision.action }) },
-              { role: 'user', content: `[OBSERVATION] Hasil eksekusi batch ${batchActions.length} tools: ${obsStr}` }
-            )
-            
-            continue
-          }
-          // --- END BATCH ACTION SUPPORT ---
 
-          const tool = decision.action.tool
-          const query = decision.action.query || ''
-          lastActionTool = tool
-          lastActionQuery = query
+            setChatData((prev) => {
+              const filtered = prev.filter((item) => !item.isThinking)
+              let loadingText = (isAutonomous && autonomousInitialMessage) ? autonomousInitialMessage : 'Bentar, mikir dlu...'
+              return [...filtered, { role: 'ai', content: loadingText, isThinking: true }]
+            })
 
-          // Add to hologram plan
-          execSteps.push({ task: `Eksekusi ${tool}`, query: query })
-          pushProcess({
-            id: agenticProcessId,
-            type: 'planning',
-            status: 'active',
-            data: {
-              steps: [...execSteps],
-              currentStep: execSteps.length - 1,
-              reasoning: decision.thought || `Menjalankan ${tool}`
-            }
-          })
-
-          // Update UI
-          setChatData((prev) => {
-            const filtered = prev.filter((item) => !item.isThinking)
-            let loadingText = (isAutonomous && autonomousInitialMessage) ? autonomousInitialMessage : 'Bentar, mikir dlu...'
-            return [...filtered, { role: 'ai', content: loadingText, isThinking: true }]
-          })
-
-          // ========== EXECUTE TOOL ==========
-          let resultString = 'Tidak ada hasil.'
+            // ========== EXECUTE TOOL ==========
+            let resultString = 'Tidak ada hasil.'
 
           try {
             if (tool === 'yt-search') {
@@ -902,24 +866,39 @@ export const useMarkPlan = ({
                 : resultString
           })
 
-          // --- FEED OBSERVATION BACK KE AI ---
-          let obsStr = resultString
-          if (typeof resultString === 'string' && resultString.length > 3000) {
-            obsStr = `${resultString.slice(0, 3000)}\n\n[SISA OUTPUT DIPOTONG (Total: ${resultString.length} karakter). Gunakan startLine||endLine atau grep-search untuk mencari bagian spesifik.]`
-          }
-
-          loopMessages.push(
-            {
-              role: 'assistant',
-              content: JSON.stringify({ thought: decision.thought, action: decision.action })
-            },
-            {
-              role: 'user',
-              content: `[OBSERVATION] Hasil eksekusi tool "${tool}": ${obsStr}`
+          if (isBatch) {
+            batchResults.push(`[${tool}] ${resultString}`)
+          } else {
+            let obsStr = resultString
+            if (typeof resultString === 'string' && resultString.length > 3000) {
+              obsStr = `${resultString.slice(0, 3000)}\n\n[SISA OUTPUT DIPOTONG (Total: ${resultString.length} karakter). Gunakan startLine||endLine atau grep-search untuk mencari bagian spesifik.]`
             }
+            loopMessages.push(
+              {
+                role: 'assistant',
+                content: JSON.stringify({ thought: decision.thought, action: decision.action })
+              },
+              {
+                role: 'user',
+                content: `[OBSERVATION] Hasil eksekusi tool "${tool}": ${obsStr}`
+              }
+            )
+          }
+        }
+        
+        if (isBatch) {
+          const combinedResult = `[BATCH ${actionList.length} actions]\n${batchResults.join('\n')}`
+          let obsStr = combinedResult
+          if (combinedResult.length > 3000) {
+             obsStr = combinedResult.slice(0, 3000) + `\n\n[SISA OUTPUT DIPOTONG (Total: ${combinedResult.length} karakter)]`
+          }
+          loopMessages.push(
+            { role: 'assistant', content: JSON.stringify({ thought: decision.thought, action: decision.action }) },
+            { role: 'user', content: `[OBSERVATION] Hasil eksekusi batch ${actionList.length} tools: ${obsStr}` }
           )
+        }
 
-          continue
+        continue
         }
 
         // --- FALLBACK: Jika AI tidak mengisi action maupun answer ---
