@@ -46,6 +46,8 @@ export const useMarkPlan = ({
     }
   }, [setChatData])
 
+  const activeTaskObjectiveRef = useRef(null)
+
   const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
   const isImagePath = (filePath = '') => {
     const ext = filePath.split('.').pop().toLowerCase()
@@ -320,7 +322,7 @@ export const useMarkPlan = ({
           unifiedContext,
           contextMsgStr,
           activeTopic,
-          { ...options, intentQuery: searchQuery, tgContext, currentMusicTrack }
+          { ...options, intentQuery: searchQuery, tgContext, currentMusicTrack, activeTaskObjective: activeTaskObjectiveRef.current }
         )
 
         if (options.disableTools) {
@@ -334,6 +336,13 @@ export const useMarkPlan = ({
         }
 
         lastDecision = decision
+        
+        // --- Update Task Status ---
+        if (decision.task_status === 'in_progress' && decision.objective) {
+          activeTaskObjectiveRef.current = decision.objective
+        } else if (decision.task_status === 'done' || decision.task_status === 'simple') {
+          activeTaskObjectiveRef.current = null
+        }
 
         // --- Update active_topic jika ada ---
         if (decision.active_topic) {
