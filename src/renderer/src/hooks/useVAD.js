@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { transcribeAudioGroq } from '../api/groq'
-
 import { getAllConfig } from '../api/db'
 
 export const useVAD = ({
@@ -14,12 +13,11 @@ export const useVAD = ({
   const processorRef = useRef(null)
   const isSpeakingRef = useRef(false)
   const audioChunksRef = useRef([])
-  const silenceTimerRef = useRef(null)
   const isStartingRef = useRef(false)
   const isRecordingRef = useRef(false)
-  // ==========================================
-  // VAD & GROQ WHISPER RECORDING
-  // ==========================================
+  const silenceFramesRef = useRef(0)
+  const isProcessingSpeechRef = useRef(false)
+
   const stopVADCleanup = () => {
     if (processorRef.current) {
       processorRef.current.disconnect()
@@ -33,31 +31,77 @@ export const useVAD = ({
       streamRef.current.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current)
-    }
     isSpeakingRef.current = false
     audioChunksRef.current = []
     isRecordingRef.current = false
     setIsRecording(false)
     isStartingRef.current = false
+    silenceFramesRef.current = 0
+    isProcessingSpeechRef.current = false
+  }
+
+  const finishSpeechAndTranscribe = () => {
+    if (isProcessingSpeechRef.current) return
+    isProcessingSpeechRef.current = true
+
+    const totalLength = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
+    if (totalLength < 8000) {
+      stopVADCleanup()
+      return
+    }
+
+    const merged = new Float32Array(totalLength)
+    let offset = 0
+    for (let arr of audioChunksRef.current) {
+      merged.set(arr, offset)
+      offset += arr.length
+    }
+
+    // Trim trailing silence (~1.5s = 24000 samples at 16kHz) to avoid Whisper hallucinations
+    const trimLength = Math.max(8000, merged.length - 24000)
+    const trimmedAudio = merged.subarray(0, trimLength)
+
+    stopVADCleanup()
+
+    transcribeAudioGroq(trimmedAudio)
+      .then((text) => {
+        if (text && text.trim() !== '') {
+          onTranscript(text.trim())
+        }
+      })
+      .catch((err) => {
+        console.error('[VAD] Groq Error:', err)
+        if (err.message && err.message.includes('Key')) {
+          setToastMessage(err.message)
+          setTimeout(() => setToastMessage(''), 5000)
+        }
+      })
   }
 
   const startVADRecording = async () => {
     if (isStartingRef.current || isRecordingRef.current) return
     isStartingRef.current = true
 
+    let isActive = true
+    const currentStopVAD = stopVADCleanup
+
     try {
       stopVADCleanup()
-      
+      isStartingRef.current = true
+
       const config = await getAllConfig()
+      if (!isActive || !isStartingRef.current) return
+
       const micId = config[0]?.micDeviceId
       const constraints = {
-        audio: micId && micId !== 'default' 
-          ? { deviceId: { exact: micId } } 
-          : true
+        audio: micId && micId !== 'default' ? { deviceId: { exact: micId } } : true
       }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      if (!isActive || !isStartingRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+
       streamRef.current = stream
 
       const AudioContext = window.AudioContext || window.webkitAudioContext
@@ -77,101 +121,56 @@ export const useVAD = ({
 
       isRecordingRef.current = true
       setIsRecording(true)
+      silenceFramesRef.current = 0
+
+      // Each buffer is 4096 samples at 16000Hz = 0.256s (256ms)
+      // 6 frames silence = ~1.5s silence
+      const MAX_SILENCE_FRAMES = 6
+      const RMS_THRESHOLD = 0.018 // Slightly higher threshold to ignore background laptop fan/mic noise
 
       processor.onaudioprocess = (e) => {
-        if (window.isMarkSpeaking) return
+        if (window.isMarkSpeaking || isProcessingSpeechRef.current) return
 
         const input = e.inputBuffer.getChannelData(0)
         let sum = 0
         for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
         const rms = Math.sqrt(sum / input.length)
 
-        if (rms > 0.015) {
+        if (rms > RMS_THRESHOLD) {
           if (!isSpeakingRef.current) {
             isSpeakingRef.current = true
             audioChunksRef.current = []
           }
-          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-          
-          silenceTimerRef.current = setTimeout(() => {
-            isSpeakingRef.current = false
-            
-            const totalLength = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
-            if (totalLength < 8000) {
-               stopVADCleanup()
-               // Restart VAD silently if too short
-               setTimeout(() => startVADRecording(), 300)
-               return
-            }
-            
-            const merged = new Float32Array(totalLength)
-            let offset = 0
-            for (let arr of audioChunksRef.current) {
-              merged.set(arr, offset)
-              offset += arr.length
-            }
-            
-            // Buang 1.5 detik keheningan di akhir (1.5 * 16000 = 24000 samples)
-            // Biar Whisper nggak halusinasi nyetak huruf berulang ("AAR AAR", "OI MI MAI") gara-gara denger desis kosong.
-            const trimLength = Math.max(8000, merged.length - 24000)
-            const trimmedAudio = merged.subarray(0, trimLength)
-            
-            stopVADCleanup()
-            
-            // Send to Groq
-            transcribeAudioGroq(trimmedAudio)
-              .then(text => {
-                if (text && text.trim() !== '') {
-                  onTranscript(text.trim())
-                }
-              })
-              .catch(err => {
-                console.error('Groq Error:', err)
-                if (err.message.includes('Key')) {
-                  setToastMessage(err.message)
-                  setTimeout(() => setToastMessage(''), 5000)
-                }
-              })
-            
-          }, 2000) // 2 detik diam = otomatis cut
-        }
-
-        if (isSpeakingRef.current) {
+          silenceFramesRef.current = 0
           audioChunksRef.current.push(new Float32Array(input))
+        } else if (isSpeakingRef.current) {
+          // Push low audio chunk so end of word isn't clipped
+          audioChunksRef.current.push(new Float32Array(input))
+          silenceFramesRef.current += 1
+
+          // Total recording length check (hard max 15 seconds)
+          const totalSamples = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
+          if (silenceFramesRef.current >= MAX_SILENCE_FRAMES || totalSamples >= 240000) {
+            finishSpeechAndTranscribe()
+          }
         }
       }
       isStartingRef.current = false
     } catch (error) {
-      console.error('Error starting mic:', error)
-      stopVADCleanup()
+      console.error('[VAD] Error starting mic:', error)
+      currentStopVAD()
       setToastMessage('Gagal mengakses mikrofon.')
       setTimeout(() => setToastMessage(''), 5000)
     }
   }
 
+  useEffect(() => {
+    window.isVADRecording = isRecording
+  }, [isRecording])
+
   const toggleRecording = () => {
-    // Override manual: If it's already recording, we can force-stop and send it immediately
     if (isRecordingRef.current) {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-      const totalLength = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
-      if (totalLength >= 8000) {
-        const merged = new Float32Array(totalLength)
-        let offset = 0
-        for (let arr of audioChunksRef.current) {
-          merged.set(arr, offset)
-          offset += arr.length
-        }
-        stopVADCleanup()
-        transcribeAudioGroq(merged)
-          .then(text => {
-            if (text && text.trim() !== '') onTranscript(text.trim())
-          })
-          .catch(e => {
-            console.error(e)
-          })
-      } else {
-        stopVADCleanup()
-      }
+      finishSpeechAndTranscribe()
     } else {
       startVADRecording()
     }

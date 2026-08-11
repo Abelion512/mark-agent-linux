@@ -105,6 +105,20 @@ ipcMain.on('sync-config', (event, config) => {
     console.log('[Main] Auto-starting Telegram Bot from synced config...')
     startTelegramBot(config.tgBotToken.trim(), mainWindow)
   }
+  
+  // Re-register global shortcut dynamically
+  const shortcut = config?.shortcutKey || 'CommandOrControl+Alt+M'
+  globalShortcut.unregisterAll()
+  try {
+    globalShortcut.register(shortcut, () => {
+      if (mainWindow) {
+        mainWindow.show()
+        mainWindow.webContents.send('trigger-live-audio')
+      }
+    })
+  } catch (err) {
+    console.error('[Main] Failed to register shortcut:', err)
+  }
 })
 
 // --- NATIVE TOOLS IPC ---

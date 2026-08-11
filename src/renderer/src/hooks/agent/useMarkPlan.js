@@ -192,9 +192,9 @@ export const useMarkPlan = ({
 
       const allMemory = await getAllMemory()
       let searchQuery = userInput
-      if (chatSession.length > 0) {
+      if (chatSession.length > 1) {
         const lastMsg = chatSession[chatSession.length - 2]
-        if (lastMsg.role === 'assistant' && lastMsg.content) {
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content) {
           let lastAiText = lastMsg.content
           // Jika teks terlalu panjang, ambil awal dan akhirnya saja biar konteks awal (seperti judul lagu) gak hilang
           if (lastAiText.length > 600) {
