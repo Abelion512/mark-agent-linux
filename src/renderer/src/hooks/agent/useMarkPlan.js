@@ -268,7 +268,6 @@ export const useMarkPlan = ({
       let allSources = []
       let lastActionTool = null
       let lastActionQuery = null
-      let duplicateActionCount = 0
       let lastToolExecution = null
       let executedToolsList = []
 

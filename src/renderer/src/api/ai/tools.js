@@ -1,5 +1,4 @@
 import { fetchAI, cleanAndParse } from './core'
-import { getCurrentTimeInfo } from './utils'
 
 export const getYoutubeSummary = async (url, data, signal) => {
   try {

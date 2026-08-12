@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { transcribeAudioGroq } from '../api/groq'
 import { getAllConfig } from '../api/db'
 

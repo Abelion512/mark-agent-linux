@@ -140,9 +140,9 @@ export const useMarkAgent = () => {
             }
           }
 
-          const lastUserMsg = [...chatData].reverse().find((m) => m.type === 'user' && typeof m.message === 'string')
-          if (lastUserMsg && lastUserMsg.message) {
-            const cleanMsg = lastUserMsg.message.replace(/\[.*?\]/g, '').trim()
+          const lastUserMsg = [...chatData].reverse().find((m) => m.role === 'user' && typeof m.content === 'string')
+          if (lastUserMsg && lastUserMsg.content) {
+            const cleanMsg = lastUserMsg.content.replace(/\[.*?\]/g, '').trim()
             if (cleanMsg && cleanMsg.length > 3) {
               topicContext = `\n[TOPIK TERAKHIR KALIAN DI RIWAYAT]: "${cleanMsg.slice(0, 100)}". PENTING: Topik obrolan terakhir ini adalah MASA LALU. JANGAN mengira pengguna MASIH atau SEDANG melakukan aktivitas/game tersebut sekarang! Jika ingin menyinggungnya, tanyakan secara lampau (contoh: "gimana main game/kerjaan kemarin?", bukan "masih main/kerja ya?").`
             }

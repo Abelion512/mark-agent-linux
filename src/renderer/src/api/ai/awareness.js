@@ -1,7 +1,6 @@
 import { fetchAI, cleanAndParse } from './core'
 import { getCurrentTimeInfo } from './utils'
-import { getRelationship } from '../db'
-import { getPersonaPrompt, getTraitContext } from './persona'
+import { getPersonaPrompt } from './persona'
 
 export const getAwarenessResponse = async (
   buffer,

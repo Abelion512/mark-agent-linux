@@ -1,5 +1,5 @@
 import { fetchAI, cleanAndParse } from './core'
-import { getAllConfig, getRelationship } from '../db'
+import { getAllConfig } from '../db'
 import { getCurrentTimeInfo } from './utils'
 import { generateVector, cosineSimilarity } from '../vectorMemory'
 import { getPersonaPrompt, getTraitContext } from './persona'

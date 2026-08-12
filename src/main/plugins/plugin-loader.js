@@ -195,4 +195,18 @@ export const initPluginIPC = () => {
       return { success: false, error: err.message }
     }
   })
+
+  ipcMain.handle('plugin:delete', async (event, pluginName) => {
+    try {
+      const pluginPath = path.join(getPluginsDir(), pluginName)
+      if (fs.existsSync(pluginPath)) {
+        fs.rmSync(pluginPath, { recursive: true, force: true })
+        await loadPlugins()
+        return { success: true }
+      }
+      return { success: false, error: 'Plugin tidak ditemukan' }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
 }

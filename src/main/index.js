@@ -12,13 +12,11 @@ import {
   Notification,
   desktopCapturer
 } from 'electron'
-import { join } from 'path'
 import path from 'path'
 import fs from 'fs'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { electronApp, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.ico?asset'
 import { fetchTranscript } from 'youtube-transcript-plus'
-import { url } from 'inspector'
 import yts from 'yt-search'
 import YTMusic from 'ytmusic-api'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
@@ -52,7 +50,7 @@ function createWindow() {
     autoHideMenuBar: true,
     icon: icon,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.js'),
       webviewTag: true,
       sandbox: false,
       webSecurity: false,
@@ -77,7 +75,7 @@ function createWindow() {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
   // Sembunyikan window saat tombol close diklik (masuk tray)

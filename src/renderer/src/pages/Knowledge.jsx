@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ingestDocument } from '../api/ragPipeline'
 import { getAllDocuments, deleteDocumentByName } from '../api/db'
 import { deleteDocumentFromOrama } from '../api/oramaStore'

@@ -1,5 +1,4 @@
 import { getAllConfig } from '../db'
-import { marked } from 'marked'
 
 export const getCurrentTimeInfo = (dateObj = new Date()) => {
   const options = {

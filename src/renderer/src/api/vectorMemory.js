@@ -1,5 +1,4 @@
 import { pipeline, env } from '@huggingface/transformers';
-import { getAllConfig, getAllMemory, db } from './db';
 
 env.allowLocalModels = false;
 

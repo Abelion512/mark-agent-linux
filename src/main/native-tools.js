@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
 import util from 'util'
-import { searchDocumentWithOrama } from '../renderer/src/api/oramaStore.js'
 import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agent.js'
 import {
   readDesktop,
@@ -260,19 +259,12 @@ export const NATIVE_TOOLS = {
           }
 
           // 2b. Orama Semantic Vector Search
+          // Orama search berjalan di Renderer process, tidak bisa diakses dari Main
           let oramaText = ''
           try {
-            const oramaHits = await searchDocumentWithOrama(cleanText, searchQuery, 5)
-            if (oramaHits && oramaHits.length > 0) {
-              oramaText = oramaHits
-                .map(
-                  (h, i) =>
-                    `[Orama Vector Match #${i + 1} (Score: ${h.score.toFixed(2)})]\n${h.content}`
-                )
-                .join('\n\n---\n\n')
-            }
+            oramaText = ''
           } catch (oramaErr) {
-            console.error('[native-tools] Gagal Orama search untuk read-document:', oramaErr)
+            // Silently skip
           }
 
           let combinedContent = ''
@@ -558,7 +550,6 @@ export const NATIVE_TOOLS = {
   'browser-close': {
     handler: async () => {
       try {
-        const { closeBrowser } = await import('./browser-agent.js')
         const result = await closeBrowser()
         return { success: true, data: result }
       } catch (e) {

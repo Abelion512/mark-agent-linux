@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf'
-import { app, ipcMain, Notification } from 'electron'
+import { app, ipcMain } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import yts from 'yt-search'
