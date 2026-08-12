@@ -53,9 +53,11 @@ export const fetchAI = async (
     const conf = config || globalConfig
 
     if (conf.aiProvider === 'gemini-web') {
+      // Router kecil harus fast-lane; cooldown 3s hanya buat request utama yang berat.
+      const shouldThrottleCloud = !isSmallTask
       const now = Date.now()
       const timeSinceLast = now - lastCloudFetchTime
-      if (timeSinceLast < CLOUD_DELAY_MS) {
+      if (shouldThrottleCloud && timeSinceLast < CLOUD_DELAY_MS) {
         const waitMs = CLOUD_DELAY_MS - timeSinceLast
         onStatus?.(`Rate limit protection: menunggu ${Math.ceil(waitMs / 1000)}s...`)
         const generationAtWait = abortGeneration
@@ -72,7 +74,9 @@ export const fetchAI = async (
           setTimeout(finish, waitMs + 10)
         })
       }
-      lastCloudFetchTime = Date.now()
+      if (shouldThrottleCloud) {
+        lastCloudFetchTime = Date.now()
+      }
 
       let workMessages = messages.map((m) => ({ ...m }))
 

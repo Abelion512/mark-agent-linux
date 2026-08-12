@@ -3,6 +3,25 @@ import { getMainThread } from '../../api/db';
 import { FaTimes, FaCommentAlt } from 'react-icons/fa';
 import ResponseArea from './ResponseArea';
 
+const formatHistoryContent = (content) => {
+  if (typeof content === 'string') return content;
+  if (content == null) return '';
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (part?.type === 'text') return part.text || '';
+        if (part?.type === 'image_url') return '[Gambar]';
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return JSON.stringify(content);
+};
+
 const HistoryDrawer = ({ isOpen, onClose }) => {
   const [historyTurns, setHistoryTurns] = useState([]);
   const [selectedTurnId, setSelectedTurnId] = useState(null);
@@ -32,7 +51,7 @@ const HistoryDrawer = ({ isOpen, onClose }) => {
       const msg = data[i];
       if (msg.role === 'user') {
         if (currentTurn) turns.push(currentTurn);
-        currentTurn = { id: i, user: msg.content, ai: null };
+        currentTurn = { id: i, user: formatHistoryContent(msg.content), ai: null };
       } else if (msg.role === 'ai') {
         if (currentTurn && !currentTurn.ai) {
           currentTurn.ai = msg;
@@ -51,9 +70,10 @@ const HistoryDrawer = ({ isOpen, onClose }) => {
   const loadPreview = (turn) => {
     setSelectedTurnId(turn.id);
     if (turn.ai) {
+      const aiText = formatHistoryContent(turn.ai.content);
       setPreviewData({
-        text: turn.ai.content,
-        type: turn.ai.content?.length > 500 ? 'long' : 'short',
+        text: aiText,
+        type: aiText.length > 500 ? 'long' : 'short',
         sources: turn.ai.sources || [],
         reasoning: turn.ai.reasoning,
         pluginResult: turn.ai.pluginExecution,
@@ -104,7 +124,7 @@ const HistoryDrawer = ({ isOpen, onClose }) => {
             >
               <h3 className="font-medium text-white/90 truncate">{turn.user || 'Instruksi Tanpa Teks'}</h3>
               <p className="text-xs text-white/40 mt-1 line-clamp-2">
-                {turn.ai?.content?.substring(0, 100) || 'Belum ada balasan'}
+                {formatHistoryContent(turn.ai?.content).substring(0, 100) || 'Belum ada balasan'}
               </p>
             </button>
           ))}

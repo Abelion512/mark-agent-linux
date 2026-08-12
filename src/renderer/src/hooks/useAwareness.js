@@ -6,6 +6,48 @@ import { getAwarenessResponse } from '../api/ai/awareness'
 const CHECKIN_INTERVAL = 10 * 60 * 1000
 const INITIAL_DELAY = 60 * 1000
 
+const formatAwarenessContent = (content) => {
+  if (typeof content === 'string') return content
+  if (content == null) return ''
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part
+        if (part?.type === 'text') return part.text || ''
+        if (part?.type === 'image_url') return '[Gambar]'
+        return ''
+      })
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  return JSON.stringify(content)
+}
+
+const tokenizeForSimilarity = (text) => {
+  return new Set(
+    String(text || '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter((word) => word.length > 3)
+  )
+}
+
+const isSimilarAwarenessMessage = (message, recentMessages) => {
+  const incomingTokens = tokenizeForSimilarity(message)
+  if (incomingTokens.size < 4) return false
+
+  return recentMessages.some((item) => {
+    const previousTokens = tokenizeForSimilarity(formatAwarenessContent(item.content))
+    if (previousTokens.size < 4) return false
+
+    const shared = [...incomingTokens].filter((word) => previousTokens.has(word)).length
+    return shared / Math.min(incomingTokens.size, previousTokens.size) >= 0.45
+  })
+}
+
 export const useAwareness = ({
   isLoading,
   isAgentBusy,
@@ -87,6 +129,19 @@ export const useAwareness = ({
           currentMusicTrackRef.current
         )
         console.log('[useAwareness] AI Response:', result)
+
+        // Filter terakhir di UI layer: awareness tidak boleh memparafrase pesan terbaru.
+        const recentVisibleMessages = (chatDataRef.current || [])
+          .filter((m) => !m.isThinking && !m.isSearching && !m.isSummarizing)
+          .slice(-8)
+
+        if (
+          result.message &&
+          isSimilarAwarenessMessage(result.message, recentVisibleMessages)
+        ) {
+          console.log('[useAwareness] Skip check-in: message terlalu mirip dengan chat terbaru.')
+          return
+        }
 
         if (result.should_act || result.autonomous_prompt) {
           if (isLoadingRef.current) {
