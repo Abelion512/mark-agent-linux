@@ -62,11 +62,9 @@ const ProcessPanel = ({ processes, onDismiss }) => {
   return (
     <div className="fixed inset-0 pointer-events-none z-40">
       {renderedProcesses.map((proc, index) => {
-        // Spawn even indices on the right, odd indices on the left
-        const isRight = index % 2 === 0;
-        const sideIndex = Math.floor(index / 2);
-        const cascadeY = sideIndex * 40;
-        const cascadeX = sideIndex * 30;
+        // Spawn all on the left side
+        const cascadeY = index * 40;
+        const cascadeX = index * 30;
         
         if (proc.type === 'planning') {
           const { steps, currentStep, reasoning } = proc.data;
@@ -81,7 +79,7 @@ const ProcessPanel = ({ processes, onDismiss }) => {
               <DraggableHoloCard
                 id={proc.id}
                 title={isDone ? <><FaCheckCircle className="inline mr-1" /> Task Completed</> : isFailed ? <><FaBolt className="inline mr-1 text-error" /> Task Failed</> : isPaused ? <><FaBolt className="inline mr-1 text-warning" /> Task Paused</> : <><FaListUl className="inline mr-1" /> {executionTitle}</>}
-                defaultPosition={{ x: isRight ? window.innerWidth - 390 - cascadeX : 40 + cascadeX, y: 80 + cascadeY }}
+                defaultPosition={{ x: 40 + cascadeX, y: 80 + cascadeY }}
                 onClose={() => onDismiss(proc.id)}
                 isVisible={!proc.isExiting}
               >
@@ -146,7 +144,7 @@ const ProcessPanel = ({ processes, onDismiss }) => {
               <DraggableHoloCard
                 id={proc.id}
                 title={<><FaBolt className="inline mr-1" /> Plugin: {proc.data.action}</>}
-                defaultPosition={{ x: isRight ? window.innerWidth - 340 - cascadeX : 40 + cascadeX, y: 80 + cascadeY }}
+                defaultPosition={{ x: 40 + cascadeX, y: 80 + cascadeY }}
                 onClose={() => onDismiss(proc.id)}
                 isVisible={!proc.isExiting}
               >

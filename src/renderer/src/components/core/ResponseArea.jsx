@@ -141,9 +141,30 @@ const ResponseArea = ({ currentResponse }) => {
           <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
           
           <div className="text-center text-sm md:text-base font-mono leading-relaxed custom-markdown opacity-90">
-            <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {text}
-            </Markdown>
+            {displayResponse.isThinking ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-4">
+                <div className="relative w-12 h-12 flex items-center justify-center text-[var(--color-primary)]">
+                   <svg viewBox="0 0 50 50" className="w-full h-full animate-[spin_3s_linear_infinite]">
+                     <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="30 15" className="opacity-50" />
+                     <circle cx="25" cy="25" r="15" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="20 10" className="opacity-80 animate-[spin_2s_linear_infinite_reverse]" style={{ transformOrigin: 'center' }} />
+                   </svg>
+                   <FaLightbulb className="absolute animate-pulse" size={14} />
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-primary)] opacity-70 mb-2">{text !== 'Bentar, mikir dlu...' && text !== 'Memproses...' ? text : 'PROCESSING DATA...'}</div>
+                  <div className="flex gap-1.5">
+                    <span className="w-1 h-3 bg-[var(--color-primary)] opacity-80 animate-[music-bar_1s_ease-in-out_infinite]" />
+                    <span className="w-1 h-4 bg-[var(--color-primary)] opacity-80 animate-[music-bar_1.2s_ease-in-out_infinite]" style={{ animationDelay: '0.2s' }} />
+                    <span className="w-1 h-2 bg-[var(--color-primary)] opacity-80 animate-[music-bar_0.8s_ease-in-out_infinite]" style={{ animationDelay: '0.4s' }} />
+                    <span className="w-1 h-3 bg-[var(--color-primary)] opacity-80 animate-[music-bar_1.1s_ease-in-out_infinite]" style={{ animationDelay: '0.1s' }} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {text}
+              </Markdown>
+            )}
           </div>
         </div>
       </div>

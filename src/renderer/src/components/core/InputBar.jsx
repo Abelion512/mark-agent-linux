@@ -327,7 +327,12 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
           </button>
 
           {showEmojiPicker && (
-            <div className="absolute bottom-full left-0 mb-4 bg-[var(--glass-bg)] backdrop-blur-3xl border border-[var(--glass-border)] rounded-2xl p-2 shadow-2xl flex flex-wrap w-52 gap-1 z-[100] animate-[holo-project-in_0.2s_ease-out_forwards]">
+            <div className="absolute bottom-full left-0 mb-4 bg-[var(--glass-bg)] backdrop-blur-3xl border border-[var(--glass-border)] rounded-sm p-2 shadow-2xl flex flex-wrap w-52 gap-1 z-[100] animate-[holo-project-in_0.2s_ease-out_forwards]">
+              {/* HUD Brackets */}
+              <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-white/30 pointer-events-none z-10" />
+              <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-white/30 pointer-events-none z-10" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-white/30 pointer-events-none z-10" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-white/30 pointer-events-none z-10" />
               {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}

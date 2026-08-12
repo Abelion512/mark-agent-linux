@@ -80,17 +80,17 @@ const DraggableHoloCard = ({
       className={`fixed ${animationClass} ${dragClass} transition-transform duration-75`}
       style={{ left: pos.x, top: pos.y, width: 'fit-content' }}
     >
-      <div className="relative overflow-hidden rounded-2xl bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] shadow-[0_4px_30px_oklch(var(--p)/0.1)]">
+      <div className="relative overflow-hidden rounded-sm bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] shadow-[0_4px_30px_oklch(var(--p)/0.1)]">
         
         {/* Animated Border Flow (Top & Bottom) */}
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-[var(--color-holo-border)] bg-[length:200%_auto] animate-[holo-border-flow_3s_linear_infinite]" />
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--color-holo-border)] bg-[length:200%_auto] animate-[holo-border-flow_3s_linear_infinite] rotate-180" />
         
-        {/* Corner Accents */}
-        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-success rounded-tl-2xl opacity-50 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-success rounded-tr-2xl opacity-50 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-success rounded-bl-2xl opacity-50 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-success rounded-br-2xl opacity-50 pointer-events-none" />
+        {/* HUD Brackets */}
+        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30 pointer-events-none" />
 
         {/* Header / Drag Handle */}
         <div 

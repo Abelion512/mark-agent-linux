@@ -122,7 +122,8 @@ const MarkHome = () => {
           // It's a loading state, we might show a short text
           setCurrentResponse({
             text: lastItem.content || 'Memproses instruksi...',
-            type: 'short'
+            type: 'short',
+            isThinking: true
           })
         } else {
           // Final response
@@ -149,7 +150,8 @@ const MarkHome = () => {
         if (isLoading) {
           setCurrentResponse({
             text: 'Memproses...',
-            type: 'short'
+            type: 'short',
+            isThinking: true
           })
         } else {
           setCurrentResponse({
@@ -177,7 +179,6 @@ const MarkHome = () => {
       }
     }
   }
-
   const mood = currentResponse?.mood || 'neutral';
   let bgGlowColor = 'var(--color-primary)';
   if (orbStatus === 'error') {
@@ -239,106 +240,119 @@ const MarkHome = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex flex-col items-center w-full h-full px-4 pt-[15vh] pb-40 overflow-y-auto custom-scrollbar">
-        {/* The Orb & Neural Flow */}
-        <div className="relative flex items-center justify-center w-full max-w-3xl mt-10 mb-8 h-64">
-          
-          {/* Jarvis-Style Holographic HUD centered around Orb */}
-          <div className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none mix-blend-screen opacity-50 z-0">
-            <svg viewBox="0 0 500 500" className="w-[500px] h-[500px] absolute">
-               {/* Outer Ring */}
-               <circle cx="250" cy="250" r="230" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="2 10" className="origin-center animate-[spin-slow_40s_linear_infinite]" />
-               
-               {/* Middle Segmented Ring */}
-               <circle cx="250" cy="250" r="180" fill="none" stroke={bgGlowColor} strokeWidth="2" strokeDasharray="80 20 10 20" className="origin-center animate-[spin-slow-reverse_30s_linear_infinite]" />
-               
-               {/* Inner Ring */}
-               <circle cx="250" cy="250" r="140" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="5 15" className="origin-center animate-[spin-slow_20s_linear_infinite]" />
-               
-               {/* Solid Inner Border */}
-               <circle cx="250" cy="250" r="125" fill="none" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-50" />
+      <div className="relative z-10 flex flex-col md:flex-row w-full h-full px-4 lg:px-12 pb-[120px] overflow-hidden">
+        
+        {/* Left Panel: The Orb & Neural Flow (Fixed) */}
+        <div className="w-full md:w-1/2 h-[40vh] md:h-full flex flex-col items-center justify-center relative">
+          <div className="relative flex items-center justify-center w-full max-w-lg h-64 md:h-96">
+            
+            {/* Jarvis-Style Holographic HUD centered around Orb */}
+            <div className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none mix-blend-screen opacity-50 z-0 scale-125">
+              <svg viewBox="0 0 500 500" className="w-[500px] h-[500px] absolute">
+                 {/* Outer Ring */}
+                 <circle cx="250" cy="250" r="230" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="2 10" className="origin-center animate-[spin-slow_40s_linear_infinite]" />
+                 
+                 {/* Middle Segmented Ring */}
+                 <circle cx="250" cy="250" r="180" fill="none" stroke={bgGlowColor} strokeWidth="2" strokeDasharray="80 20 10 20" className="origin-center animate-[spin-slow-reverse_30s_linear_infinite]" />
+                 
+                 {/* Inner Ring */}
+                 <circle cx="250" cy="250" r="140" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="5 15" className="origin-center animate-[spin-slow_20s_linear_infinite]" />
+                 
+                 {/* Solid Inner Border */}
+                 <circle cx="250" cy="250" r="125" fill="none" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-50" />
 
-               {/* Crosshairs */}
-               <line x1="250" y1="0" x2="250" y2="110" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
-               <line x1="250" y1="390" x2="250" y2="500" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
-               <line x1="0" y1="250" x2="110" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
-               <line x1="390" y1="250" x2="500" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
-               
-               {/* Decorative Tech Nodes */}
-               <circle cx="250" cy="20" r="3" fill={bgGlowColor} />
-               <circle cx="250" cy="480" r="3" fill={bgGlowColor} />
-               <circle cx="20" cy="250" r="3" fill={bgGlowColor} />
-               <circle cx="480" cy="250" r="3" fill={bgGlowColor} />
-            </svg>
-          </div>
+                 {/* Crosshairs */}
+                 <line x1="250" y1="0" x2="250" y2="110" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="250" y1="390" x2="250" y2="500" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="0" y1="250" x2="110" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="390" y1="250" x2="500" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 
+                 {/* Decorative Tech Nodes */}
+                 <circle cx="250" cy="20" r="3" fill={bgGlowColor} />
+                 <circle cx="250" cy="480" r="3" fill={bgGlowColor} />
+                 <circle cx="20" cy="250" r="3" fill={bgGlowColor} />
+                 <circle cx="480" cy="250" r="3" fill={bgGlowColor} />
+              </svg>
+            </div>
 
-          <ThoughtNeuralFlow processes={activeProcesses} />
-          <div className="z-10 relative">
-            <OrbVisualizer
-              status={orbStatus}
-              intensity={0.5}
-              mood={currentResponse?.mood || 'neutral'}
-            />
+            <ThoughtNeuralFlow processes={activeProcesses} />
+            <div className="z-10 relative">
+              <OrbVisualizer
+                status={orbStatus}
+                intensity={0.5}
+                mood={currentResponse?.mood || 'neutral'}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Response Area */}
-        <div className="w-full max-w-4xl mt-8 flex flex-col items-center justify-center transition-all duration-500 ease-in-out">
-          {currentResponse && <ResponseArea currentResponse={currentResponse} />}
+        {/* Right Panel: Dynamic Response Area (Scrollable) */}
+        <div 
+          className="w-full md:w-1/2 h-full flex flex-col overflow-y-auto no-scrollbar md:pl-8 md:pr-4"
+          style={{ maskImage: 'linear-gradient(to bottom, transparent, black 3rem, black calc(100% - 3rem), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 3rem, black calc(100% - 3rem), transparent)' }}
+        >
+          <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-start transition-all duration-500 ease-in-out pt-[10vh] pb-20 min-h-full">
+            {currentResponse && <ResponseArea currentResponse={currentResponse} />}
 
-          {/* Centered Now Playing Info */}
-          {showMusicWidget && (
-            <div
-              className={`mt-8 flex flex-col items-center ${isMusicAnimatingOut ? 'animate-[holo-dismiss_0.5s_ease-in_forwards]' : 'animate-[holo-project-in_0.5s_ease-out_forwards]'}`}
-            >
-              <div className="relative group w-48 h-48 mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-primary/20">
-                {currentTrack.thumbnail ? (
-                  <img
-                    src={currentTrack.thumbnail}
-                    alt="Album Art"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e) => {
-                      e.target.onerror = null
-                      e.target.src = musicCoverFallback
-                    }}
-                  />
-                ) : (
-                  <img
-                    src={musicCoverFallback}
-                    alt="Default Album Art"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                )}
-                {/* Audio visualizer overlay */}
-                {isPlaying && (
-                  <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center pb-4 gap-1">
-                    <span
-                      className="w-1.5 h-4 bg-primary rounded-t-full animate-[music-bar_1s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.1s' }}
+            {/* Centered Now Playing Info */}
+            {showMusicWidget && (
+              <div
+                className={`mt-8 flex flex-col items-center ${isMusicAnimatingOut ? 'animate-[holo-dismiss_0.5s_ease-in_forwards]' : 'animate-[holo-project-in_0.5s_ease-out_forwards]'}`}
+              >
+                <div className="relative group w-48 h-48 mb-4 rounded-sm overflow-hidden border border-white/10 shadow-2xl shadow-primary/20">
+                  {/* HUD Brackets */}
+                  <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-white/30 pointer-events-none z-10" />
+                  {currentTrack.thumbnail ? (
+                    <img
+                      src={currentTrack.thumbnail}
+                      alt="Album Art"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.src = musicCoverFallback
+                      }}
                     />
-                    <span
-                      className="w-1.5 h-6 bg-primary rounded-t-full animate-[music-bar_1.2s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.3s' }}
+                  ) : (
+                    <img
+                      src={musicCoverFallback}
+                      alt="Default Album Art"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    <span
-                      className="w-1.5 h-3 bg-primary rounded-t-full animate-[music-bar_0.8s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.2s' }}
-                    />
-                    <span
-                      className="w-1.5 h-5 bg-primary rounded-t-full animate-[music-bar_1.1s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.4s' }}
-                    />
-                  </div>
-                )}
+                  )}
+                  {/* Audio visualizer overlay */}
+                  {isPlaying && (
+                    <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center pb-4 gap-1">
+                      <span
+                        className="w-1.5 h-4 bg-primary rounded-t-full animate-[music-bar_1s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.1s' }}
+                      />
+                      <span
+                        className="w-1.5 h-6 bg-primary rounded-t-full animate-[music-bar_1.2s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.3s' }}
+                      />
+                      <span
+                        className="w-1.5 h-3 bg-primary rounded-t-full animate-[music-bar_0.8s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.2s' }}
+                      />
+                      <span
+                        className="w-1.5 h-5 bg-primary rounded-t-full animate-[music-bar_1.1s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.4s' }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-white text-center max-w-md truncate">
+                  {currentTrack.title}
+                </h3>
+                <p className="text-sm text-white/50 text-center max-w-sm truncate mt-1">
+                  {currentTrack.artist}
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-white text-center max-w-md truncate">
-                {currentTrack.title}
-              </h3>
-              <p className="text-sm text-white/50 text-center max-w-sm truncate mt-1">
-                {currentTrack.artist}
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

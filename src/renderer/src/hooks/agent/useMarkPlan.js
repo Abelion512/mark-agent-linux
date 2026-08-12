@@ -718,7 +718,7 @@ export const useMarkPlan = ({
 
             setChatData((prev) => {
               const filtered = prev.filter((item) => !item.isThinking)
-              let loadingText = (isAutonomous && autonomousInitialMessage) ? autonomousInitialMessage : 'Bentar, mikir dlu...'
+              let loadingText = (isAutonomous && autonomousInitialMessage) ? autonomousInitialMessage : (decision.intermediate_answer || 'Bentar, mikir dlu...')
               return [...filtered, { role: 'ai', content: loadingText, isThinking: true }]
             })
 

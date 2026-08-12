@@ -293,6 +293,7 @@ Jangan pilih "durable" hanya karena user bilang "buat/create". Pilih "durable" j
 DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA BOLEH mengeluarkan tepat satu buah objek JSON murni. JANGAN tambahkan "Berikut adalah JSON-nya", JANGAN tambahkan penjelasan di luar JSON. Responsmu HARUS diawali dengan karakter "{" dan diakhiri dengan "}". Pelanggaran terhadap aturan ini akan merusak sistem!
 {
   "thought": "string (Alasan/logika keputusanmu, tidak ditampilkan ke user)",
+  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...') atau null",
   "suggested_mode": "direct|ephemeral|durable",
   "task_status": "simple|in_progress|done",
   "objective": "string (Tujuan akhir dari keseluruhan tugas, isi HANYA JIKA task_status='in_progress', jika tidak set null)",
