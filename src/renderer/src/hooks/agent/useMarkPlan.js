@@ -3,8 +3,7 @@ import { getNextAction } from '../../api/ai/planning'
 import { getYoutubeSummary } from '../../api/ai/tools'
 import { fetchAI } from '../../api/ai/core'
 import { playVoice, getCurrentTimeInfo } from '../../api/ai/utils'
-import { insertMemory, updateMemory, deleteMemory, getAllMemory } from '../../api/db'
-import { classifyTaskMode } from '../../api/ai/taskClassifier'
+import { deleteMemory, getAllMemory, insertMemory, updateMemory } from '../../api/db'
 import { createDurableTaskPlan } from '../../api/ai/taskPlanner'
 import { buildDurableStepCheckpoint } from '../../api/taskExecutor'
 import {
@@ -201,67 +200,8 @@ export const useMarkPlan = ({
   let durableTaskForRecovery = null
 
     try {
-      // STEP 1A: Router ringan menentukan apakah request tetap lewat loop lama atau dibuat jadi task persisten.
-      const shouldRouteTask = !tgContext && !isAutonomous && !isSystem && !options.disableTools
-      let taskRoute = null
       let durableTask = null
       let durableActiveStep = null
-
-      if (shouldRouteTask) {
-        taskRoute = await classifyTaskMode(userInput, {
-          signal: abortControllerRef.current.signal,
-          disableTools: options.disableTools,
-          isAutonomous,
-          isSystem
-        })
-
-        console.log('[useMarkPlan] task route:', taskRoute)
-
-        if (taskRoute.mode === 'durable') {
-          const durablePlan = await createDurableTaskPlan(
-            userInput,
-            taskRoute,
-            abortControllerRef.current.signal
-          )
-          // Semua artifact durable dipisah per task di Documents/Mark Tasks.
-          const documentsPath = await window.api.getDocumentsPath?.()
-          const artifactRoot = documentsPath
-            ? `${documentsPath.replace(/[\\/]$/, '')}/Mark Tasks/${Date.now()}`
-            : null
-          durableTask = await createAgentTask({
-            title: durablePlan.title,
-            objective: durablePlan.objective,
-            mode: 'durable',
-            constraints: durablePlan.constraints,
-            contextSummary: durablePlan.contextSummary,
-            artifactRoot,
-            steps: durablePlan.steps.map((step) => ({
-              id: step.id,
-              title: step.title,
-              objective: step.objective,
-              deliverable: step.deliverable,
-              acceptanceCriteria: step.acceptanceCriteria,
-              artifactPath: artifactRoot && step.artifactName
-                ? `${artifactRoot}/${step.artifactName}`
-                : null
-            }))
-          })
-          durableTaskForRecovery = durableTask
-          // Step pertama langsung ditandai running supaya checkpoint bisa disimpan saat jawaban final keluar.
-          durableActiveStep = await startAgentTaskStep(durableTask.id, durableTask.activeStepId)
-          activeTaskObjectiveRef.current = durableActiveStep?.objective || durableTask.objective
-          pushProcess({
-            id: agenticProcessId,
-            type: 'planning',
-            status: 'active',
-            data: {
-              steps: durablePlan.steps.map((step) => ({ task: step.title })),
-              currentStep: 0,
-              reasoning: `Durable task dibuat: ${taskRoute.reason}`
-            }
-          })
-        }
-      }
 
       // ========== STEP 2: AMBIL MEMORI & KONTEKS ==========
 
@@ -297,9 +237,6 @@ export const useMarkPlan = ({
         contextMsgStr += `[AWARENESS MODE]: Ini adalah pemikiran autonom-mu sendiri. Pesan terakhir di sesi ini BUKAN dari user, melainkan inisiatifmu sendiri. Saat memberikan 'answer' akhir ke user, berlakulah seolah-olah KAMU yang pertama kali membuka topik secara proaktif (misal: 'Eh, tadi gue iseng nyari info...'). JANGAN bertingkah seolah user yang menyuruhmu!\n`
       if (currentMusicTrack && currentMusicTrack.title) {
         contextMsgStr += `[STATUS SISTEM]: Sedang memutar "${currentMusicTrack.title}" oleh ${currentMusicTrack.artist}.\n`
-      }
-      if (taskRoute) {
-        contextMsgStr += `[TASK ROUTER]: mode=${taskRoute.mode}; confidence=${taskRoute.confidence}; reason=${taskRoute.reason}; estimatedSteps=${taskRoute.estimatedSteps}.\n`
       }
       if (durableTask) {
         contextMsgStr += `[DURABLE TASK CREATED]: id=${durableTask.id}; objective="${durableTask.objective}". Kerjakan step aktif pertama dan jangan menganggap seluruh task selesai sebelum semua step selesai.\n`
@@ -427,6 +364,56 @@ export const useMarkPlan = ({
         }
 
         lastDecision = decision
+        
+        // INTERCEPTOR: Jika AI menyarankan durable mode, stop ReAct dan alihkan ke planner
+        const suggestedMode = decision.suggested_mode || 'direct'
+        if (suggestedMode === 'durable' && !durableTask && !isAutonomous && !tgContext && !options.disableTools) {
+          console.log('[useMarkPlan] Interceptor triggered: mode=durable. Creating task plan...')
+          const taskRoute = { mode: 'durable', reason: decision.thought, estimatedSteps: 3, confidence: 1 }
+          const durablePlan = await createDurableTaskPlan(
+            userInput,
+            taskRoute,
+            abortControllerRef.current.signal
+          )
+          
+          const documentsPath = await window.api.getDocumentsPath?.()
+          const artifactRoot = documentsPath
+            ? `${documentsPath.replace(/[\\/]$/, '')}/Mark Tasks/${Date.now()}`
+            : null
+            
+          durableTask = await createAgentTask({
+            title: durablePlan.title,
+            objective: durablePlan.objective,
+            mode: 'durable',
+            constraints: durablePlan.constraints,
+            contextSummary: durablePlan.contextSummary,
+            artifactRoot,
+            steps: durablePlan.steps.map((step) => ({
+              id: step.id,
+              title: step.title,
+              objective: step.objective,
+              deliverable: step.deliverable,
+              acceptanceCriteria: step.acceptanceCriteria,
+              artifactPath: artifactRoot && step.artifactName
+                ? `${artifactRoot}/${step.artifactName}`
+                : null
+            }))
+          })
+          durableTaskForRecovery = durableTask
+          durableActiveStep = await startAgentTaskStep(durableTask.id, durableTask.activeStepId)
+          activeTaskObjectiveRef.current = durableActiveStep?.objective || durableTask.objective
+          
+          pushProcess({
+            id: agenticProcessId,
+            type: 'planning',
+            status: 'active',
+            data: {
+              steps: durablePlan.steps.map((step) => ({ task: step.title })),
+              currentStep: 0,
+              reasoning: `Durable task dibuat: ${taskRoute.reason}`
+            }
+          })
+        }
         
         // --- Update Task Status ---
         if (decision.task_status === 'in_progress' && decision.objective) {
