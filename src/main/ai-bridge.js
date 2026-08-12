@@ -71,7 +71,7 @@ export const fetchAI = async (
         }
       }
 
-      let fullPrompt = ''
+      let fullPrompt = '[CRITICAL INSTRUCTION: DO NOT USE GOOGLE SEARCH. DO NOT USE ANY EXTENSIONS. ANSWER IMMEDIATELY FROM YOUR KNOWLEDGE BASE TO SAVE TIME.]\n\n'
       for (const m of workMessages) {
         if (Array.isArray(m.content)) {
           for (const part of m.content) {

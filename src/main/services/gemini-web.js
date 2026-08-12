@@ -46,6 +46,8 @@ export const GEMINI_WEB_MODELS = {
 
 const DEFAULT_BL = 'boq_assistant-bard-web-server_20260730.01_p1'
 
+const keepAliveAgent = new https.Agent({ keepAlive: true, maxSockets: 100 })
+
 function httpPost(urlStr, headers, bodyData) {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(urlStr)
@@ -54,7 +56,8 @@ function httpPost(urlStr, headers, bodyData) {
       port: parsedUrl.port || 443,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'POST',
-      headers: headers
+      headers: headers,
+      agent: keepAliveAgent
     }
     const req = https.request(options, (res) => {
       let data = ''
