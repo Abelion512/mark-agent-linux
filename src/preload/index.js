@@ -61,6 +61,14 @@ const api = {
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),
 
+  // Window controls
+  windowMinimize: () => ipcRenderer.send('window-minimize'),
+  windowMaximize: () => ipcRenderer.send('window-maximize'),
+  windowClose: () => ipcRenderer.send('window-close'),
+  onWindowMaximized: (callback) => {
+    ipcRenderer.on('window-maximized', (event, isMaximized) => callback(isMaximized))
+  },
+
   tgTakeScreenshot: (chatId) => ipcRenderer.send('tg:trigger-screenshot', { chatId }),
   tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
   tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),

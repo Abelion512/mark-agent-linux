@@ -10,7 +10,8 @@ import {
   globalShortcut,
   nativeImage,
   Notification,
-  desktopCapturer
+  desktopCapturer,
+  screen
 } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -47,6 +48,9 @@ function createWindow() {
     width: 900,
     height: 670,
     show: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
     autoHideMenuBar: true,
     icon: icon,
     webPreferences: {
@@ -85,6 +89,60 @@ function createWindow() {
       mainWindow.hide()
     }
   })
+
+  mainWindow.on('maximize', () => {
+    mainWindow.webContents.send('window-maximized', true)
+  })
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow.webContents.send('window-maximized', false)
+  })
+
+  mainWindow.on('resize', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window-maximized', mainWindow.isMaximized())
+    }
+  })
+
+  // Custom Aero Snap Logic
+  mainWindow.on('moved', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMaximized()) return
+
+    const bounds = mainWindow.getBounds()
+    const currentScreen = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y })
+    const workArea = currentScreen.workArea
+
+    const THRESHOLD = 15
+
+    // Snap to Top -> Maximize
+    if (bounds.y <= workArea.y + THRESHOLD) {
+      mainWindow.maximize()
+      return
+    }
+
+    // Snap to Left -> Half screen left
+    if (bounds.x <= workArea.x + THRESHOLD) {
+      mainWindow.setBounds({
+        x: workArea.x,
+        y: workArea.y,
+        width: Math.floor(workArea.width / 2),
+        height: workArea.height
+      })
+      return
+    }
+
+    // Snap to Right -> Half screen right
+    if (bounds.x + bounds.width >= workArea.x + workArea.width - THRESHOLD) {
+      mainWindow.setBounds({
+        x: workArea.x + Math.floor(workArea.width / 2),
+        y: workArea.y,
+        width: Math.floor(workArea.width / 2),
+        height: workArea.height
+      })
+      return
+    }
+  })
 }
 
 // Removed old WA logic
@@ -93,6 +151,24 @@ ipcMain.on('remote-music-command', (event, command, payload) => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('execute-music-command', command, payload)
   }
+})
+
+ipcMain.on('window-minimize', () => {
+  if (mainWindow) mainWindow.minimize()
+})
+
+ipcMain.on('window-maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+    } else {
+      mainWindow.maximize()
+    }
+  }
+})
+
+ipcMain.on('window-close', () => {
+  if (mainWindow) mainWindow.close()
 })
 
 import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'

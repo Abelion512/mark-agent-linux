@@ -46,8 +46,15 @@ const MarkHome = () => {
   const [currentResponse, setCurrentResponse] = useState(null)
   const [showMusicWidget, setShowMusicWidget] = useState(false)
   const [isMusicAnimatingOut, setIsMusicAnimatingOut] = useState(false)
+  const [isMaxWindow, setIsMaxWindow] = useState(false)
 
   useEffect(() => {
+    if (window.api?.onWindowMaximized) {
+      window.api.onWindowMaximized((isMax) => {
+        setIsMaxWindow(isMax)
+      })
+    }
+    
     const handleOpenMap = () => setIsMemoryMapOpen(true)
     window.addEventListener('open-memory-map', handleOpenMap)
     return () => window.removeEventListener('open-memory-map', handleOpenMap)
@@ -200,9 +207,10 @@ const MarkHome = () => {
 
   return (
     <div 
-      className="h-screen text-white overflow-hidden relative transition-colors duration-1000"
-      style={{ backgroundColor: `color-mix(in srgb, ${bgGlowColor} 12%, black)` }}
+      className="h-screen text-white overflow-hidden relative transition-colors duration-1000 bg-transparent rounded-xl border border-white/5 shadow-2xl"
+      style={{ backgroundColor: `color-mix(in srgb, ${bgGlowColor} 12%, rgba(0,0,0,${config?.[0]?.windowOpacity ?? 0.85}))` }}
     >
+
       <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
@@ -244,7 +252,14 @@ const MarkHome = () => {
         
         {/* Left Panel: The Orb & Neural Flow (Fixed) */}
         <div className="w-full md:w-1/2 h-[40vh] md:h-full flex flex-col items-center justify-center relative">
-          <div className="relative flex items-center justify-center w-full max-w-lg h-64 md:h-96">
+          <div 
+            className="relative flex items-center justify-center w-full max-w-lg h-64 md:h-96"
+            style={{ 
+              transform: isMaxWindow ? 'scale(1)' : 'scale(0.6)', 
+              transition: 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginTop: isMaxWindow ? '0' : '-2rem'
+            }}
+          >
             
             {/* Jarvis-Style Holographic HUD centered around Orb */}
             <div className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none mix-blend-screen opacity-50 z-0 scale-125">

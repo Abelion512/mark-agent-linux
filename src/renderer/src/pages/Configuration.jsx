@@ -530,7 +530,12 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
   const handleTgAdminIdsChange = (e) => setConfig((prev) => ({ ...prev, tgAdminIds: e.target.value }))
 
   return (
-    <div className="h-screen bg-[var(--base-300)] text-white overflow-hidden relative font-['Poppins',sans-serif]">
+    <div 
+      className="h-screen text-white overflow-hidden relative font-['Poppins',sans-serif] bg-transparent rounded-xl border border-white/5 shadow-2xl"
+      style={{ backgroundColor: `rgba(0,0,0,${config?.windowOpacity ?? 0.85})` }}
+    >
+
+      
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none" />
@@ -869,6 +874,36 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                 <span>14</span>
                 <span>18</span>
                 <span>22</span>
+              </div>
+            </div>
+
+            <div className="divider"></div>
+            
+            {/* Window Settings */}
+            <div className="space-y-2 p-2 -mx-2 rounded-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Tingkat Transparansi Jendela</p>
+                <span className="font-mono text-sm text-primary font-bold">{Math.round((config.windowOpacity ?? 0.85) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                value={config.windowOpacity ?? 0.85}
+                className="range range-primary range-xs w-full"
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value)
+                  setConfig(prev => {
+                    const newConfig = { ...prev, windowOpacity: val }
+                    if (window.api && window.api.syncConfig) window.api.syncConfig(newConfig)
+                    return newConfig
+                  })
+                }}
+              />
+              <div className="flex justify-between mt-2 text-xs opacity-50">
+                <span>10% (Kaca Bening)</span>
+                <span>100% (Solid)</span>
               </div>
             </div>
 

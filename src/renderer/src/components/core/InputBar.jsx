@@ -266,7 +266,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex items-center bg-[var(--glass-bg)] backdrop-blur-xl border rounded-lg p-2 pr-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_20px_oklch(var(--su)/0.2)] ${
+        className={`relative flex items-center bg-[var(--glass-bg)] border rounded-lg p-2 pr-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-colors duration-300 focus-within:border-primary/50 focus-within:shadow-[0_0_20px_oklch(var(--p)/0.2)] ${
           isDragging
             ? 'border-primary bg-primary/10 shadow-[0_0_30px_oklch(var(--p)/0.3)] scale-[1.02]'
             : 'border-[var(--glass-border)]'
@@ -327,12 +327,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
           </button>
 
           {showEmojiPicker && (
-            <div className="absolute bottom-full left-0 mb-4 bg-[var(--glass-bg)] backdrop-blur-3xl border border-[var(--glass-border)] rounded-sm p-2 shadow-2xl flex flex-wrap w-52 gap-1 z-[100] animate-[holo-project-in_0.2s_ease-out_forwards]">
-              {/* HUD Brackets */}
-              <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-white/30 pointer-events-none z-10" />
-              <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-white/30 pointer-events-none z-10" />
-              <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-white/30 pointer-events-none z-10" />
-              <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-white/30 pointer-events-none z-10" />
+            <div className="absolute bottom-full left-0 mb-4 bg-[var(--glass-bg)] backdrop-blur-3xl border border-[var(--glass-border)] rounded-2xl p-2 shadow-2xl flex flex-wrap w-52 gap-1 z-[100] animate-[holo-project-in_0.2s_ease-out_forwards]">
               {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}

@@ -99,6 +99,14 @@ db.version(17).stores({
   agentTasks: 'id, status, mode, updatedAt, createdAt',
   agentTaskSteps: 'id, taskId, [taskId+index], status, updatedAt'
 })
+
+db.version(18).stores({
+  config: 'id, personality, model, temperature, context, ttsRate, ttsPitch, aiProvider, groqApiKey, groqModel, embedProvider, lmStudioEmbedModel, cerebrasApiKey, cerebrasModel, tgBotToken, tgAdminIds, customEndpoint, customApiKey, customModel, awarenessEnabled, cameraDeviceId, cameraEnabled, geminiWebModel, windowOpacity'
+}).upgrade(tx => {
+  return tx.table('config').toCollection().modify(config => {
+    config.windowOpacity = config.windowOpacity ?? 0.85
+  })
+})
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 
@@ -220,6 +228,9 @@ export async function getAllConfig() {
       }
       if (!data[0].aiProvider) {
         data[0].aiProvider = 'gemini-web'
+      }
+      if (data[0].windowOpacity === undefined) {
+        data[0].windowOpacity = 0.85
       }
     }
     return data || []
