@@ -5,6 +5,10 @@ import { FaCheckCircle, FaSearch, FaListUl, FaBolt, FaCheck, FaChevronRight } fr
 
 const ProcessPanel = ({ processes, onDismiss }) => {
   const [renderedProcesses, setRenderedProcesses] = useState([]);
+  // Header global membedakan jumlah task yang sedang dieksekusi dari daftar step di dalam card.
+  const executingTaskCount = processes.filter(
+    (process) => process.type === 'planning' && process.status === 'active'
+  ).length;
 
   // Sync rendered processes with delayed unmount
   useEffect(() => {
@@ -67,11 +71,16 @@ const ProcessPanel = ({ processes, onDismiss }) => {
         if (proc.type === 'planning') {
           const { steps, currentStep, reasoning } = proc.data;
           const isDone = proc.status === 'done';
+          const isFailed = proc.status === 'failed';
+          const isPaused = proc.status === 'paused';
+          const executionTitle = executingTaskCount === 1
+            ? 'Executing 1 Task'
+            : `Executing ${Math.max(executingTaskCount, 1)} Tasks`;
           return (
             <div className="pointer-events-auto" key={proc.id}>
               <DraggableHoloCard
                 id={proc.id}
-                title={isDone ? <><FaCheckCircle className="inline mr-1" /> Eksekusi Selesai</> : <><FaListUl className="inline mr-1" /> Eksekusi [{currentStep + 1}/{steps?.length || 1}]</>}
+                title={isDone ? <><FaCheckCircle className="inline mr-1" /> Task Completed</> : isFailed ? <><FaBolt className="inline mr-1 text-error" /> Task Failed</> : isPaused ? <><FaBolt className="inline mr-1 text-warning" /> Task Paused</> : <><FaListUl className="inline mr-1" /> {executionTitle}</>}
                 defaultPosition={{ x: isRight ? window.innerWidth - 390 - cascadeX : 40 + cascadeX, y: 80 + cascadeY }}
                 onClose={() => onDismiss(proc.id)}
                 isVisible={!proc.isExiting}

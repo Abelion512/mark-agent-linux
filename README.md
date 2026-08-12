@@ -12,16 +12,17 @@
 ## Fitur Unggulan
 
 - **Dynamic Agentic Planning (ReAct Loop):** Mengganti sistem penjawab statis dengan arsitektur penalaran cerdas. Mark mampu memecah masalah, memikirkan strategi, menggunakan _tools_ secara otonom berulang kali, dan mengevaluasi hasilnya sebelum memberikan jawaban akhir yang komprehensif.
+- **Agent Task Workflows:** Untuk pekerjaan panjang, router AI memilih mode `durable`, planner memecah pekerjaan menjadi beberapa step, lalu MARK mengerjakan satu step melalui ReAct loop yang sama. Setiap step divalidasi, di-checkpoint, dapat di-retry, dipause/resume setelah restart, dan menghasilkan artifact di `Documents/Mark Tasks/<task-id>/`.
 - **Infinite Memory & Injection Knowledge RAG:** Sistem Vector Retrieval-Augmented Generation (RAG) kini berjalan secara _offline_. Mark dapat menyimpan riwayat memori obrolan masif tanpa batas dan pengguna dapat menambahkan pengetahuan dari sebuah file document tanpa membebani _context window_ utama LLM.
-- **Automatic Memory Groomer (Hippocampus Engine):** Sistem pembersihan dan konsolidasi memori mandiri berbasis *Orama Clustering* dan *LLM Batch Processing*. Hippocampus Engine berjalan otonom di latar belakang untuk mendeteksi klaster memori yang serupa atau duplikat (`profile` & `preference`), lalu menggabungkannya secara kronologis tanpa menghilangkan sejarah informasi. Dilengkapi *Grooming Status Bar* dan tombol konsolidasi manual pada antarmuka *Memory Visualizer*.
+- **Automatic Memory Groomer (Hippocampus Engine):** Sistem pembersihan dan konsolidasi memori mandiri berbasis _Orama Clustering_ dan _LLM Batch Processing_. Hippocampus Engine berjalan otonom di latar belakang untuk mendeteksi klaster memori yang serupa atau duplikat (`profile` & `preference`), lalu menggabungkannya secara kronologis tanpa menghilangkan sejarah informasi. Dilengkapi _Grooming Status Bar_ dan tombol konsolidasi manual pada antarmuka _Memory Visualizer_.
 - **Visualisasi Jaringan Otak (Memory Visualizer):** Dilengkapi dengan UI _Live Feed_ "Mark Neural Core". Pengguna dapat melihat secara _real-time_ grafis Neural Network yang menampilkan jaringan _Chat History_, _Knowledge Base_, hingga _Document Vault_.
 - **Live Thought Process (Neural Flow):** Perhatikan Mark berpikir! Setiap kali sistem mengeksekusi rencana (_Agentic Planning_), antarmuka akan memancarkan animasi _3D Neuron_ yang terbang mengorbit inti pikiran (Orb) untuk interaktivitas tingkat _Sci-Fi_.
 - **Relational Growth System & Dynamic Persona:** Hubungan Anda dengan Mark dievaluasi layaknya dengan manusia sungguhan melalui 4 parameter krusial (_Warmth, Sarcasm, Trust, Energy_). Tingkat kesopanan, kelancangan (_toxicity_), dan kepribadian Mark akan berevolusi organik. Jika Anda sering bersarkasme, Mark bebas menggunakan bahasa _tongkrongan_ dan men-_roasting_ Anda. Didukung oleh **9 Inside Out 2 Emotions** (Joy, Sadness, Fear, Anger, Disgust, Anxiety, Envy, Embarrassment, Ennui) yang secara dinamis mengubah warna UI Orb di layar.
 - **Multi AI Provider (Built-in Gemini / Local / Cloud):** Mark hadir dengan **Google Gemini Engine (Gratis)** sebagai _provider_ bawaan yang siap pakai tanpa membutuhkan API Key. Anda juga memiliki fleksibilitas penuh untuk menggunakan **Local AI** (LM Studio berjalan di PC Anda), **Cloud AI** (Groq/Cerebras), maupun _Custom OpenAI-Compatible API_.
-- **Asisten Bot Telegram Mandiri (Telegraf Engine):** Mark terhubung langsung dengan Telegram Bot API melalui pustaka `telegraf`. Mark dapat dikontrol jarak jauh via Telegram, merangkum obrolan, mengunduh MP3 YouTube, mengambil screenshot PC, dan secara otomatis menyinkronkan seluruh balasan PC & *Awareness Engine* ke Telegram Admin secara *real-time*.
+- **Asisten Bot Telegram Mandiri (Telegraf Engine):** Mark terhubung langsung dengan Telegram Bot API melalui pustaka `telegraf`. Mark dapat dikontrol jarak jauh via Telegram, merangkum obrolan, mengunduh MP3 YouTube, mengambil screenshot PC, dan secara otomatis menyinkronkan seluruh balasan PC & _Awareness Engine_ ke Telegram Admin secara _real-time_.
 - **Physical PC & Desktop Automation (Windows UIAutomation):** Menggunakan mesin otomatisasi Windows lokal (`read-ui.ps1` & UIAutomation API), Mark dapat membaca elemen GUI desktop secara struktural, mengklik tombol, mengetik teks, menekan _shortcut_, hingga mengelola jendela aplikasi di Windows secara fisik tanpa biaya vision API yang tinggi (_Zero-Vision Cost_). Dilengkapi dengan _Security Floating Overlay_, sistem konfirmasi keamanan berlapis, serta tombol **Emergency Stop (`Ctrl+Shift+S`)** untuk keamanan kendali mutlak.
 - **Proaktif dengan Awareness Engine:** Sistem Mark tidak hanya pasif merespons. Mark bisa proaktif menegur, menyapa, atau memutarkan musik di latar belakang. Dilengkapi fitur **Toggle** (bisa dimatikan kapan saja) dan integrasi sinkronisasi pesan proaktif ke Telegram Admin.
-- **Floating Sub-Pages Glass UI:** Arsitektur antarmuka baru tempat `MarkHome` dan *AI Brain* terus berjalan 100% aktif di latar belakang, sementara halaman lain (`TelegramBot`, `Configuration`, `Plugins`, `Knowledge`, `Guidebook`) dirender sebagai *Floating Glass Layer* di atasnya tanpa memutus koneksi atau mematikan agen.
+- **Floating Sub-Pages Glass UI:** Arsitektur antarmuka baru tempat `MarkHome` dan _AI Brain_ terus berjalan 100% aktif di latar belakang, sementara halaman lain (`TelegramBot`, `Configuration`, `Plugins`, `Knowledge`, `Guidebook`) dirender sebagai _Floating Glass Layer_ di atasnya tanpa memutus koneksi atau mematikan agen.
 
 ## Kemampuan Utama (Tools)
 
@@ -36,7 +37,7 @@ Mark dibekali dengan berbagai integrasi alat untuk mengeksekusi tugas di luar se
 - **Riset Internet Mendalam (Deep Web Search):** Mark dapat menelusuri web secara mandiri untuk mencari informasi akurat dan memberikan ringkasan yang dilengkapi dengan tautan kutipan (_citations_).
 - **Perangkum YouTube Kilat:** Cukup berikan tautan video YouTube, dan Mark akan mengekstrak transkrip asli, memproses teks, dan memberikan ringkasan akurat tanpa Anda harus menonton video tersebut.
 - **Pemutar YouTube Music Terintegrasi:** Terhubung langsung dengan ekosistem YouTube Music (tanpa iklan). Perintahkan Mark untuk memutar lagu, dan ia akan mencari serta memutarnya di latar belakang sembari menampilkan sampul album pada antarmuka.
-- **Integrasi Bot Telegram:** Cukup masukkan API Token dari `@BotFather` dan Username Telegram (`@username`) Anda. Bot akan otomatis menyala di latar belakang saat aplikasi Mark dibuka di PC. Mark dapat mengeksekusi instruksi jarak jauh via Telegram (`tg-send`, `screenshot-to-tg`), mengirim hasil tangkapan layar, mengunduh musik MP3, serta menyinkronkan balasan obrolan PC & *Awareness Engine* langsung ke HP Anda.
+- **Integrasi Bot Telegram:** Cukup masukkan API Token dari `@BotFather` dan Username Telegram (`@username`) Anda. Bot akan otomatis menyala di latar belakang saat aplikasi Mark dibuka di PC. Mark dapat mengeksekusi instruksi jarak jauh via Telegram (`tg-send`, `screenshot-to-tg`), mengirim hasil tangkapan layar, mengunduh musik MP3, serta menyinkronkan balasan obrolan PC & _Awareness Engine_ langsung ke HP Anda.
 - **Sistem Plugin Kustom:** Tambahkan fitur atau kemampuan baru langsung dari antarmuka aplikasi tanpa perlu memodifikasi kode sumber inti. Anda dapat membuat skrip Node.js (misalnya, _plugin_ untuk mengatur volume atau mematikan PC) dan Mark akan langsung memahami cara menggunakannya.
 
 ## Arsitektur Proyek
@@ -66,16 +67,16 @@ mark/
 
 ## Teknologi Terkait
 
-| Kategori           | Teknologi                                                                     |
-| ------------------ | ----------------------------------------------------------------------------- |
-| **Framework**      | Electron 39, React 19, Vite 7                                                 |
-| **Antarmuka (UI)** | Tailwind CSS 4, DaisyUI 5, Framer Motion/GSAP (Animasi), React Force Graph 2D |
+| Kategori           | Teknologi                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| **Framework**      | Electron 39, React 19, Vite 7                                                                      |
+| **Antarmuka (UI)** | Tailwind CSS 4, DaisyUI 5, Framer Motion/GSAP (Animasi), React Force Graph 2D                      |
 | **Mesin AI**       | Google Gemini (Bawaan Gratis) / LM Studio (Offline) / Groq, Cerebras, Custom OpenAI-Compatible API |
-| **Memori Vektor**  | `@orama/orama` (Hybrid Search), Transformers.js (`@huggingface/transformers`) |
-| **Pencarian Web**  | Electron Webview (Bypass Anti-Bot)                                            |
-| **Suara & Audio**  | Groq API (STT), Transformers.js (Local STT), Edge-TTS, Web Audio API (VAD)    |
-| **Integrasi**      | `youtube-transcript-plus`, `youtube-dl-exec`, `ffmpeg-static`, `telegraf` Telegram Bot API |
-| **Database/RAG**   | Dexie.js (IndexedDB), `pdf-parse` (Document Extraction)                       |
+| **Memori Vektor**  | `@orama/orama` (Hybrid Search), Transformers.js (`@huggingface/transformers`)                      |
+| **Pencarian Web**  | Electron Webview (Bypass Anti-Bot)                                                                 |
+| **Suara & Audio**  | Groq API (STT), Transformers.js (Local STT), Edge-TTS, Web Audio API (VAD)                         |
+| **Integrasi**      | `youtube-transcript-plus`, `youtube-dl-exec`, `ffmpeg-static`, `telegraf` Telegram Bot API         |
+| **Database/RAG**   | Dexie.js (IndexedDB), `pdf-parse` (Document Extraction)                                            |
 
 ## Instalasi & Penggunaan
 

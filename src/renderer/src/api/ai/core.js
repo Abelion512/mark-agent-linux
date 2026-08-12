@@ -1,9 +1,15 @@
 import { getAllConfig } from '../db'
 import { jsonrepair } from 'jsonrepair'
 
-export const fetchAI = async (messages, signal, isSmallTask = false, jsonSchema = null) => {
+export const fetchAI = async (
+  messages,
+  signal,
+  isSmallTask = false,
+  jsonSchema = null,
+  configOverride = null
+) => {
   const currentConfig = await getAllConfig()
-  const conf = currentConfig[0] || {}
+  const conf = { ...(currentConfig[0] || {}), ...(configOverride || {}) }
 
   return new Promise((resolve, reject) => {
     let hasResolved = false;

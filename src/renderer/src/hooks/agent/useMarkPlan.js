@@ -4,6 +4,16 @@ import { getYoutubeSummary } from '../../api/ai/tools'
 import { fetchAI } from '../../api/ai/core'
 import { playVoice, getCurrentTimeInfo } from '../../api/ai/utils'
 import { insertMemory, updateMemory, deleteMemory, getAllMemory } from '../../api/db'
+import { classifyTaskMode } from '../../api/ai/taskClassifier'
+import { createDurableTaskPlan } from '../../api/ai/taskPlanner'
+import { buildDurableStepCheckpoint } from '../../api/taskExecutor'
+import {
+  createAgentTask,
+  startAgentTaskStep,
+  checkpointAgentTaskStep,
+  validateAgentTaskStepOutput,
+  transitionAgentTask
+} from '../../api/taskStore'
 import {
   getUnifiedContext,
   searchExtendedMemory,
@@ -188,8 +198,71 @@ export const useMarkPlan = ({
     }
     abortControllerRef.current = new AbortController()
     const agenticProcessId = `agentic-${Date.now()}`
+  let durableTaskForRecovery = null
 
     try {
+      // STEP 1A: Router ringan menentukan apakah request tetap lewat loop lama atau dibuat jadi task persisten.
+      const shouldRouteTask = !tgContext && !isAutonomous && !isSystem && !options.disableTools
+      let taskRoute = null
+      let durableTask = null
+      let durableActiveStep = null
+
+      if (shouldRouteTask) {
+        taskRoute = await classifyTaskMode(userInput, {
+          signal: abortControllerRef.current.signal,
+          disableTools: options.disableTools,
+          isAutonomous,
+          isSystem
+        })
+
+        console.log('[useMarkPlan] task route:', taskRoute)
+
+        if (taskRoute.mode === 'durable') {
+          const durablePlan = await createDurableTaskPlan(
+            userInput,
+            taskRoute,
+            abortControllerRef.current.signal
+          )
+          // Semua artifact durable dipisah per task di Documents/Mark Tasks.
+          const documentsPath = await window.api.getDocumentsPath?.()
+          const artifactRoot = documentsPath
+            ? `${documentsPath.replace(/[\\/]$/, '')}/Mark Tasks/${Date.now()}`
+            : null
+          durableTask = await createAgentTask({
+            title: durablePlan.title,
+            objective: durablePlan.objective,
+            mode: 'durable',
+            constraints: durablePlan.constraints,
+            contextSummary: durablePlan.contextSummary,
+            artifactRoot,
+            steps: durablePlan.steps.map((step) => ({
+              id: step.id,
+              title: step.title,
+              objective: step.objective,
+              deliverable: step.deliverable,
+              acceptanceCriteria: step.acceptanceCriteria,
+              artifactPath: artifactRoot && step.artifactName
+                ? `${artifactRoot}/${step.artifactName}`
+                : null
+            }))
+          })
+          durableTaskForRecovery = durableTask
+          // Step pertama langsung ditandai running supaya checkpoint bisa disimpan saat jawaban final keluar.
+          durableActiveStep = await startAgentTaskStep(durableTask.id, durableTask.activeStepId)
+          activeTaskObjectiveRef.current = durableActiveStep?.objective || durableTask.objective
+          pushProcess({
+            id: agenticProcessId,
+            type: 'planning',
+            status: 'active',
+            data: {
+              steps: durablePlan.steps.map((step) => ({ task: step.title })),
+              currentStep: 0,
+              reasoning: `Durable task dibuat: ${taskRoute.reason}`
+            }
+          })
+        }
+      }
+
       // ========== STEP 2: AMBIL MEMORI & KONTEKS ==========
 
       const allMemory = await getAllMemory()
@@ -224,6 +297,18 @@ export const useMarkPlan = ({
         contextMsgStr += `[AWARENESS MODE]: Ini adalah pemikiran autonom-mu sendiri. Pesan terakhir di sesi ini BUKAN dari user, melainkan inisiatifmu sendiri. Saat memberikan 'answer' akhir ke user, berlakulah seolah-olah KAMU yang pertama kali membuka topik secara proaktif (misal: 'Eh, tadi gue iseng nyari info...'). JANGAN bertingkah seolah user yang menyuruhmu!\n`
       if (currentMusicTrack && currentMusicTrack.title) {
         contextMsgStr += `[STATUS SISTEM]: Sedang memutar "${currentMusicTrack.title}" oleh ${currentMusicTrack.artist}.\n`
+      }
+      if (taskRoute) {
+        contextMsgStr += `[TASK ROUTER]: mode=${taskRoute.mode}; confidence=${taskRoute.confidence}; reason=${taskRoute.reason}; estimatedSteps=${taskRoute.estimatedSteps}.\n`
+      }
+      if (durableTask) {
+        contextMsgStr += `[DURABLE TASK CREATED]: id=${durableTask.id}; objective="${durableTask.objective}". Kerjakan step aktif pertama dan jangan menganggap seluruh task selesai sebelum semua step selesai.\n`
+      }
+      if (durableActiveStep) {
+        contextMsgStr += `[DURABLE STEP AKTIF]: id=${durableActiveStep.id}; title="${durableActiveStep.title}"; objective="${durableActiveStep.objective}"; deliverable="${durableActiveStep.deliverable}".\n`
+        if (durableActiveStep.acceptanceCriteria?.length > 0) {
+          contextMsgStr += `[DURABLE STEP ACCEPTANCE]\n${durableActiveStep.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}\n`
+        }
       }
 
       // Inject window tracker — biar AI tau user lagi ngapain di PC
@@ -270,12 +355,19 @@ export const useMarkPlan = ({
       let lastActionQuery = null
       let lastToolExecution = null
       let executedToolsList = []
+      let durableFailed = false
 
       let execSteps = [{ task: 'Menganalisis Konteks...' }] // Initial node for hologram
 
       while (!isDone) {
         // --- Safety: Cek abort ---
-        if (abortControllerRef.current.signal.aborted) break
+        if (abortControllerRef.current.signal.aborted) {
+          // Abort user menyimpan durable task agar dapat di-resume dari step aktif.
+          if (durableTask && durableTask.status === 'running') {
+            await transitionAgentTask(durableTask.id, 'paused', 'user_abort')
+          }
+          break
+        }
 
         // --- Cek Intervensi User ---
         if (interventionBufferRef.current.length > 0) {
@@ -398,6 +490,105 @@ export const useMarkPlan = ({
 
         // --- OPSI A: AI mau JAWAB (answer ada, action null) → SELESAI ---
         if (decision.answer && !decision.action) {
+          // Jika request ini durable, jawaban final dipakai sebagai checkpoint step aktif sebelum keluar.
+          if (durableTask && durableActiveStep) {
+            // Validator lokal menjadi gate sebelum step boleh memajukan pointer task.
+            const currentStep = durableActiveStep
+            const checkpoint = buildDurableStepCheckpoint(
+              currentStep,
+              decision.answer,
+              durableTask.maxRetries
+            )
+            const stepValidation = checkpoint.validation
+            const checkpointData = { ...checkpoint }
+            delete checkpointData.canRetry
+            // Artifact ditulis hanya setelah validator lolos dan tetap melewati approval native write-file.
+            if (stepValidation.isComplete && currentStep.artifactPath && window.api?.executeNativeTool) {
+              const artifactQuery = `${currentStep.artifactPath}||${decision.answer}`
+              const approval = await window.api.checkToolApproval('write-file', artifactQuery)
+              const approved = !approval?.needsApproval || (requestApproval && await requestApproval(approval.message, 'write-file', artifactQuery))
+              if (!approved) {
+                checkpointData.status = 'needs_revision'
+                checkpointData.error = 'Penulisan artifact ditolak user.'
+                checkpointData.validation = {
+                  ...stepValidation,
+                  isComplete: false,
+                  missingRequirements: ['Artifact belum disimpan karena approval ditolak.']
+                }
+              } else {
+                const artifactResult = await window.api.executeNativeTool('write-file', artifactQuery)
+                if (!artifactResult?.success) {
+                  checkpointData.status = 'needs_revision'
+                  checkpointData.error = artifactResult?.error || artifactResult?.message || 'Artifact gagal ditulis.'
+                }
+              }
+            }
+            const checkpointCompleted = checkpointData.status === 'completed'
+            const checkpointCanRetry = !checkpointCompleted && currentStep.attempts < durableTask.maxRetries + 1
+            const checkpointNeedsRevision = !checkpointCompleted && checkpointCanRetry
+            const checkpointedTask = await checkpointAgentTaskStep(
+              durableTask.id,
+              durableActiveStep.id,
+              checkpointData
+            )
+            if (!checkpointCompleted && !checkpointCanRetry) {
+              await transitionAgentTask(
+                durableTask.id,
+                'failed',
+                'Step gagal memenuhi validasi setelah batas retry.'
+              )
+              decision.answer = `Task berhenti karena step "${currentStep.title}" belum memenuhi deliverable setelah ${currentStep.attempts} percobaan.`
+              durableTask = checkpointedTask
+              durableActiveStep = null
+              activeTaskObjectiveRef.current = null
+              durableFailed = true
+            }
+            const nextStep = checkpointCompleted
+              ? checkpointedTask?.steps?.find((step) => step.id === checkpointedTask.activeStepId)
+              : null
+            durableTask = checkpointedTask
+            durableActiveStep = nextStep || (checkpointNeedsRevision ? currentStep : null)
+            activeTaskObjectiveRef.current = nextStep?.objective || (checkpointNeedsRevision ? currentStep.objective : null)
+            if (!checkpointCompleted && checkpointNeedsRevision) {
+              loopMessages.push({
+                role: 'assistant',
+                content: `[STEP PERLU REVISI] ${decision.answer}`
+              })
+              loopMessages.push({
+                role: 'user',
+                content: `[REVISI DURABLE STEP] Ulangi step "${currentStep.title}". Kekurangan validasi: ${stepValidation.missingRequirements.join('; ')}`
+              })
+              await startAgentTaskStep(durableTask.id, durableActiveStep.id)
+              continue
+            }
+            // Jika masih ada step, hasil step sebelumnya masuk history lalu ReAct lanjut ke step berikutnya.
+            if (nextStep) {
+              loopMessages.push({
+                role: 'assistant',
+                content: `[STEP SELESAI] ${decision.answer}`
+              })
+              loopMessages.push({
+                role: 'user',
+                content: `[LANJUTKAN DURABLE TASK] Kerjakan step berikutnya: "${nextStep.title}". Objective: ${nextStep.objective}. Deliverable: ${nextStep.deliverable}. Jangan mengulang step sebelumnya.`
+              })
+              contextMsgStr += `[DURABLE STEP BERIKUTNYA]: id=${nextStep.id}; title="${nextStep.title}"; objective="${nextStep.objective}"; deliverable="${nextStep.deliverable}".\n`
+              if (nextStep.acceptanceCriteria?.length > 0) {
+                contextMsgStr += `[DURABLE STEP ACCEPTANCE]\n${nextStep.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}\n`
+              }
+              await startAgentTaskStep(durableTask.id, nextStep.id)
+              pushProcess({
+                id: agenticProcessId,
+                type: 'planning',
+                status: 'active',
+                data: {
+                  steps: durableTask.steps.map((step) => ({ task: step.title })),
+                  currentStep: nextStep.index,
+                  reasoning: `Step selesai. Lanjut ke: ${nextStep.title}`
+                }
+              })
+              continue
+            }
+          }
           isDone = true
 
           // Autonomous answers akan langsung di-output-kan sebagai pesan proaktif.
@@ -408,7 +599,7 @@ export const useMarkPlan = ({
             pushProcess({
               id: agenticProcessId,
               type: 'planning',
-              status: 'done',
+              status: durableFailed ? 'failed' : 'done',
               data: {
                 steps: [...execSteps],
                 currentStep: execSteps.length,
@@ -953,6 +1144,10 @@ export const useMarkPlan = ({
       } catch (e) {}
 
     } catch (error) {
+      // Abort yang terjadi saat AI/tool sedang await tetap mem-pause task durable di Dexie.
+      if (durableTaskForRecovery && (error.name === 'AbortError' || error.message.includes('AbortError'))) {
+        await transitionAgentTask(durableTaskForRecovery.id, 'paused', 'user_abort').catch(() => {})
+      }
       if (error.name !== 'AbortError' && !error.message.includes('AbortError')) {
         console.error('Planning Error:', error)
       }
@@ -973,7 +1168,21 @@ export const useMarkPlan = ({
         }
       } catch (e) {}
 
-      dismissProcess(agenticProcessId)
+      // Jangan menghilangkan card durable saat abort/error; tampilkan status agar user tahu task tersimpan.
+      if (durableTaskForRecovery && (error.name === 'AbortError' || error.message.includes('AbortError'))) {
+        pushProcess({
+          id: agenticProcessId,
+          type: 'planning',
+          status: 'paused',
+          data: {
+            steps: [],
+            currentStep: 0,
+            reasoning: 'Task dipause karena proses dihentikan. Gunakan resume dari task manager.'
+          }
+        })
+      } else {
+        dismissProcess(agenticProcessId)
+      }
 
       if (error.name === 'AbortError' || error.message.includes('AbortError')) {
         setChatData((prev) => [

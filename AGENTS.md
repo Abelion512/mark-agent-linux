@@ -3,7 +3,7 @@
 ## 1. Project Overview
 
 **Project Name:** MARK (Metacognitive Artificial Relational Knowledge) — v4.0.0
-**Description:** A privacy-first, local-based autonomous AI OS companion designed to assist user productivity, automate tasks, and provide lifelike companionship. It uses a hybrid AI engine (Local LLM via LM Studio or Cloud API, plus a native Gemini Web RPC Engine) and features agentic planning with ReAct loop execution, autonomous physical browser automation, a hybrid Full-Text & Vector Memory Management System (MMS) with Orama & Dexie, document RAG pipeline, OS-level Awareness Engine, dynamic 4D Relational Growth, a native Plugin System with Monaco Editor, Telegram Bot integration via Telegraf, Voice Activity Detection with Groq Whisper STT, Edge-TTS, and webcam vision capabilities.
+**Description:** A privacy-first, local-based autonomous AI OS companion designed to assist user productivity, automate tasks, and provide lifelike companionship. It uses a hybrid AI engine (Local LLM via LM Studio or Cloud API, plus a native Gemini Web RPC Engine) and features agentic planning with ReAct loop execution, **Durable Agent Tasks** (UI: **Agent Workflows**, branding: **Mission Control**) for persistent multi-step work, autonomous physical browser automation, a hybrid Full-Text & Vector Memory Management System (MMS) with Orama & Dexie, document RAG pipeline, OS-level Awareness Engine, dynamic 4D Relational Growth, a native Plugin System with Monaco Editor, Telegram Bot integration via Telegraf, Voice Activity Detection with Groq Whisper STT, Edge-TTS, and webcam vision capabilities.
 **Environment:** Electron 39 desktop application optimized for Windows (Windows 10/11).
 **Author:** Mazees | **Homepage:** https://github.com/Mazees/mark-agent/
 
@@ -66,6 +66,16 @@
 | `memoryGroomer.js`  | Memory Groomer Engine       | `buildGroomerPrompt(clusters)`, `parseGroomerResponse(raw)`, `runBatchConsolidation()`. Merges chronological profile & preference memories without losing history                                                                                                                                                                                                                                                                                                                                                                                 |
 | `tools.js`          | YouTube & Music AI          | `getYoutubeSummary()`: fetches transcript via IPC, chunks at 4000 chars, 12s delay between chunk summaries (Groq TPM protection). `getBestMusicMatch()`: AI ranker selects best song from search results                                                                                                                                                                                                                                                                                                                                          |
 | `utils.js`          | Shared utilities            | `getCurrentTimeInfo()` (Indonesian locale), `playVoice()` (TTS via IPC, sets `window.isMarkSpeaking`), `formatForWhatsApp()` (custom `marked` renderer → WA native formatting: `*bold*`, `_italic_`, `` `code` ``)                                                                                                                                                                                                                                                                                                                                |
+
+### Durable Agent Tasks / Agent Workflows
+
+- `taskClassifier.js` routes requests to `direct`, `ephemeral`, or `durable` using Gemini Flash Lite.
+- `taskPlanner.js` creates a bounded multi-step outline for durable work.
+- `taskStore.js` persists tasks and steps in Dexie, including checkpoint, retry, pause/resume, cancel, validation, artifact path, and content hash.
+- `taskExecutor.js` centralizes deterministic single-step validation/checkpoint decisions without duplicating the ReAct tool dispatcher.
+- `useMarkPlan.js` remains the ReAct executor; durable mode wraps the existing loop and advances one active step at a time.
+- Artifacts are written under `Documents/Mark Tasks/<task-id>/` through the approved `write-file` native tool.
+- `ProcessPanel` shows live progress and failed durable executions; persistent task controls are planned for a dedicated task panel.
 
 ### `src/renderer/src/hooks/` — React Hooks (Agent Orchestration)
 

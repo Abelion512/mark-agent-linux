@@ -15,6 +15,7 @@ const api = {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   showNotification: (title, body) => ipcRenderer.send('show-notification', { title, body }),
   getActivityBuffer: () => ipcRenderer.invoke('awareness:get-buffer'),
+  getDocumentsPath: () => ipcRenderer.invoke('app:get-documents-path'),
   clearActivityBuffer: () => ipcRenderer.send('awareness:clear-buffer'),
   takeScreenshot: () => ipcRenderer.invoke('take-screenshot'),
   getYoutubeTranscript: (url) => ipcRenderer.invoke('get-youtube-transcript', url),

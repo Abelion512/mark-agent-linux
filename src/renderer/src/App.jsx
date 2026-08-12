@@ -15,6 +15,7 @@ import { YoutubeMusicPlayer } from './components/YoutubeMusicPlayer'
 import { GlobalCameraManager } from './components/GlobalCameraManager'
 import { getAllConfig } from './api/db'
 import { initOramaIndices, hydrateFromDexie } from './api/oramaStore'
+import { pauseStaleAgentTasks } from './api/taskStore'
 
 const GlobalListener = () => {
   const navigate = useNavigate()
@@ -90,6 +91,11 @@ function App() {
         setLoadingText('Memuat Knowledge Base...')
         await initOramaIndices()
         await hydrateFromDexie()
+        // Recovery saat boot: task yang terputus tidak boleh tetap berstatus running.
+        const pausedTaskCount = await pauseStaleAgentTasks('app_restart')
+        if (pausedTaskCount > 0) {
+          console.log(`[App] ${pausedTaskCount} durable task dipause setelah restart.`)
+        }
         console.log('[App] Orama indices ready!')
       } catch (e) {
         console.error('[App] Failed to init Orama:', e)

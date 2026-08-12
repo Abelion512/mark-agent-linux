@@ -438,6 +438,13 @@ ${
           type: ['string', 'null'],
           description: 'Jawaban lengkap untuk user. Null jika sedang eksekusi tool.'
         },
+        task_status: {
+          type: 'string',
+          enum: ['simple', 'in_progress', 'done']
+        },
+        objective: {
+          type: ['string', 'null']
+        },
         mood: {
           type: 'string',
           enum: [
@@ -467,7 +474,16 @@ ${
           additionalProperties: false
         }
       },
-      required: ['thought', 'action', 'answer', 'mood', 'active_topic', 'memory'],
+      required: [
+        'thought',
+        'task_status',
+        'objective',
+        'action',
+        'answer',
+        'mood',
+        'active_topic',
+        'memory'
+      ],
       additionalProperties: false
     }
 
@@ -493,6 +509,8 @@ ${
           thought: data.thought || '',
           action: data.action,
           answer: data.answer,
+          task_status: data.task_status || 'simple',
+          objective: data.objective || null,
           memory: data.memory,
           mood: data.mood || 'neutral',
           active_topic: data.active_topic || activeTopic

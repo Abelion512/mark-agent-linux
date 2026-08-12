@@ -94,6 +94,11 @@ db.version(16).stores({
     delete config.waApprovedAdmins
   })
 })
+
+db.version(17).stores({
+  agentTasks: 'id, status, mode, updatedAt, createdAt',
+  agentTaskSteps: 'id, taskId, [taskId+index], status, updatedAt'
+})
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 

@@ -272,6 +272,7 @@ ipcMain.handle('os:open', async (event, target) => await openApp(target))
 ipcMain.handle('os:list-windows', async () => await listWindows())
 ipcMain.handle('os:focus-window', async (event, title) => await focusWindow(title))
 ipcMain.handle('os:ask-user', async (event, query) => await askUserPC(query))
+ipcMain.handle('app:get-documents-path', () => app.getPath('documents'))
 
 app.whenReady().then(async () => {
   // Set app user model id for windows

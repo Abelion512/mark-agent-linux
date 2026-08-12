@@ -22,10 +22,13 @@ const isLMStudioOfflineError = (error) => {
 
 let lastCloudFetchTime = 0
 const CLOUD_DELAY_MS = 3000 // 3 seconds delay biar aman dari rate limit (Gemini/Groq/Custom)
+let abortGeneration = 0
 
 let globalConfig = {}
 export const activeAbortControllers = new Set()
 export const abortAllFetches = () => {
+  // Naikkan generation supaya request yang masih menunggu rate-limit ikut batal.
+  abortGeneration += 1
   activeAbortControllers.forEach((controller) => {
     try {
       controller.abort(new Error('User Aborted'))
@@ -55,7 +58,19 @@ export const fetchAI = async (
       if (timeSinceLast < CLOUD_DELAY_MS) {
         const waitMs = CLOUD_DELAY_MS - timeSinceLast
         onStatus?.(`Rate limit protection: menunggu ${Math.ceil(waitMs / 1000)}s...`)
-        await new Promise((resolve) => setTimeout(resolve, waitMs))
+        const generationAtWait = abortGeneration
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, waitMs)
+          const poll = setInterval(() => {
+            if (abortGeneration !== generationAtWait) {
+              clearTimeout(timer)
+              clearInterval(poll)
+              reject(new Error('AbortError'))
+            }
+          }, 50)
+          const finish = () => clearInterval(poll)
+          setTimeout(finish, waitMs + 10)
+        })
       }
       lastCloudFetchTime = Date.now()
 
