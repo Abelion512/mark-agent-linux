@@ -266,7 +266,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex items-center bg-[var(--glass-bg)] backdrop-blur-xl border rounded-[2rem] p-2 pr-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_20px_oklch(var(--su)/0.2)] ${
+        className={`relative flex items-center bg-[var(--glass-bg)] backdrop-blur-xl border rounded-lg p-2 pr-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_20px_oklch(var(--su)/0.2)] ${
           isDragging
             ? 'border-primary bg-primary/10 shadow-[0_0_30px_oklch(var(--p)/0.3)] scale-[1.02]'
             : 'border-[var(--glass-border)]'
@@ -274,7 +274,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
       >
         {/* Drag & Drop Overlay Indicator */}
         {isDragging && (
-          <div className="absolute inset-0 rounded-[2rem] bg-primary/20 backdrop-blur-md border-2 border-dashed border-primary flex items-center justify-center z-50 pointer-events-none text-white font-medium gap-2 animate-pulse">
+          <div className="absolute inset-0 rounded-lg bg-primary/20 backdrop-blur-md border-2 border-dashed border-primary flex items-center justify-center z-50 pointer-events-none text-white font-medium gap-2 animate-pulse">
             <FaPaperclip className="animate-bounce" size={20} />
             <span>Lepaskan file di sini untuk melampirkan...</span>
           </div>

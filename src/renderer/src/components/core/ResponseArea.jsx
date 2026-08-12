@@ -98,10 +98,18 @@ const ResponseArea = ({ currentResponse }) => {
 
           {/* TLDR Part */}
           {tldr && (
-            <div className="text-center text-base md:text-lg font-light leading-relaxed custom-markdown opacity-90 px-4 max-w-2xl">
-              <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {tldr}
-              </Markdown>
+            <div className="relative p-5 md:p-6 w-full max-w-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-xl rounded-sm">
+              {/* HUD Brackets */}
+              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30" />
+              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30" />
+              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30" />
+              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
+              
+              <div className="text-center text-sm md:text-base font-mono leading-relaxed custom-markdown opacity-90">
+                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {tldr}
+                </Markdown>
+              </div>
             </div>
           )}
 
@@ -124,11 +132,19 @@ const ResponseArea = ({ currentResponse }) => {
 
     // Short type
     return (
-      <div className="flex flex-col items-center relative gap-2 w-full">
-        <div className="text-center text-lg md:text-xl font-light leading-relaxed custom-markdown opacity-90 px-4 max-w-2xl">
-          <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {text}
-          </Markdown>
+      <div className="flex flex-col items-center relative gap-2 w-full px-4">
+        <div className="relative p-5 md:p-6 w-full max-w-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.3)] rounded-sm">
+          {/* HUD Brackets */}
+          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30" />
+          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30" />
+          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30" />
+          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
+          
+          <div className="text-center text-sm md:text-base font-mono leading-relaxed custom-markdown opacity-90">
+            <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {text}
+            </Markdown>
+          </div>
         </div>
       </div>
     )

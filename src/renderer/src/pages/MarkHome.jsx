@@ -178,11 +178,44 @@ const MarkHome = () => {
     }
   }
 
+  const mood = currentResponse?.mood || 'neutral';
+  let bgGlowColor = 'var(--color-primary)';
+  if (orbStatus === 'error') {
+    bgGlowColor = '#ef4444';
+  } else {
+    switch (mood) {
+      case 'joy': bgGlowColor = '#facc15'; break;
+      case 'sadness': bgGlowColor = '#3b82f6'; break;
+      case 'fear': bgGlowColor = '#a855f7'; break;
+      case 'anger': bgGlowColor = '#ef4444'; break;
+      case 'disgust': bgGlowColor = '#22c55e'; break;
+      case 'anxiety': bgGlowColor = '#f97316'; break;
+      case 'envy': bgGlowColor = '#14b8a6'; break;
+      case 'embarrassment': bgGlowColor = '#ec4899'; break;
+      case 'ennui': bgGlowColor = '#6b7280'; break;
+      default: bgGlowColor = 'var(--color-primary)'; break;
+    }
+  }
+
   return (
-    <div className="h-screen bg-[var(--base-300)] text-white overflow-hidden relative font-['Poppins',sans-serif]">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none" />
+    <div 
+      className="h-screen text-white overflow-hidden relative transition-colors duration-1000"
+      style={{ backgroundColor: `color-mix(in srgb, ${bgGlowColor} 12%, black)` }}
+    >
+      <style>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes spin-slow-reverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+      `}</style>
+
+      {/* Subtle Hologram Scanlines & Texture */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-20 pointer-events-none mix-blend-overlay z-0" />
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-screen z-0" />
 
       {isBooting && (
         <div className="fixed inset-0 bg-base-300 flex flex-col items-center justify-center gap-5 z-[999]">
@@ -206,15 +239,47 @@ const MarkHome = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex flex-col items-center w-full h-full px-4 pt-[10vh] pb-40 overflow-y-auto custom-scrollbar">
+      <div className="relative z-10 flex flex-col items-center w-full h-full px-4 pt-[15vh] pb-40 overflow-y-auto custom-scrollbar">
         {/* The Orb & Neural Flow */}
         <div className="relative flex items-center justify-center w-full max-w-3xl mt-10 mb-8 h-64">
+          
+          {/* Jarvis-Style Holographic HUD centered around Orb */}
+          <div className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none mix-blend-screen opacity-50 z-0">
+            <svg viewBox="0 0 500 500" className="w-[500px] h-[500px] absolute">
+               {/* Outer Ring */}
+               <circle cx="250" cy="250" r="230" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="2 10" className="origin-center animate-[spin-slow_40s_linear_infinite]" />
+               
+               {/* Middle Segmented Ring */}
+               <circle cx="250" cy="250" r="180" fill="none" stroke={bgGlowColor} strokeWidth="2" strokeDasharray="80 20 10 20" className="origin-center animate-[spin-slow-reverse_30s_linear_infinite]" />
+               
+               {/* Inner Ring */}
+               <circle cx="250" cy="250" r="140" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="5 15" className="origin-center animate-[spin-slow_20s_linear_infinite]" />
+               
+               {/* Solid Inner Border */}
+               <circle cx="250" cy="250" r="125" fill="none" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-50" />
+
+               {/* Crosshairs */}
+               <line x1="250" y1="0" x2="250" y2="110" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+               <line x1="250" y1="390" x2="250" y2="500" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+               <line x1="0" y1="250" x2="110" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+               <line x1="390" y1="250" x2="500" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+               
+               {/* Decorative Tech Nodes */}
+               <circle cx="250" cy="20" r="3" fill={bgGlowColor} />
+               <circle cx="250" cy="480" r="3" fill={bgGlowColor} />
+               <circle cx="20" cy="250" r="3" fill={bgGlowColor} />
+               <circle cx="480" cy="250" r="3" fill={bgGlowColor} />
+            </svg>
+          </div>
+
           <ThoughtNeuralFlow processes={activeProcesses} />
-          <OrbVisualizer
-            status={orbStatus}
-            intensity={0.5}
-            mood={currentResponse?.mood || 'neutral'}
-          />
+          <div className="z-10 relative">
+            <OrbVisualizer
+              status={orbStatus}
+              intensity={0.5}
+              mood={currentResponse?.mood || 'neutral'}
+            />
+          </div>
         </div>
 
         {/* Dynamic Response Area */}

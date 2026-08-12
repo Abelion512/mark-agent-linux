@@ -37,7 +37,7 @@ const FloatingMenu = ({ onOpenHistory, tgStatus = 'disconnected' }) => {
     <div className="fixed top-8 left-8 z-50" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-12 h-12 rounded-2xl bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] flex items-center justify-center transition-all shadow-lg hover:shadow-[0_0_15px_oklch(var(--su)/0.3)] ${isOpen ? 'text-white border-success/50' : 'text-white/70 hover:text-white hover:border-white/20'}`}
+        className={`w-12 h-12 btn btn-outline bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] flex items-center justify-center transition-all shadow-lg hover:shadow-[0_0_15px_oklch(var(--su)/0.3)] ${isOpen ? 'text-white border-success/50' : 'text-white/70 hover:text-white hover:border-white/20'}`}
       >
         <FaBars size={20} />
       </button>
@@ -82,8 +82,8 @@ const FloatingMenu = ({ onOpenHistory, tgStatus = 'disconnected' }) => {
           <button
             onClick={() => {
               // Custom event to open memory map in MarkHome
-              window.dispatchEvent(new CustomEvent('open-memory-map'));
-              setIsOpen(false);
+              window.dispatchEvent(new CustomEvent('open-memory-map'))
+              setIsOpen(false)
             }}
             className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/10 transition-colors text-white/80 hover:text-white text-sm font-medium text-left"
           >

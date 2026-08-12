@@ -809,64 +809,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
               </div>
             </div>
 
-            {/* Relational Growth UI */}
-            {relationalTraits && config.awarenessEnabled !== false && (
-              <div className="space-y-3 p-3 -mx-2 rounded-lg bg-base-200 mt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">Relational Growth (Sifat Hubungan)</p>
-                    <p className="text-xs opacity-50 mt-1">
-                      Sifat dan sikap Mark ke kamu yang berkembang otomatis dari pola obrolan.
-                    </p>
-                  </div>
-                  <button onClick={handleResetTraits} className="btn btn-xs btn-error btn-outline">
-                    Reset
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  {[
-                    {
-                      label: 'Warmth (Kehangatan)',
-                      val: relationalTraits.warmth,
-                      color: 'progress-error'
-                    },
-                    {
-                      label: 'Sarcasm (Sarkas)',
-                      val: relationalTraits.sarcasm_level,
-                      color: 'progress-warning'
-                    },
-                    {
-                      label: 'Trust (Kepercayaan)',
-                      val: relationalTraits.trust,
-                      color: 'progress-success'
-                    },
-                    {
-                      label: 'Energy (Energi)',
-                      val: relationalTraits.energy,
-                      color: 'progress-info'
-                    }
-                  ].map((trait, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>{trait.label}</span>
-                        <span className="font-mono">{trait.val}</span>
-                      </div>
-                      <progress
-                        className={`progress ${trait.color} w-full`}
-                        value={trait.val}
-                        max="1"
-                      ></progress>
-                    </div>
-                  ))}
-                </div>
-                {relationalTraits.reasoning && (
-                  <div className="text-xs bg-base-300 p-2 rounded border border-base-content/10 italic text-base-content/70">
-                    <span className="font-semibold not-italic block mb-1">Reasoning Terakhir:</span>
-                    {relationalTraits.reasoning}
-                  </div>
-                )}
-              </div>
-            )}
+
 
             {/* System Persona */}
             <div id="tour-persona" className="space-y-1.5 p-2 -mx-2 rounded-lg">
@@ -1148,8 +1091,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
               </div>
             </div>
           </section>
-
-          <div className="divider"></div>
 
           {/* ── Telegram Bot Settings ── */}
 

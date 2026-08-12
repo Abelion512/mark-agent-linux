@@ -73,9 +73,9 @@ const CubeVisualizer = ({ status = 'idle', intensity = 0, mood = 'neutral' }) =>
   else if (status === 'speaking') targetScale = 1 + intensity * 0.4;
   else targetScale = 1;
 
-  // 24 = 6rem = 96px, so translateZ is 48px
-  const faceClass = `absolute inset-0 m-auto w-24 h-24 rounded-2xl border ${borderClass} bg-gradient-to-br ${glassClass} shadow-[inset_0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center`;
-  const innerFaceClass = `absolute inset-0 m-auto w-10 h-10 bg-white shadow-[0_0_15px_rgba(255,255,255,0.9)]`;
+  // 32 = 8rem = 128px, so translateZ is 64px
+  const faceClass = `absolute inset-0 m-auto w-32 h-32 rounded-3xl border ${borderClass} bg-gradient-to-br ${glassClass} shadow-[inset_0_0_30px_rgba(255,255,255,0.2)] flex items-center justify-center`;
+  const innerFaceClass = `absolute inset-0 m-auto w-14 h-14 bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)]`;
 
   return (
     <>
@@ -91,7 +91,7 @@ const CubeVisualizer = ({ status = 'idle', intensity = 0, mood = 'neutral' }) =>
           }
         `}
       </style>
-      <div className={`relative shrink-0 w-36 h-36 flex items-center justify-center my-8 [perspective:1000px]`}>
+      <div className={`relative shrink-0 w-48 h-48 flex items-center justify-center my-8 [perspective:1200px]`}>
         
         {/* Layer 1: Constant Breathing Wrapper - NEVER swapped out so it never snaps */}
         <div className="relative w-full h-full flex items-center justify-center animate-[orb-breathe_5s_ease-in-out_infinite] will-change-transform">
@@ -106,27 +106,27 @@ const CubeVisualizer = ({ status = 'idle', intensity = 0, mood = 'neutral' }) =>
             }}
           >
             {/* Background Aura */}
-            <div className={`absolute inset-0 m-auto w-24 h-24 rounded-full ${glowClass} blur-[40px] will-change-transform`} />
+            <div className={`absolute inset-0 m-auto w-32 h-32 rounded-full ${glowClass} blur-[60px] will-change-transform`} />
 
             {/* Layer 3: Outer Cube Container - Constant rotation speed to prevent CSS reset snapping */}
-            <div className="relative w-24 h-24 [transform-style:preserve-3d] will-change-transform animate-[cube-spin_12s_linear_infinite]">
+            <div className="relative w-32 h-32 [transform-style:preserve-3d] will-change-transform animate-[cube-spin_12s_linear_infinite]">
               
               {/* Outer Glass Faces */}
-              <div className={`${faceClass} [transform:translateZ(48px)]`} />
-              <div className={`${faceClass} [transform:rotateY(180deg)_translateZ(48px)]`} />
-              <div className={`${faceClass} [transform:rotateY(90deg)_translateZ(48px)]`} />
-              <div className={`${faceClass} [transform:rotateY(-90deg)_translateZ(48px)]`} />
-              <div className={`${faceClass} [transform:rotateX(90deg)_translateZ(48px)]`} />
-              <div className={`${faceClass} [transform:rotateX(-90deg)_translateZ(48px)]`} />
+              <div className={`${faceClass} [transform:translateZ(64px)]`} />
+              <div className={`${faceClass} [transform:rotateY(180deg)_translateZ(64px)]`} />
+              <div className={`${faceClass} [transform:rotateY(90deg)_translateZ(64px)]`} />
+              <div className={`${faceClass} [transform:rotateY(-90deg)_translateZ(64px)]`} />
+              <div className={`${faceClass} [transform:rotateX(90deg)_translateZ(64px)]`} />
+              <div className={`${faceClass} [transform:rotateX(-90deg)_translateZ(64px)]`} />
 
               {/* Layer 4: Sentient Inner Core (Tesseract) - Centered symmetrically */}
-              <div className="absolute inset-0 m-auto w-10 h-10 [transform-style:preserve-3d] animate-[cube-spin-reverse_8s_linear_infinite]">
-                 <div className={`${innerFaceClass} [transform:translateZ(20px)]`} />
-                 <div className={`${innerFaceClass} [transform:rotateY(180deg)_translateZ(20px)]`} />
-                 <div className={`${innerFaceClass} [transform:rotateY(90deg)_translateZ(20px)]`} />
-                 <div className={`${innerFaceClass} [transform:rotateY(-90deg)_translateZ(20px)]`} />
-                 <div className={`${innerFaceClass} [transform:rotateX(90deg)_translateZ(20px)]`} />
-                 <div className={`${innerFaceClass} [transform:rotateX(-90deg)_translateZ(20px)]`} />
+              <div className="absolute inset-0 m-auto w-14 h-14 [transform-style:preserve-3d] animate-[cube-spin-reverse_8s_linear_infinite]">
+                 <div className={`${innerFaceClass} [transform:translateZ(28px)]`} />
+                 <div className={`${innerFaceClass} [transform:rotateY(180deg)_translateZ(28px)]`} />
+                 <div className={`${innerFaceClass} [transform:rotateY(90deg)_translateZ(28px)]`} />
+                 <div className={`${innerFaceClass} [transform:rotateY(-90deg)_translateZ(28px)]`} />
+                 <div className={`${innerFaceClass} [transform:rotateX(90deg)_translateZ(28px)]`} />
+                 <div className={`${innerFaceClass} [transform:rotateX(-90deg)_translateZ(28px)]`} />
               </div>
             </div>
 

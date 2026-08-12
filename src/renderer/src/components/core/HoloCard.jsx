@@ -14,17 +14,17 @@ const HoloCard = ({ children, title, defaultExpanded = false }) => {
   }, [children]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] animate-[holo-enter_0.4s_ease-out_forwards] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
+    <div className="relative w-full overflow-hidden rounded-sm bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] animate-[holo-enter_0.4s_ease-out_forwards] shadow-xl">
       
       {/* Animated Border Flow (Top) */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-[var(--color-holo-border)] bg-[length:200%_auto] animate-[holo-border-flow_3s_linear_infinite]" />
       <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--color-holo-border)] bg-[length:200%_auto] animate-[holo-border-flow_3s_linear_infinite] rotate-180" />
       
-      {/* Corner Accents */}
-      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-success rounded-tl-2xl opacity-50" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-success rounded-tr-2xl opacity-50" />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-success rounded-bl-2xl opacity-50" />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-success rounded-br-2xl opacity-50" />
+      {/* HUD Brackets */}
+      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30" />
+      <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30" />
+      <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30" />
+      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
 
       {/* Scan lines effect */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[repeating-linear-gradient(transparent,transparent_2px,oklch(var(--p))_3px,transparent_4px)] mix-blend-screen" />
