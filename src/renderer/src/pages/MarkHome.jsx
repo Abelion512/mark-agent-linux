@@ -59,7 +59,7 @@ const MarkHome = () => {
     handlePlanningCommand(text, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
   }
 
-  const { isRecording, toggleRecording, toastMessage } = useVAD({
+  const { isRecording, toggleRecording, startRecording, stopRecording, toastMessage } = useVAD({
     onTranscript: handleVoiceTranscript
   })
 
@@ -285,7 +285,8 @@ const MarkHome = () => {
         }}
         isLoading={isLoading || isAgentBusy}
         isRecording={isRecording}
-        onToggleRecord={toggleRecording}
+        onStartRecord={startRecording}
+        onStopRecord={stopRecording}
         onStop={handleStop}
         source={inputSource}
       />

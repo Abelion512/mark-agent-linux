@@ -49,7 +49,7 @@ const getFileIcon = (fileName = '') => {
   return <FaFileAlt className="text-primary" />
 }
 
-const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, source = 'pc' }) => {
+const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecord, onStop, source = 'pc' }) => {
   const inputRef = useRef(null)
   const fileInputRef = useRef(null)
   const [inputText, setInputText] = useState('')
@@ -290,16 +290,27 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onToggleRecord, onStop, so
           <FaPaperclip size={16} />
         </button>
 
-        {/* Mic / Record Toggle */}
+        {/* Mic / Record Toggle (Hold to talk) */}
         <button
           type="button"
-          onClick={onToggleRecord}
-          className={`p-3 rounded-full transition-all flex-shrink-0 ${
+          onPointerDown={(e) => {
+            e.preventDefault()
+            if (onStartRecord) onStartRecord()
+          }}
+          onPointerUp={(e) => {
+            e.preventDefault()
+            if (onStopRecord) onStopRecord()
+          }}
+          onPointerLeave={(e) => {
+            e.preventDefault()
+            if (isRecording && onStopRecord) onStopRecord()
+          }}
+          className={`p-3 rounded-full transition-all flex-shrink-0 cursor-pointer select-none ${
             isRecording
-              ? 'text-error bg-error/20 animate-pulse'
+              ? 'text-error bg-error/20 animate-pulse scale-110'
               : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
-          title={isRecording ? 'Stop Recording' : 'Click to Talk'}
+          title="Tahan untuk bicara (Hold to talk)"
         >
           <FaMicrophone size={18} />
         </button>

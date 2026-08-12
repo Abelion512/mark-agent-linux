@@ -180,5 +180,11 @@ export const useVAD = ({
     return () => stopVADCleanup()
   }, [])
 
-  return { isRecording, toggleRecording, toastMessage }
+  return { 
+    isRecording, 
+    toggleRecording, 
+    startRecording: startVADRecording, 
+    stopRecording: finishSpeechAndTranscribe, 
+    toastMessage 
+  }
 }
