@@ -47,6 +47,20 @@ const MarkHome = () => {
   const [showMusicWidget, setShowMusicWidget] = useState(false)
   const [isMusicAnimatingOut, setIsMusicAnimatingOut] = useState(false)
   const [isMaxWindow, setIsMaxWindow] = useState(false)
+  const [ttsIntensity, setTtsIntensity] = useState(0)
+
+  useEffect(() => {
+    const handleTtsIntensity = (e) => {
+      setTtsIntensity(e.detail || 0)
+      if (window.isMarkSpeaking) {
+        setOrbStatus('speaking')
+      } else {
+        setOrbStatus((prev) => prev === 'speaking' ? 'idle' : prev)
+      }
+    }
+    window.addEventListener('mark-intensity', handleTtsIntensity)
+    return () => window.removeEventListener('mark-intensity', handleTtsIntensity)
+  }, [setOrbStatus])
 
   useEffect(() => {
     if (window.api?.onWindowMaximized) {
@@ -61,12 +75,13 @@ const MarkHome = () => {
   }, [])
 
   const handleVoiceTranscript = (text) => {
-    setMessage(text)
+    const prefixedText = `(Hasil STT) ${text}`
+    setMessage(prefixedText)
     setIsSpeak(true) // Sets global state
-    handlePlanningCommand(text, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
+    handlePlanningCommand(prefixedText, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
   }
 
-  const { isRecording, toggleRecording, startRecording, stopRecording, toastMessage } = useVAD({
+  const { isRecording, isProcessing, audioIntensity, toggleRecording, startRecording, stopRecording, toastMessage } = useVAD({
     onTranscript: handleVoiceTranscript
   })
 
@@ -100,9 +115,13 @@ const MarkHome = () => {
     }
   }, [isPlaying, currentTrack?.title, showMusicWidget])
 
-  // Sync orb status based on isLoading
+  // Sync orb status based on isLoading, isRecording, and isProcessing
   useEffect(() => {
-    if (isLoading) {
+    if (isRecording) {
+      setOrbStatus('listening')
+    } else if (isProcessing) {
+      setOrbStatus('thinking')
+    } else if (isLoading) {
       // If last message is thinking, then thinking. Else speaking/executing
       const lastMsg = chatData[chatData.length - 1]
       if (lastMsg?.isThinking) {
@@ -117,7 +136,7 @@ const MarkHome = () => {
     } else {
       setOrbStatus('idle')
     }
-  }, [isLoading, chatData, setOrbStatus])
+  }, [isLoading, chatData, isRecording, isProcessing, setOrbStatus])
 
   // Derived currentResponse from chatData
   useEffect(() => {
@@ -146,11 +165,8 @@ const MarkHome = () => {
             mood: lastItem.mood
           })
 
-          // Trigger holographic beam (speaking animation) to project the text
-          if (!lastItem.isThinking) {
-            setOrbStatus('speaking')
-            setTimeout(() => setOrbStatus('idle'), 2500) // Project the beam for 2.5 seconds
-          }
+          // State 'speaking' kini diatur otomatis oleh event mark-intensity
+          // sehingga getaran & status sinkron 100% dengan durasi audio TTS sebenarnya.
         }
       } else {
         // User message, we can clear current response or show "Processing..."
@@ -294,7 +310,7 @@ const MarkHome = () => {
             <div className="z-10 relative">
               <OrbVisualizer
                 status={orbStatus}
-                intensity={0.5}
+                intensity={orbStatus === 'speaking' ? ttsIntensity : 0}
                 mood={currentResponse?.mood || 'neutral'}
               />
             </div>
@@ -379,6 +395,8 @@ const MarkHome = () => {
         }}
         isLoading={isLoading || isAgentBusy}
         isRecording={isRecording}
+        isProcessing={isProcessing}
+        audioIntensity={audioIntensity}
         onStartRecord={startRecording}
         onStopRecord={stopRecording}
         onStop={handleStop}

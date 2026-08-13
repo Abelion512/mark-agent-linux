@@ -107,6 +107,15 @@ db.version(18).stores({
     config.windowOpacity = config.windowOpacity ?? 0.85
   })
 })
+
+db.version(19).stores({
+  config: 'id, personality, model, temperature, context, ttsRate, ttsPitch, aiProvider, groqApiKey, groqModel, embedProvider, lmStudioEmbedModel, cerebrasApiKey, cerebrasModel, tgBotToken, tgAdminIds, customEndpoint, customApiKey, customModel, awarenessEnabled, cameraDeviceId, cameraEnabled, geminiWebModel, windowOpacity, localWhisperModel'
+}).upgrade(tx => {
+  return tx.table('config').toCollection().modify(config => {
+    config.localWhisperModel = config.localWhisperModel ?? 'whisper-small'
+  })
+})
+
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 
@@ -231,6 +240,9 @@ export async function getAllConfig() {
       }
       if (data[0].windowOpacity === undefined) {
         data[0].windowOpacity = 0.85
+      }
+      if (!data[0].localWhisperModel) {
+        data[0].localWhisperModel = 'whisper-small'
       }
     }
     return data || []

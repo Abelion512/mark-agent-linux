@@ -49,7 +49,7 @@ const getFileIcon = (fileName = '') => {
   return <FaFileAlt className="text-primary" />
 }
 
-const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecord, onStop, source = 'pc' }) => {
+const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensity = 0, onStartRecord, onStopRecord, onStop, source = 'pc' }) => {
   const inputRef = useRef(null)
   const fileInputRef = useRef(null)
   const [inputText, setInputText] = useState('')
@@ -305,14 +305,30 @@ const InputBar = ({ onSubmit, isLoading, isRecording, onStartRecord, onStopRecor
             e.preventDefault()
             if (isRecording && onStopRecord) onStopRecord()
           }}
-          className={`p-3 rounded-full transition-all flex-shrink-0 cursor-pointer select-none ${
-            isRecording
-              ? 'text-error bg-error/20 animate-pulse scale-110'
+          className={`relative p-3 rounded-full transition-all flex-shrink-0 cursor-pointer select-none ${
+            isProcessing
+              ? 'text-primary bg-primary/20 cursor-wait'
+              : isRecording
+              ? 'text-error bg-error/20'
               : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
-          title="Tahan untuk bicara (Hold to talk)"
+          style={{
+            transform: isRecording && !isProcessing ? `scale(${1 + audioIntensity * 0.3})` : '',
+            boxShadow: isRecording && !isProcessing ? `0 0 ${10 + audioIntensity * 40}px rgba(255,0,0, ${0.3 + audioIntensity * 0.5})` : ''
+          }}
+          title={isProcessing ? 'Sedang memproses suara...' : 'Tahan untuk bicara (Hold to talk)'}
         >
-          <FaMicrophone size={18} />
+          {isRecording && !isProcessing && (
+            <div 
+              className="absolute inset-0 rounded-full bg-error/30 -z-10 transition-transform duration-75"
+              style={{ transform: `scale(${1 + audioIntensity * 0.8})` }}
+            />
+          )}
+          {isProcessing ? (
+            <span className="loading loading-spinner w-[18px] h-[18px]"></span>
+          ) : (
+            <FaMicrophone size={18} />
+          )}
         </button>
 
         {/* Emoji Button */}

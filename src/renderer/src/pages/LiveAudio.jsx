@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useChat } from '../contexts/ChatContext'
 import { getAllConfig } from '../api/db'
-import { transcribeAudioGroq } from '../api/groq'
+import { transcribeAudioLocal } from '../api/localWhisper'
 import { FaChevronLeft, FaMicrophone, FaStop, FaExclamationTriangle } from 'react-icons/fa'
 
 const LiveAudio = () => {
@@ -47,6 +47,20 @@ const LiveAudio = () => {
   )
 
   const stopRecordingCleanup = () => {
+    const totalLength = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
+    
+    // Jika dipanggil saat mau dimatikan secara manual dan ada data audio,
+    // kembalikan merged array agar bisa ditranskrip sebelum dihapus
+    let pendingAudio = null;
+    if (totalLength >= 8000) {
+      pendingAudio = new Float32Array(totalLength)
+      let offset = 0
+      for (let arr of audioChunksRef.current) {
+        pendingAudio.set(arr, offset)
+        offset += arr.length
+      }
+    }
+
     if (processorRef.current) {
       processorRef.current.disconnect()
       processorRef.current = null
@@ -64,6 +78,8 @@ const LiveAudio = () => {
     }
     isSpeakingRef.current = false
     audioChunksRef.current = []
+    
+    return pendingAudio;
   }
 
   // Bersihkan mic saat unmount
@@ -101,13 +117,37 @@ const LiveAudio = () => {
 
   const handleMicToggle = async () => {
     if (isActive) {
-      stopRecordingCleanup()
+      // Dapatkan pending audio yang sempat terekam sebelum dimatikan
+      const pendingAudio = stopRecordingCleanup()
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current = null
       }
       setIsActive(false)
-      setStatus('idle')
+      
+      // Jika ada audio yang sempat ngomong sebelum dimatikan paksa, transkrip!
+      if (pendingAudio) {
+        setStatus('thinking')
+        
+        // Memberikan jeda 150ms agar UI React sempat re-render (mic mati) sebelum thread diblokir oleh WASM
+        setTimeout(() => {
+          transcribeAudioLocal(pendingAudio)
+            .then(text => {
+              if (text && text.trim() !== '') {
+                setMessage(text.trim())
+                handlePlanningCommand(text.trim())
+              } else {
+                setStatus('idle')
+              }
+            })
+            .catch(err => {
+              console.error('Local STT Error:', err)
+              setStatus('idle')
+            })
+        }, 150)
+      } else {
+        setStatus('idle')
+      }
     } else {
       if (isStartingRef.current) return
       isStartingRef.current = true
@@ -171,8 +211,8 @@ const LiveAudio = () => {
           for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
           const rms = Math.sqrt(sum / input.length)
 
-          // Threshold suara (VAD sederhana)
-          if (rms > 0.015) {
+          // Threshold suara (VAD sederhana) diturunkan agar lebih sensitif
+          if (rms > 0.01) {
             if (!isSpeakingRef.current) {
               isSpeakingRef.current = true
               audioChunksRef.current = []
@@ -197,24 +237,24 @@ const LiveAudio = () => {
               
               setStatus('thinking')
               
-              // Transkripsi ke Groq Cloud API
-              transcribeAudioGroq(merged)
-                .then(text => {
-                  if (text && text.trim() !== '') {
-                    setMessage(text.trim())
-                    handlePlanningCommand(text.trim())
-                  } else {
-                    setStatus('listening')
-                  }
-                })
-                .catch(err => {
-                  console.error('Groq Error:', err)
-                  if (err.message.includes('Key')) {
-                    setToastMessage(err.message)
+              // Memberikan jeda 150ms agar UI React sempat re-render sebelum thread diblokir oleh WASM
+              setTimeout(() => {
+                transcribeAudioLocal(merged)
+                  .then(text => {
+                    if (text && text.trim() !== '') {
+                      setMessage(text.trim())
+                      handlePlanningCommand(text.trim())
+                    } else {
+                      setStatus('listening')
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Local STT Error:', err)
+                    setToastMessage('Gagal memuat atau memproses Whisper Local.')
                     setTimeout(() => setToastMessage(''), 5000)
-                  }
-                  setStatus('listening')
-                })
+                    setStatus('listening')
+                  })
+              }, 150)
               
             }, 1200) // Diam 1.2 detik = kirim ke Groq
           }

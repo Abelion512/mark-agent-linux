@@ -1,15 +1,4 @@
-import { pipeline, env } from '@huggingface/transformers';
-
-env.allowLocalModels = false;
-
-const isBrowserWithCache = typeof window !== 'undefined' && typeof caches !== 'undefined';
-if (isBrowserWithCache) {
-  env.useBrowserCache = true;
-  env.useFSCache = false;
-} else {
-  env.useBrowserCache = false;
-  env.useFSCache = true;
-}
+import { pipeline } from '@huggingface/transformers';
 
 let extractor = null;
 let isDownloading = false;

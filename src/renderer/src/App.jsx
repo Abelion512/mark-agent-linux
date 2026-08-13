@@ -16,6 +16,12 @@ import { GlobalCameraManager } from './components/GlobalCameraManager'
 import { getAllConfig } from './api/db'
 import { initOramaIndices, hydrateFromDexie } from './api/oramaStore'
 import { pauseStaleAgentTasks } from './api/taskStore'
+import { env } from '@huggingface/transformers'
+
+// Global Transformers.js configuration
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+env.useFSCache = false;
 
 const GlobalListener = () => {
   const navigate = useNavigate()
@@ -135,6 +141,14 @@ function App() {
   const [hasConfig, setHasConfig] = useState(true)
   const [isChecking, setIsChecking] = useState(true)
   const [loadingText, setLoadingText] = useState('Membangunkan Mark...')
+  const [showRecovery, setShowRecovery] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowRecovery(true)
+    }, 15000)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const checkConfig = async () => {
@@ -183,6 +197,36 @@ function App() {
         console.error('[App] Failed to load Transformers:', e)
       }
 
+      // 1.6 Load Local STT (Whisper) Model
+      try {
+        setLoadingText('Memuat Voice Engine...')
+        const { loadWhisper } = await import('./api/localWhisper')
+        let sttStats = {}
+        await loadWhisper((info) => {
+          if (info.status === 'initiate') {
+            sttStats[info.file] = { loaded: 0, total: info.total || 0 }
+          } else if (info.status === 'progress') {
+            if (sttStats[info.file]) {
+              sttStats[info.file].loaded = info.loaded
+              sttStats[info.file].total = info.total
+            }
+            const values = Object.values(sttStats)
+            const totalBytes = values.reduce((acc, curr) => acc + curr.total, 0)
+            const loadedBytes = values.reduce((acc, curr) => acc + curr.loaded, 0)
+            if (totalBytes > 0) {
+              const percent = Math.round((loadedBytes / totalBytes) * 100)
+              const loadedMB = (loadedBytes / 1024 / 1024).toFixed(1)
+              const totalMB = (totalBytes / 1024 / 1024).toFixed(1)
+              setLoadingText(`Mengunduh Voice Engine... ${percent}% (${loadedMB}MB / ${totalMB}MB)`)
+            }
+          } else if (info.status === 'done' || info.status === 'ready') {
+            setLoadingText('Membangunkan Mark...')
+          }
+        })
+      } catch (e) {
+        console.error('[App] Failed to load Whisper STT:', e)
+      }
+
       // 2. Load config
       const data = await getAllConfig()
       if (!data || data.length === 0) {
@@ -200,11 +244,36 @@ function App() {
 
   if (isChecking) {
     return (
-      <div className="h-screen w-screen bg-base-300 flex flex-col items-center justify-center gap-5">
-        <span className="loading loading-infinity w-16 text-primary"></span>
-        <p className="text-sm font-semibold tracking-[0.2em] text-white/40 uppercase animate-pulse">
-          {loadingText}
-        </p>
+      <div className="relative h-screen w-screen overflow-hidden bg-base-300 rounded-xl flex flex-col">
+        <WindowControls />
+        <div className="flex-1 flex flex-col items-center justify-center gap-5">
+          <span className="loading loading-infinity w-16 text-primary"></span>
+          <p className="text-sm font-semibold tracking-[0.2em] text-white/40 uppercase animate-pulse text-center px-4">
+            {loadingText}
+          </p>
+          {showRecovery && (
+            <div className="absolute bottom-10 flex flex-col items-center animate-fade-in">
+              <p className="text-xs text-white/40 mb-3 text-center max-w-xs">
+                Proses pemuatan memakan waktu lebih lama dari biasanya. Jika terjebak, bersihkan cache model.
+              </p>
+              <button 
+                onClick={async () => {
+                  try {
+                    await caches.delete('transformers-cache')
+                    console.log('Cache cleared')
+                    window.location.reload()
+                  } catch(e) {
+                    console.error('Failed to clear cache', e)
+                    window.location.reload()
+                  }
+                }}
+                className="btn btn-outline btn-error btn-sm"
+              >
+                Hapus Cache Model & Muat Ulang
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
