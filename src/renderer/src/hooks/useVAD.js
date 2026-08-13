@@ -23,9 +23,9 @@ export const useVAD = ({
 
   const stopVADCleanup = () => {
     const totalLength = audioChunksRef.current.reduce((acc, val) => acc + val.length, 0)
-    
+
     // Jika ada pending audio saat user menekan stop manual
-    let pendingAudio = null;
+    let pendingAudio = null
     if (totalLength >= 8000) {
       pendingAudio = new Float32Array(totalLength)
       let offset = 0
@@ -54,8 +54,8 @@ export const useVAD = ({
     isStartingRef.current = false
     silenceFramesRef.current = 0
     isProcessingSpeechRef.current = false
-    
-    return pendingAudio;
+
+    return pendingAudio
   }
 
   const finishSpeechAndTranscribe = () => {
@@ -77,7 +77,7 @@ export const useVAD = ({
 
     // Hapus pemotongan silence agresif. Whisper bisa menangani sedikit silence di akhir.
     // Menyimpan sedikit silence di akhir justru mencegah plosif terakhir terpotong.
-    const trimmedAudio = merged;
+    const trimmedAudio = merged
 
     stopVADCleanup()
     setIsProcessing(true)
@@ -107,7 +107,10 @@ export const useVAD = ({
 
         setIsProcessing(false)
         if (text && text.trim() !== '') {
-          const cleanText = text.replace(/\b(mbak|mak|makh|marg|mart|marck|marc|mac|mag)\b/gi, 'Mark')
+          const cleanText = text.replace(
+            /\b(mbak|mak|makh|marg|mart|marck|marc|mac|mag)\b/gi,
+            'Mark'
+          )
           onTranscript(cleanText.trim())
         }
       } catch (err) {
@@ -134,8 +137,17 @@ export const useVAD = ({
       if (!isActive || !isStartingRef.current) return
 
       const micId = config[0]?.micDeviceId
+      const audioSettings = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+
       const constraints = {
-        audio: micId && micId !== 'default' ? { deviceId: { exact: micId } } : true
+        audio:
+          micId && micId !== 'default'
+            ? { deviceId: { exact: micId }, ...audioSettings }
+            : audioSettings
       }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       if (!isActive || !isStartingRef.current) {
@@ -176,7 +188,7 @@ export const useVAD = ({
         let sum = 0
         for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
         const rms = Math.sqrt(sum / input.length)
-        
+
         // Normalisasi RMS untuk visualisasi (RMS biasanya berkisar antara 0.01 - 0.15)
         const normalized = Math.min(1, (rms - RMS_THRESHOLD) * 15)
         setAudioIntensity(Math.max(0, normalized))
@@ -216,7 +228,7 @@ export const useVAD = ({
   const toggleRecording = () => {
     if (isRecordingRef.current) {
       const pendingAudio = stopVADCleanup()
-      
+
       if (pendingAudio) {
         // Jika user secara eksplisit mematikan mic saat ngomong, transkrip!
         setIsProcessing(true)
@@ -233,7 +245,9 @@ export const useVAD = ({
             } else {
               text = await transcribeAudioLocal(pendingAudio, (progressData) => {
                 if (progressData && progressData.progress !== undefined) {
-                  setToastMessage(`Mengunduh model AI Suara... ${Math.round(progressData.progress)}%`)
+                  setToastMessage(
+                    `Mengunduh model AI Suara... ${Math.round(progressData.progress)}%`
+                  )
                   if (progressData.progress >= 100) {
                     setTimeout(() => setToastMessage(''), 2000)
                   }
@@ -243,7 +257,10 @@ export const useVAD = ({
 
             setIsProcessing(false)
             if (text && text.trim() !== '') {
-              const cleanText = text.replace(/\b(mbak|mak|makh|marg|mart|marck|marc|mac|mag)\b/gi, 'Mark')
+              const cleanText = text.replace(
+                /\b(mbak|mak|makh|marg|mart|marck|marc|mac|mag)\b/gi,
+                'Mark'
+              )
               onTranscript(cleanText.trim())
             }
           } catch (err) {
@@ -263,13 +280,13 @@ export const useVAD = ({
     return () => stopVADCleanup()
   }, [])
 
-  return { 
-    isRecording, 
+  return {
+    isRecording,
     isProcessing,
     audioIntensity,
-    toggleRecording, 
-    startRecording: startVADRecording, 
-    stopRecording: finishSpeechAndTranscribe, 
-    toastMessage 
+    toggleRecording,
+    startRecording: startVADRecording,
+    stopRecording: finishSpeechAndTranscribe,
+    toastMessage
   }
 }

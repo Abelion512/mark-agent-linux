@@ -100,13 +100,41 @@ export const YoutubeMusicProvider = ({ children }) => {
   const playPause = useCallback(() => {
     webviewRef.current?.executeJavaScript(`
       (function() {
-        const btn = document.querySelector('#play-pause-button, .play-pause-button, ytmusic-player-bar #play-pause-button, ytmusic-player-bar .play-pause-button');
-        const video = document.querySelector('video');
+        const btn = document.querySelector('.play-pause-button, #play-pause-button, ytmusic-player-bar .play-pause-button, ytmusic-player-bar #play-pause-button');
         if (btn) {
           btn.click();
-        } else if (video) {
-          if (video.paused) video.play();
+        } else {
+          const video = document.querySelector('video');
+          if (video) {
+            if (video.paused) video.play();
+            else video.pause();
+          }
+        }
+      })();
+    `)
+  }, [])
+
+  const pauseTrack = useCallback(() => {
+    webviewRef.current?.executeJavaScript(`
+      (function() {
+        const video = document.querySelector('video');
+        if (video && !video.paused) {
+          const btn = document.querySelector('.play-pause-button, #play-pause-button, ytmusic-player-bar .play-pause-button, ytmusic-player-bar #play-pause-button');
+          if (btn) btn.click();
           else video.pause();
+        }
+      })();
+    `)
+  }, [])
+
+  const resumeTrack = useCallback(() => {
+    webviewRef.current?.executeJavaScript(`
+      (function() {
+        const video = document.querySelector('video');
+        if (video && video.paused) {
+          const btn = document.querySelector('.play-pause-button, #play-pause-button, ytmusic-player-bar .play-pause-button, ytmusic-player-bar #play-pause-button');
+          if (btn) btn.click();
+          else video.play();
         }
       })();
     `)
@@ -125,7 +153,9 @@ export const YoutubeMusicProvider = ({ children }) => {
     currentTrack,
     nextTrack,
     prevTrack,
-    playPause
+    playPause,
+    pauseTrack,
+    resumeTrack
   }
 
   return <YoutubeMusicContext.Provider value={value}>{children}</YoutubeMusicContext.Provider>

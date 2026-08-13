@@ -9,7 +9,8 @@ import {
   FaFileAlt,
   FaFilePdf,
   FaFileCode,
-  FaFileImage
+  FaFileImage,
+  FaLock
 } from 'react-icons/fa'
 import ConfirmModal from './ConfirmModal'
 
@@ -293,21 +294,13 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
         {/* Mic / Record Toggle (Hold to talk) */}
         <button
           type="button"
-          onPointerDown={(e) => {
-            e.preventDefault()
-            if (onStartRecord) onStartRecord()
-          }}
-          onPointerUp={(e) => {
-            e.preventDefault()
-            if (onStopRecord) onStopRecord()
-          }}
-          onPointerLeave={(e) => {
-            e.preventDefault()
-            if (isRecording && onStopRecord) onStopRecord()
-          }}
-          className={`relative p-3 rounded-full transition-all flex-shrink-0 cursor-pointer select-none ${
+          onClick={isRecording ? onStopRecord : onStartRecord}
+          disabled={isProcessing || isLoading}
+          className={`relative p-3 md:p-4 rounded-full flex-shrink-0 transition-all duration-300 transform outline-none z-10 ${
             isProcessing
               ? 'text-primary bg-primary/20 cursor-wait'
+              : isLoading
+              ? 'text-white/20 bg-white/5 cursor-not-allowed'
               : isRecording
               ? 'text-error bg-error/20'
               : 'text-white/40 hover:text-white/80 hover:bg-white/5'
@@ -316,7 +309,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
             transform: isRecording && !isProcessing ? `scale(${1 + audioIntensity * 0.3})` : '',
             boxShadow: isRecording && !isProcessing ? `0 0 ${10 + audioIntensity * 40}px rgba(255,0,0, ${0.3 + audioIntensity * 0.5})` : ''
           }}
-          title={isProcessing ? 'Sedang memproses suara...' : 'Tahan untuk bicara (Hold to talk)'}
+          title={isProcessing ? 'Sedang memproses suara...' : isLoading ? 'Agen sedang sibuk' : 'Mulai/Berhenti Rekam (Ctrl+Alt+M)'}
         >
           {isRecording && !isProcessing && (
             <div 
@@ -326,6 +319,8 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
           )}
           {isProcessing ? (
             <span className="loading loading-spinner w-[18px] h-[18px]"></span>
+          ) : isLoading ? (
+            <FaLock size={18} />
           ) : (
             <FaMicrophone size={18} />
           )}

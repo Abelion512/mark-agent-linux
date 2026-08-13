@@ -75,7 +75,7 @@ const MarkHome = () => {
   }, [])
 
   const handleVoiceTranscript = (text) => {
-    const prefixedText = `(Hasil STT) ${text}`
+    const prefixedText = `(Mikrofon) ${text}`
     setMessage(prefixedText)
     setIsSpeak(true) // Sets global state
     handlePlanningCommand(prefixedText, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
@@ -89,13 +89,17 @@ const MarkHome = () => {
   const hasAutoStartedRef = useRef(false)
 
   useEffect(() => {
-    if (location.state?.autoStartMic) {
-      if (hasAutoStartedRef.current !== location.state.autoStartMic) {
-        hasAutoStartedRef.current = location.state.autoStartMic
-        toggleRecording()
+    if (location.state?.autoToggleMic) {
+      if (hasAutoStartedRef.current !== location.state.autoToggleMic) {
+        hasAutoStartedRef.current = location.state.autoToggleMic
+        if (isLoading || isAgentBusy) {
+          console.warn('[VAD] Ignored toggle because agent is busy')
+        } else {
+          toggleRecording()
+        }
       }
     }
-  }, [location.state?.autoStartMic, toggleRecording])
+  }, [location.state?.autoToggleMic, toggleRecording, isLoading, isAgentBusy])
 
   // Handle music widget exit animation
   useEffect(() => {

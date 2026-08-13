@@ -27,9 +27,9 @@ const GlobalListener = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const handleShortcut = () => {
-      // Navigate to Home (MarkHome) and trigger microphone auto-start
-      navigate('/', { state: { autoStartMic: Date.now() } })
+    const handleShortcut = (event, action) => {
+      // Navigate to Home (MarkHome) and trigger microphone auto-toggle
+      navigate('/', { state: { autoToggleMic: Date.now() } })
     }
 
     if (window.api?.onLiveAudioShortcut) {

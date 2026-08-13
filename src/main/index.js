@@ -434,13 +434,12 @@ app.whenReady().then(async () => {
       tray = new Tray(nativeImage.createFromPath(icon).resize({ width: 16, height: 16 }))
       tray.setToolTip('Mark AI Assistant')
     })
-
-  // Global Shortcut (One-way)
+  // Global Shortcut (Toggle)
   // Menggunakan Ctrl+Alt+M untuk menghindari bentrok dengan shortcut OS atau aplikasi lain (misal: Discord/AMD)
   globalShortcut.register('CommandOrControl+Alt+M', () => {
     if (mainWindow) {
       mainWindow.show()
-      mainWindow.webContents.send('trigger-live-audio')
+      mainWindow.webContents.send('trigger-live-audio', 'toggle')
     }
   })
 

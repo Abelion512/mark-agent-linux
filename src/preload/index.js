@@ -26,7 +26,7 @@ const api = {
     ipcRenderer.removeAllListeners('ai:status')
     ipcRenderer.on('ai:status', (event, message) => callback(message))
   },
-  onLiveAudioShortcut: (callback) => ipcRenderer.on('trigger-live-audio', () => callback()),
+  onLiveAudioShortcut: (callback) => ipcRenderer.on('trigger-live-audio', (event, action) => callback(event, action)),
   removeLiveAudioShortcut: () => ipcRenderer.removeAllListeners('trigger-live-audio'),
   getPreloadPath: (filename) => {
     const path = require('path')
