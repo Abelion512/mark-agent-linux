@@ -129,7 +129,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
   useEffect(() => {
     loadConfig()
     loadMemories()
-    loadRelationalTraits()
 
     navigator.mediaDevices
       .getUserMedia({ audio: true, video: true })
@@ -277,36 +276,6 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
         micDeviceId: data[0].micDeviceId || 'default',
         awarenessEnabled: data[0].awarenessEnabled ?? true
       }))
-    }
-  }
-
-  const loadRelationalTraits = async () => {
-    const traits = await getRelationship('owner')
-    setRelationalTraits(traits)
-  }
-
-  const handleResetTraits = async () => {
-    const result = await confirm({
-      title: 'Reset Sifat Hubungan?',
-      message:
-        'Ini akan mereset memori sifat kepribadian Mark terhadap Anda (Owner) kembali ke netral (0.5). Lanjutkan?',
-      isError: true,
-      confirmText: 'Ya, Reset'
-    })
-
-    if (result.isConfirmed && relationalTraits) {
-      const resetTraits = {
-        ...relationalTraits,
-        warmth: 0.5,
-        sarcasm_level: 0.5,
-        trust: 0.5,
-        energy: 0.5,
-        evalCount: 0,
-        lastChatIndex: 0,
-        reasoning: 'Direset manual oleh user.'
-      }
-      await saveRelationship(resetTraits)
-      setRelationalTraits(resetTraits)
     }
   }
 
@@ -531,8 +500,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
 
   return (
     <div
-      className="h-screen text-white overflow-hidden relative font-['Poppins',sans-serif] bg-transparent rounded-xl border border-white/5 shadow-2xl"
-      style={{ backgroundColor: `rgba(0,0,0,${config?.windowOpacity ?? 0.85})` }}
+      className="h-screen text-white overflow-hidden relative font-['Poppins',sans-serif] bg-base-300 rounded-xl border border-white/5 shadow-2xl"
     >
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />

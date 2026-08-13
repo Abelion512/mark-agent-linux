@@ -76,7 +76,7 @@ db.version(13).stores({
 })
 
 db.version(14).stores({
-  relationships: 'userId, warmth, sarcasm_level, trust, energy, lastEvaluation, evalCount'
+  relationships: 'userId, warmth, sarcasm_level, trust, energy, obedience, lastEvaluation, evalCount'
 })
 
 db.version(15).stores({
@@ -364,6 +364,7 @@ const DEFAULT_TRAITS = {
   sarcasm_level: 0.5,
   trust: 0.5,
   energy: 0.5,
+  obedience: 0.5,
   evalCount: 0,
   lastChatIndex: 0,
   reasoning: 'Baseline netral — belum ada evaluasi.'

@@ -350,7 +350,7 @@ const LiveAudio = () => {
   }
 
   return (
-    <div className="h-screen bg-[var(--base-300)] text-white overflow-hidden relative font-['Poppins',sans-serif] flex flex-col items-center justify-center">
+    <div className="h-screen bg-base-300 text-white overflow-hidden relative font-['Poppins',sans-serif] flex flex-col items-center justify-center">
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none" />

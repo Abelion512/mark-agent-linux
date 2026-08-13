@@ -154,7 +154,7 @@ export default function Plugins() {
   }
 
   return (
-    <div className="h-screen bg-[var(--base-300)] text-white overflow-hidden relative font-['Poppins',sans-serif]">
+    <div className="h-screen bg-base-300 text-white overflow-hidden relative font-['Poppins',sans-serif]">
       {/* Background Ambience */}
       <ModalComponent />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />

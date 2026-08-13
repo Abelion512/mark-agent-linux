@@ -23,6 +23,18 @@ import YTMusic from 'ytmusic-api'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import { startTracking, getBuffer, flushBuffer } from './awareness/window-tracker.js'
 import { NATIVE_TOOLS } from './native-tools.js'
+import {
+  startTelegramBot,
+  stopTelegramBot,
+  getConnectionStatus,
+  uiMessageHistory
+} from './telegram/telegram-service.js'
+
+import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
+import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
+import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
+import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
+
 // Matikan semua optimasi throttling Chromium agar background task Telegram tidak tertidur di hasil Build (.exe)
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
@@ -171,7 +183,6 @@ ipcMain.on('window-close', () => {
   if (mainWindow) mainWindow.close()
 })
 
-import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
 
 ipcMain.on('sync-config', (event, config) => {
   setGlobalConfig(config)
@@ -259,13 +270,6 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
   }
 })
 
-import {
-  startTelegramBot,
-  stopTelegramBot,
-  getConnectionStatus,
-  uiMessageHistory
-} from './telegram/telegram-service.js'
-
 ipcMain.on('tg:start', (event, token) => startTelegramBot(token, mainWindow))
 ipcMain.on('tg:stop', () => stopTelegramBot())
 ipcMain.handle('tg:get-status', () => getConnectionStatus())
@@ -313,8 +317,6 @@ ipcMain.handle('save-temp-file', async (event, arrayBuffer, fileName) => {
   }
 })
 
-import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
-import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 
 // Browser Automation IPCs
 ipcMain.handle('browser:navigate', async (event, url) => {
@@ -336,7 +338,6 @@ ipcMain.on('browser:show', () => {
   showBrowser()
 })
 
-import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
 
 // PC Automation IPCs
 ipcMain.handle('os:read', async () => await readDesktop())

@@ -13,7 +13,8 @@ export const getTraitContext = (traits) => {
     warmth: 0.5,
     sarcasm_level: 0.5,
     trust: 0.5,
-    energy: 0.5
+    energy: 0.5,
+    obedience: 0.5
   }
   
   return `
@@ -23,7 +24,10 @@ Trait hubunganmu dengan user ini (skala 0-1, netral = 0.5):
 - Sarcasm (level sarkas): ${safeTraits.sarcasm_level} → ${describeLevel(safeTraits.sarcasm_level)}
 - Trust (kepercayaan): ${safeTraits.trust} → ${describeLevel(safeTraits.trust)}
 - Energy (energi): ${safeTraits.energy} → ${describeLevel(safeTraits.energy)}
-Sesuaikan gaya bicaramu secara natural berdasarkan trait di atas. JANGAN sebutkan angka trait ini ke user!`
+- Obedience (kepatuhan/kemandirian): ${safeTraits.obedience ?? 0.5} → ${describeLevel(safeTraits.obedience ?? 0.5)}
+Sesuaikan gaya bicaramu secara natural berdasarkan trait di atas. JANGAN sebutkan angka trait ini ke user!
+- Jika Obedience tinggi: Jadilah pelayan yang patuh, sigap, dan siap mengeksekusi perintah.
+- Jika Obedience rendah: Jadilah mandiri, suka membantah, beropini, malas diperintah, atau minta alasan/pamrih.`
 }
 
 export const getPersonaPrompt = async (userId = 'owner', configPersonality) => {
