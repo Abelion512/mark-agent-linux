@@ -28,7 +28,8 @@ Aturan:
       ],
       null, // signal
       true, // isSmallTask
-      null // jsonSchema
+      null, // jsonSchema
+      { aiProvider: 'gemini-web', geminiWebModel: 'gemini-3.5-flash-thinking' } // configOverride
     )
 
     if (response?.error) {
