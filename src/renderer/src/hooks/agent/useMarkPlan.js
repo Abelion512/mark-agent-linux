@@ -503,7 +503,7 @@ export const useMarkPlan = ({
                   missingRequirements: ['Artifact belum disimpan karena approval ditolak.']
                 }
               } else {
-                const artifactResult = await window.api.executeNativeTool('write-file', artifactQuery)
+                const artifactResult = await window.api.executeNativeTool('write-file', artifactQuery, config)
                 if (!artifactResult?.success) {
                   checkpointData.status = 'needs_revision'
                   checkpointData.error = artifactResult?.error || artifactResult?.message || 'Artifact gagal ditulis.'
@@ -935,7 +935,24 @@ export const useMarkPlan = ({
                 'os-focus-window',
                 'os-ask',
                 'os-control-open',
-                'os-control-close'
+                'os-control-close',
+                'gdrive-info',
+                'gdrive-search',
+                'gdrive-list',
+                'gdrive-read',
+                'gdrive-upload',
+                'gdrive-create',
+                'gdrive-move',
+                'gdrive-copy',
+                'gcalendar-list',
+                'gcalendar-create',
+                'gcalendar-delete',
+                'gmail-search',
+                'gmail-list',
+                'new-gmail-list',
+                'gmail-read',
+                'gmail-send',
+                'gmail-mark-read'
               ].includes(tool)
             ) {
               // --- NATIVE TOOLS (Built-in) ---
@@ -962,7 +979,7 @@ export const useMarkPlan = ({
                 }
               }
 
-              const nativePromise = window.api.executeNativeTool(tool, query)
+              const nativePromise = window.api.executeNativeTool(tool, query, config)
               const abortPromise = new Promise((_, reject) => {
                 const onAbort = () => reject(new Error('AbortError'))
                 if (abortControllerRef.current.signal.aborted) return onAbort()

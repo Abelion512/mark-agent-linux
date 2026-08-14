@@ -7,6 +7,7 @@ import Plugins from './pages/Plugins'
 import Knowledge from './pages/Knowledge'
 import Guidebook from './pages/Guidebook'
 import RelationalGrowth from './pages/RelationalGrowth'
+import GoogleWorkspace from './pages/GoogleWorkspace'
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { ChatProvider } from './contexts/ChatContext'
 import { YoutubeMusicProvider } from './contexts/YoutubeMusicContext'
@@ -19,9 +20,9 @@ import { pauseStaleAgentTasks } from './api/taskStore'
 import { env } from '@huggingface/transformers'
 
 // Global Transformers.js configuration
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-env.useFSCache = false;
+env.allowLocalModels = false
+env.useBrowserCache = true
+env.useFSCache = false
 
 const GlobalListener = () => {
   const navigate = useNavigate()
@@ -58,7 +59,7 @@ const GlobalListener = () => {
 
 const WindowControls = () => {
   const [isMax, setIsMax] = useState(false)
-  
+
   useEffect(() => {
     if (window.api?.onWindowMaximized) {
       window.api.onWindowMaximized((max) => setIsMax(max))
@@ -71,34 +72,68 @@ const WindowControls = () => {
       <div className="flex-1"></div>
 
       {/* Center Drag Grip */}
-      <div className="flex items-center justify-center opacity-30 hover:opacity-100 transition-opacity gap-2" title="Tahan dan geser untuk memindahkan">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="9" r="1"/>
-          <circle cx="19" cy="9" r="1"/>
-          <circle cx="5" cy="9" r="1"/>
-          <circle cx="12" cy="15" r="1"/>
-          <circle cx="19" cy="15" r="1"/>
-          <circle cx="5" cy="15" r="1"/>
+      <div
+        className="flex items-center justify-center opacity-30 hover:opacity-100 transition-opacity gap-2"
+        title="Tahan dan geser untuk memindahkan"
+      >
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="9" r="1" />
+          <circle cx="19" cy="9" r="1" />
+          <circle cx="5" cy="9" r="1" />
+          <circle cx="12" cy="15" r="1" />
+          <circle cx="19" cy="15" r="1" />
+          <circle cx="5" cy="15" r="1" />
         </svg>
       </div>
 
       {/* Right Controls */}
       <div className="flex-1 flex justify-end gap-3 [-webkit-app-region:no-drag] opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
-        <button onClick={() => window.api?.windowMinimize()} className="text-white/70 hover:text-white transition-colors flex items-center justify-center p-2" title="Minimize">
-           <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 7h12v2H2z" /></svg>
+        <button
+          onClick={() => window.api?.windowMinimize()}
+          className="text-white/70 hover:text-white transition-colors flex items-center justify-center p-2"
+          title="Minimize"
+        >
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 7h12v2H2z" />
+          </svg>
         </button>
-        <button onClick={() => window.api?.windowMaximize()} className="text-white/70 hover:text-white transition-colors flex items-center justify-center p-2" title={isMax ? "Restore" : "Maximize"}>
-           {isMax ? (
-             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
-               <path fillRule="evenodd" clipRule="evenodd" d="M4 4h7v7H4V4zm2 2v3h3V6H6z" />
-               <path d="M7 2h7v7h-2V4H7V2z" />
-             </svg>
-           ) : (
-             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M2 2h12v12H2V2zm2 2v8h8V4H4z" /></svg>
-           )}
+        <button
+          onClick={() => window.api?.windowMaximize()}
+          className="text-white/70 hover:text-white transition-colors flex items-center justify-center p-2"
+          title={isMax ? 'Restore' : 'Maximize'}
+        >
+          {isMax ? (
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M4 4h7v7H4V4zm2 2v3h3V6H6z" />
+              <path d="M7 2h7v7h-2V4H7V2z" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M2 2h12v12H2V2zm2 2v8h8V4H4z" />
+            </svg>
+          )}
         </button>
-        <button onClick={() => window.api?.windowClose()} className="text-white/70 hover:text-red-500 transition-colors flex items-center justify-center p-2" title="Close">
-           <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M3.707 3.293a1 1 0 0 1 1.414 0L8 6.586l2.879-2.879a1 1 0 1 1 1.414 1.414L9.414 8l2.879 2.879a1 1 0 0 1-1.414 1.414L8 9.414l-2.879 2.879a1 1 0 1 1-1.414-1.414L6.586 8 3.707 5.121a1 1 0 0 1 0-1.414z" /></svg>
+        <button
+          onClick={() => window.api?.windowClose()}
+          className="text-white/70 hover:text-red-500 transition-colors flex items-center justify-center p-2"
+          title="Close"
+        >
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M3.707 3.293a1 1 0 0 1 1.414 0L8 6.586l2.879-2.879a1 1 0 1 1 1.414 1.414L9.414 8l2.879 2.879a1 1 0 0 1-1.414 1.414L8 9.414l-2.879 2.879a1 1 0 1 1-1.414-1.414L6.586 8 3.707 5.121a1 1 0 0 1 0-1.414z"
+            />
+          </svg>
         </button>
       </div>
     </div>
@@ -122,13 +157,14 @@ const MainLayout = () => {
         <div className="fixed inset-0 z-50 flex flex-col animate-fade-in bg-transparent pointer-events-none">
           <div className="flex-1 pointer-events-auto">
             <Routes>
-            <Route path="/config" element={<Configuration />} />
-            <Route path="/plugins" element={<Plugins />} />
-            <Route path="/live-audio" element={<LiveAudio />} />
-            <Route path="/telegram-bot" element={<TelegramBot />} />
-            <Route path="/knowledge" element={<Knowledge />} />
-            <Route path="/guidebook" element={<Guidebook />} />
-            <Route path="/relational" element={<RelationalGrowth />} />
+              <Route path="/config" element={<Configuration />} />
+              <Route path="/plugins" element={<Plugins />} />
+              <Route path="/live-audio" element={<LiveAudio />} />
+              <Route path="/telegram-bot" element={<TelegramBot />} />
+              <Route path="/google-workspace" element={<GoogleWorkspace />} />
+              <Route path="/knowledge" element={<Knowledge />} />
+              <Route path="/guidebook" element={<Guidebook />} />
+              <Route path="/relational" element={<RelationalGrowth />} />
             </Routes>
           </div>
         </div>
@@ -254,15 +290,16 @@ function App() {
           {showRecovery && (
             <div className="absolute bottom-10 flex flex-col items-center animate-fade-in">
               <p className="text-xs text-white/40 mb-3 text-center max-w-xs">
-                Proses pemuatan memakan waktu lebih lama dari biasanya. Jika terjebak, bersihkan cache model.
+                Proses pemuatan memakan waktu lebih lama dari biasanya. Jika terjebak, bersihkan
+                cache model.
               </p>
-              <button 
+              <button
                 onClick={async () => {
                   try {
                     await caches.delete('transformers-cache')
                     console.log('Cache cleared')
                     window.location.reload()
-                  } catch(e) {
+                  } catch (e) {
                     console.error('Failed to clear cache', e)
                     window.location.reload()
                   }

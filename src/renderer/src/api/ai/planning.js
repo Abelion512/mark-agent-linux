@@ -12,7 +12,9 @@ const CATEGORY_TEXTS = {
   music: 'putar lagu musik youtube yt music cari video mp3 play lagu puter',
   search: 'cari di internet google penelusuran web berita terbaru cuaca informasi terkini',
   system:
-    'screenshot kirim pesan telegram tg operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram'
+    'screenshot kirim pesan telegram tg operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram',
+  workspace:
+    'google drive gdrive calendar jadwal meeting email gmail kirim pesan surat dokumen sheet copy pindah event acara undangan'
 }
 
 let categoryVectors = null
@@ -81,6 +83,12 @@ export const getNextAction = async (
       }
     }
     if (activeCategories.length === 0) activeCategories = ['casual']
+
+    // Manual fallback for critical categories
+    const workspaceKeywords = ['email', 'gmail', 'drive', 'gdrive', 'calendar', 'kalender', 'jadwal', 'meeting', 'workspace']
+    if (workspaceKeywords.some(k => queryForIntent.toLowerCase().includes(k))) {
+      if (!activeCategories.includes('workspace')) activeCategories.push('workspace')
+    }
 
     console.log('[Router: getNextAction] activeCategories:', activeCategories)
     const pluginActions = await getPluginActions()
@@ -239,6 +247,21 @@ ${
 - list-dir: Lihat isi folder. Query: path_folder.
 - grep-search: Cari teks dalam folder. Query: path_folder||keyword.
 - run-powershell: Eksekusi perintah PowerShell. (Perlu persetujuan user untuk command berbahaya)
+- gdrive-search: Cari file di Google Drive. Query: keyword.
+- gdrive-list: Lihat daftar file di Drive. Query: folderId (opsional).
+- gdrive-read: Baca isi file doc/sheet/teks. Query: fileId.
+- gdrive-upload: Upload file teks. Query: nama||isi||mimeType.
+- gdrive-create: Bikin doc/sheet/folder. Query: nama||tipe (doc/sheet/folder).
+- gdrive-move: Pindah file ke folder. Query: fileId||folderId.
+- gdrive-copy: Duplikat file. Query: fileId||nama_baru.
+- gcalendar-list: Lihat event mendatang di Calendar. Query: maxResults||timeMin.
+- gcalendar-create: Buat event baru di Calendar. Query: summary||description||startTime||endTime.
+- gcalendar-delete: Hapus event di Calendar. Query: eventId.
+- gmail-list: Lihat daftar email masuk terbaru. Query: jumlah_email (opsional).
+- gmail-search: Cari email di Gmail. Query: query||maxResults (contoh query: "is:unread").
+- gmail-read: Baca email spesifik. Query: messageId.
+- gmail-send: Kirim email. Query: to||subject||bodyText.
+- gmail-mark-read: Tandai email sudah dibaca. Query: messageId.
 
 # ATURAN EFISIENSI BACA FILE & TOKEN (WAJIB DIPATUHI)
 1. Untuk mendapatkan gambaran utuh dokumen/PDF (Judul, Peta Seluruh Bab, & Kesimpulan) sekaligus dalam 1 detik, panggil 'read-document path_file' TANPA QUERY!
@@ -247,6 +270,28 @@ ${
 4. Gunakan 'file-outline' TERLEBIH DAHULU saat ingin tahu struktur atau letak fungsi/class pada file besar.
 5. Gunakan 'grep-search' TERLEBIH DAHULU saat mencari kata kunci, variabel, atau teks error spesifik.
 6. Setelah menemukan nomor baris via file-outline atau grep-search, panggil 'read-file' HANYA pada rentang baris target (misal: "D:\\App.jsx||20||60").`
+    : ''
+}
+
+${
+  activeCategories.some((c) => ['workspace'].includes(c))
+    ? `\n# GOOGLE WORKSPACE TOOLS (Google Drive, Calendar, Gmail)
+- gdrive-info: Cek kapasitas/storage sisa Google Drive. Query: "all"
+- gdrive-search: Cari file di Google Drive. Query: "kata kunci||start-end" (Contoh: "dokumen||10-20" untuk paging)
+- gdrive-list: List file di Drive. Query: "folderId||start-end" (Contoh: "root||10-20" untuk paging)
+- gdrive-read: Ekstrak isi teks dari Google Docs, Sheets, atau TXT. Query: fileId.
+- gdrive-upload: Upload file teks (Butuh persetujuan user). Query: nama_file||isi_teks.
+- gdrive-create: Membuat dokumen/folder baru. Query: nama_file||doc/sheet/folder.
+- gdrive-move: Memindahkan file. Query: fileId||folderId.
+- gdrive-copy: Menduplikasi file. Query: fileId||nama_baru.
+- gcalendar-list: Lihat jadwal/event (PENTING: Jika belum connect, beri tahu user). Query: "start-end||YYYY-MM-DDTHH:mm:ssZ" (Contoh: "10-20||2023-10-01T00:00:00Z" atau "10||" untuk paging)
+- gcalendar-create: Membuat jadwal baru (Butuh persetujuan user). Query: Judul||Deskripsi||Waktu_Mulai(ISO)||Waktu_Selesai(ISO).
+- gcalendar-delete: Menghapus jadwal. Query: eventId.
+- gmail-search: Mencari email. Query: query_gmail||start-end (Contoh: "is:unread||10-20").
+- gmail-list: Baca email masuk (Inbox). Query: "start-end" (Contoh: "0-10" untuk paging).
+- gmail-read: Membaca isi pesan email tertentu. Query: messageId.
+- gmail-send: Mengirim email baru (Butuh persetujuan user). Query: email_tujuan||Subjek||Isi_pesan.
+- gmail-mark-read: Menandai email sebagai sudah dibaca. Query: messageId.`
     : ''
 }
 `
@@ -416,6 +461,7 @@ ${
               type: 'string',
               enum: [
                 'search',
+                'memory-search',
                 'music-play',
                 'music-search',
                 'music-next',
@@ -443,8 +489,35 @@ ${
                 'browser-type',
                 'browser-scroll',
                 'browser-ask-user',
+                'browser-close',
+                'os-read',
+                'os-click',
+                'os-type',
+                'os-key',
+                'os-scroll',
+                'os-open',
+                'os-list-windows',
+                'os-focus-window',
+                'os-ask',
                 'os-control-open',
                 'os-control-close',
+                'gdrive-info',
+                'gdrive-search',
+                'gdrive-list',
+                'gdrive-read',
+                'gdrive-upload',
+                'gdrive-create',
+                'gdrive-move',
+                'gdrive-copy',
+                'gcalendar-list',
+                'gcalendar-create',
+                'gcalendar-delete',
+                'gmail-search',
+                'gmail-list',
+                'new-gmail-list',
+                'gmail-read',
+                'gmail-send',
+                'gmail-mark-read',
                 ...pluginActions.map((a) => a.name)
               ]
             },

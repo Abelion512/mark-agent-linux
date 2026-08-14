@@ -31,6 +31,11 @@ import {
 } from './telegram/telegram-service.js'
 
 import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
+import {
+  connectGoogle,
+  disconnectGoogle,
+  getGoogleStatus
+} from './google/google-service.js'
 import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
 import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
@@ -207,11 +212,11 @@ ipcMain.on('sync-config', (event, config) => {
 })
 
 // --- NATIVE TOOLS IPC ---
-ipcMain.handle('native-tool:execute', async (event, toolName, query) => {
+ipcMain.handle('native-tool:execute', async (event, toolName, query, config) => {
   const tool = NATIVE_TOOLS[toolName]
   if (!tool) return { success: false, error: 'Tool tidak ditemukan' }
   try {
-    const result = await tool.handler(query)
+    const result = await tool.handler(query, config)
     return { success: true, data: result }
   } catch (err) {
     return { success: false, error: err.message }
@@ -244,6 +249,34 @@ ipcMain.handle('ai:fetch', async (event, data) => {
 
 ipcMain.on('ai:abort-fetch', () => {
   abortAllFetches()
+})
+
+// --- GOOGLE WORKSPACE IPC ---
+ipcMain.handle('google:connect', async (event, clientId, clientSecret) => {
+  try {
+    await connectGoogle(clientId, clientSecret)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('google:disconnect', async () => {
+  try {
+    await disconnectGoogle()
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('google:status', async () => {
+  try {
+    const isConnected = await getGoogleStatus()
+    return { isConnected }
+  } catch (err) {
+    return { isConnected: false }
+  }
 })
 
 // This method will be called when Electron has finished

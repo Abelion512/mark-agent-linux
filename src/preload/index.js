@@ -61,6 +61,11 @@ const api = {
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),
 
+  // Google Workspace
+  googleConnect: (clientId, clientSecret) => ipcRenderer.invoke('google:connect', clientId, clientSecret),
+  googleDisconnect: () => ipcRenderer.invoke('google:disconnect'),
+  googleStatus: () => ipcRenderer.invoke('google:status'),
+
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),
   windowMaximize: () => ipcRenderer.send('window-maximize'),
@@ -73,7 +78,7 @@ const api = {
   tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
   tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),
   getPlugins: () => ipcRenderer.invoke('plugin:get-list'),
-  executeNativeTool: (toolName, query) => ipcRenderer.invoke('native-tool:execute', toolName, query),
+  executeNativeTool: (toolName, query, config) => ipcRenderer.invoke('native-tool:execute', toolName, query, config),
   checkToolApproval: (toolName, query) => ipcRenderer.invoke('native-tool:needs-approval', toolName, query),
   executePlugin: (action, query) => ipcRenderer.invoke('plugin:execute', action, query),
   openPluginFolder: () => ipcRenderer.invoke('plugin:open-folder'),
