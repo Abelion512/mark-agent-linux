@@ -738,6 +738,50 @@ const Guidebook = () => {
                     />
                   </div>
                 </div>
+
+                {/* Kategori Google Workspace */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
+                    <FaGoogle className="text-red-500" /> Google Workspace
+                  </h3>
+                  <div className="space-y-3">
+                    <ToolCard
+                      name="gdrive-list / search"
+                      description="Mengelola dan mencari file di Google Drive."
+                      needsPermission={false}
+                      queryFormat="folderId/kata kunci||start-end"
+                      howItWorks="Mengakses Google Drive untuk menampilkan list file atau mencari file tertentu berdasarkan kata kunci."
+                    />
+                    <ToolCard
+                      name="gdrive-read / upload"
+                      description="Membaca isi teks dari dokumen atau mengupload file teks baru."
+                      needsPermission={false}
+                      queryFormat="fileId / nama_file||isi_teks"
+                      howItWorks="Mengekstrak konten langsung dari dalam dokumen di Google Drive, atau membuat file baru."
+                    />
+                    <ToolCard
+                      name="gcalendar-list / create"
+                      description="Melihat jadwal dari Google Calendar atau membuat event baru."
+                      needsPermission={false}
+                      queryFormat="start-end||YYYY-MM-DDTHH:mm:ssZ"
+                      howItWorks="Mengambil daftar kegiatan/jadwal berdasarkan rentang waktu tertentu atau menjadwalkan event baru."
+                    />
+                    <ToolCard
+                      name="gmail-list / search"
+                      description="Membaca inbox atau mencari email tertentu."
+                      needsPermission={false}
+                      queryFormat="query_gmail||start-end"
+                      howItWorks="Mencari dan me-list email masuk berdasarkan status atau kata kunci (contoh: is:unread)."
+                    />
+                    <ToolCard
+                      name="gmail-read / send"
+                      description="Membaca isi pesan email atau mengirim email baru."
+                      needsPermission={true}
+                      queryFormat="email_tujuan||Subjek||Isi_pesan"
+                      howItWorks="Membaca isi penuh dari email atau membuat dan mengirim email baru ke alamat tujuan (membutuhkan konfirmasi user)."
+                    />
+                  </div>
+                </div>
               </div>
             </section>
 
