@@ -24,7 +24,8 @@ import {
   FaHeartbeat,
   FaCamera,
   FaMicrophoneAlt,
-  FaTelegram
+  FaTelegram,
+  FaGoogle
 } from 'react-icons/fa'
 import { faqs } from '../data/faqData'
 
