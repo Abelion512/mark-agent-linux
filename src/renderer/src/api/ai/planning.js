@@ -1,32 +1,10 @@
-import { fetchAI, cleanAndParse } from './core'
+﻿import { fetchAI, cleanAndParse } from './core'
 import { getAllConfig } from '../db'
 import { getCurrentTimeInfo } from './utils'
 import { generateVector, cosineSimilarity } from '../vectorMemory'
 import { getPersonaPrompt, getTraitContext } from './persona'
-
-const CATEGORY_TEXTS = {
-  coding:
-    'bikin web script kode code program aplikasi membuat koding coding programming nulis react html css javascript js perbaiki error bug frontend ui design backend logic',
-  files:
-    'baca file tulis file hapus file buat file edit file folder direktori cari teks grep terminal powershell command jalankan perintah eksekusi cmd',
-  music: 'putar lagu musik youtube yt music cari video mp3 play lagu puter',
-  search: 'cari di internet google penelusuran web berita terbaru cuaca informasi terkini',
-  system:
-    'screenshot kirim pesan telegram tg operasikan komputer sistem shutdown restart sleep lock matikan nyalakan volume baterai proses task kill cpu ram',
-  workspace:
-    'google drive gdrive calendar jadwal meeting email gmail kirim pesan surat dokumen sheet copy pindah event acara undangan'
-}
-
-let categoryVectors = null
-const getCategoryVectors = async () => {
-  if (categoryVectors) return categoryVectors
-  const vecs = {}
-  for (const [key, text] of Object.entries(CATEGORY_TEXTS)) {
-    vecs[key] = await generateVector(text)
-  }
-  categoryVectors = vecs
-  return categoryVectors
-}
+import { core_tools } from '../tools/core-tools'
+import { group_tools } from '../tools/group-tools'
 
 let pluginVectorCache = new Map()
 
@@ -70,69 +48,16 @@ export const getNextAction = async (
 
     const userId = options.waContext ? options.waContext.senderJid : 'owner'
 
-    // === DYNAMIC PROMPT ROUTING ===
-    const queryForIntent = options.intentQuery || userInput
-    const userVec = await generateVector(queryForIntent)
-    let activeCategories = []
-    if (userVec) {
-      const catVecs = await getCategoryVectors()
-      for (const [key, vec] of Object.entries(catVecs)) {
-        if (!vec) continue
-        const score = cosineSimilarity(userVec, vec)
-        if (score > 0.35) activeCategories.push(key)
-      }
-    }
-    if (activeCategories.length === 0) activeCategories = ['casual']
-
-    // Manual fallback for critical categories
-    const workspaceKeywords = ['email', 'gmail', 'drive', 'gdrive', 'calendar', 'kalender', 'jadwal', 'meeting', 'workspace']
-    if (workspaceKeywords.some(k => queryForIntent.toLowerCase().includes(k))) {
-      if (!activeCategories.includes('workspace')) activeCategories.push('workspace')
-    }
-
-    console.log('[Router: getNextAction] activeCategories:', activeCategories)
-    const pluginActions = await getPluginActions()
-    let relevantPlugins = []
-
-    if (userVec && pluginActions.length > 0) {
-      if (activeCategories.includes('capabilities')) {
-        relevantPlugins = pluginActions // Show all plugins if user is asking for capabilities
-      } else {
-        for (const p of pluginActions) {
-          const pText = `${p.name} ${p.description} ${p.triggerHint || ''}`
-          if (!pluginVectorCache.has(p.name)) {
-            pluginVectorCache.set(p.name, await generateVector(pText))
-          }
-          const pVec = pluginVectorCache.get(p.name)
-          if (pVec) {
-            const score = cosineSimilarity(userVec, pVec)
-            // Threshold 0.35 agar tidak terlalu ketat untuk plugin
-            if (score > 0.35) relevantPlugins.push(p)
-          } else {
-            relevantPlugins.push(p)
-          }
-        }
-      }
-    } else {
-      relevantPlugins = pluginActions
-    }
-
-    const pluginCapabilities =
-      relevantPlugins.length > 0
-        ? relevantPlugins
-            .map(
-              (a) =>
-                `- ${a.name}: ${a.description}${a.triggerHint ? ` (Use when: ${a.triggerHint})` : ''}`
-            )
-            .join('\n')
-        : ''
+    const groupToolsObj = await group_tools()
 
     const systemPrompt = `
 Kamu adalah Mark (Metacognitive Artificial Relational Knowledge), sebuah entitas asisten AI canggih dan otonom.
 
 ${await getPersonaPrompt(userId, conf.personality)}
 ${options.currentMusicTrack ? `\n# STATUS PLAYER MUSIK (REAL-TIME):\nLagu yang AKTIF DIPUTAR SEKARANG: "${options.currentMusicTrack.title}" oleh ${options.currentMusicTrack.artist}.\nPENTING: Lagu di playlist bisa berganti otomatis. JANGAN TERKECUH oleh riwayat chat lama yang menyebutkan lagu sebelumnya! Untuk semua pertanyaan atau obrolan tentang musik yang sedang berjalan, HANYA gunakan data REAL-TIME ini sebagai referensi utama!` : ''}
-
+${
+  !options.disableTools
+    ? `
 # POLA BERPIKIR:
 Kamu dalam loop. Setiap giliran, pilih SATU:
 - Butuh data/aksi → isi "action", "answer" null.
@@ -142,23 +67,28 @@ JANGAN isi keduanya! Boleh panggil tool berulang kali.
 - Gunakan "thought" untuk alasan keputusanmu. isi dengan detail
 - Jika tool sebelumnya GAGAL/ERROR, analisis errornya di "thought" lalu coba strategi lain.
 - Jika user hanya ngobrol santai, LANGSUNG isi "answer" tanpa tool.
-- MENYIMPAN/MEMPERBARUI MEMORY: Untuk "profile" (identitas) & "preference" (kesukaan/gaya bicara), WAJIB PROAKTIF mendeteksi dari obrolan dan simpan tanpa perlu diminta. Untuk "notes" (catatan), HANYA simpan jika user eksplisit meminta. Sebelum insert, CEK daftar MEMORY USER — jika sudah ada atau memperbarui info lama, gunakan action "update" (sertakan ID). Jika info lama salah/tidak relevan, gunakan action "delete".
-${activeCategories.some((c) => ['search', 'casual', 'coding'].includes(c)) ? `- PENGGUNAAN WEB SEARCH: Gunakan "browser-navigate" ke Google Search HANYA untuk info real-time/terbaru. Untuk coding/teori umum, langsung jawab di "answer".` : ''}
+- PENGGUNAAN WEB SEARCH: Gunakan "browser-search" ke Google Search HANYA untuk info real-time/terbaru. Untuk coding/teori umum, langsung jawab di "answer".
+
 # ATURAN VERIFIKASI & STOPPING CONDITION SETELAH WRITE-FILE (SANGAT KETAT)
 1. KETIKA TOOL 'write-file' ATAU 'replace-lines' SUDAH BERHASIL DIEKSEKUSI (success: true di riwayat tool): TUGAS PENULISAN FILE SUDAH 100% SELESAI! DILARANG KERAS MEMANGGIL TOOL 'write-file' LAGI ATAU MEROMBAK FILE LAGI!
 2. KAMU WAJIB LANGSUNG MENGAKHIRI LOOP PADA TURN BERIKUTNYA DENGAN MENGISI "answer" (Laporan singkat bahwa file berhasil dibuat) DAN MENGOSONGKAN "action" (set "action": null)!
 3. VERIFIKASI SEBELUM BALAS: Pastikan nama file, ekstensi (.md/.txt), dan folder target sudah sesuai permintaan user. Isi file wajib lengkap tanpa placeholder.
-${
-  activeCategories.includes('coding')
-    ? `
+
 # ATURAN KODING & DEVELOPMENT
 Jika user memintamu menulis kode pemrograman, ikuti aturan ketat berikut:
 1. **PENGGUNAAN FILE (ARTIFACTS)**: JANGAN tulis kode panjang di dalam teks balasan. Jika kode LEBIH DARI 20 BARIS, kamu WAJIB mengeksekusi tool untuk menulisnya ke dalam file. Untuk HTML dan React, gabungkan CSS dan JS dalam SATU file (single-file artifact). Import library eksternal dari CDN.
-2. **BROWSER STORAGE (HARAM)**: DILARANG KERAS menggunakan \`localStorage\`, \`sessionStorage\` di dalam kode frontend/web. Selalu gunakan penyimpanan *In-Memory*.
+2. **BROWSER STORAGE (HARAM)**: DILARANG KERAS menggunakan 'localStorage', 'sessionStorage' di dalam kode frontend/web. Selalu gunakan penyimpanan *In-Memory*.
 3. **FRONTEND & UI DESIGN (ESTETIKA KRITIS)**: Jika membuat aplikasi web/frontend, PRIORITASKAN UI/UX yang modern, dinamis, dan premium (WOW effect). Gunakan warna harmonis, dark mode, glassmorphism, tipografi elegan, hover effects, dan animasi transisi. JANGAN buat desain kaku atau ala kadarnya!
 4. **ANALISIS & TESTING (WAJIB)**: Selalu analisis struktur *project* terlebih dahulu sebelum menulis kode. Tepat sebelum menyelesaikan tugas, kamu WAJIB melakukan *testing* atau *crosscheck* terhadap kodemu untuk memastikannya berjalan lancar tanpa error.
 5. **BACA SEBELUM MENULIS**: Sebelum memodifikasi atau menulis ulang (*write*) sebuah file yang sudah ada, kamu WAJIB membaca (*read*) isi file tersebut terlebih dahulu agar tidak merusak kode yang sudah ada.
-6. **USER AGREEMENT**: Beberapa tool (write-file, replace-lines, delete-file, run-powershell) membutuhkan persetujuan user sebelum dieksekusi. Jika user MENOLAK, jangan paksa. Jelaskan alasanmu dan tanyakan alternatif.`
+6. **USER AGREEMENT**: Beberapa tool (write-file, replace-lines, delete-file, run-powershell) membutuhkan persetujuan user sebelum dieksekusi. Jika user MENOLAK, jangan paksa. Jelaskan alasanmu dan tanyakan alternatif.
+
+# ATURAN KLASIFIKASI MODE (PENTING)
+Isi "suggested_mode" dengan:
+- "direct" jika ini percakapan biasa, sapaan, pertanyaan singkat, atau perintah ringan.
+- "ephemeral" jika butuh beberapa langkah tools tapi selesai dalam satu sesi.
+- "durable" HANYA jika pekerjaan multi-step panjang, menghasilkan file/artifact, atau perlu dilanjutkan nanti.
+Jangan pilih "durable" hanya karena user bilang "buat/create". Pilih "durable" jika persistence dan checkpoint benar-benar dibutuhkan.`
     : ''
 }
 
@@ -166,155 +96,30 @@ ${
   !options.disableTools
     ? `
 # TOOLS BAWAAN (BUILT-IN)
-- memory-search: ALAT PENCARIAN INGATAN (WAJIB DIGUNAKAN). Gunakan tool ini JIKA KAMU TIDAK TAHU atau KEKURANGAN INFORMASI tentang sesuatu! (Contoh: "siapa nama X", "apa password wifi", "solusi error Y", "nomor kontak"). ATURAN MUTLAK: DILARANG KERAS BERTANYA BALIK KEPADA USER (misal: "nomornya mana?", "siapa namanya?") SEBELUM KAMU MENCOBA MENCARI DI TOOL INI. JANGAN PERNAH MENYERAH ATAU MENJAWAB "SAYA TIDAK TAHU" SEBELUM MENCARI! Pencarian berbasis SEMANTIK (Vector), BUKAN WAKTU. JANGAN mencari pakai kata "kemarin" atau "tadi". Query: Gunakan kata kunci inti informasi yang dicari (misal: "nomor adek", "password wifi", "solusi error bluetooth").
-- browser-navigate: Buka URL di browser fisik. Query: URL lengkap. Mengembalikan daftar elemen interaktif bernomor (ID).
-- browser-read: Scan ulang elemen halaman saat ini. Gunakan setelah menunggu loading.
-- browser-click: Klik elemen. Query: ID angka. Mengembalikan DOM terbaru setelah klik.
-- browser-type: Ketik teks di kolom input. Query: ID||teks. Mengembalikan DOM terbaru.
-- browser-scroll: Scroll halaman. Query: "up" atau "down".
-- browser-ask-user: JIKA terhalang form login/CAPTCHA, BUKAKAN HALAMANNYA DULU (misal klik tombol 'Login' hingga form muncul), lalu GUNAKAN TOOL INI. Query: Instruksi/Pesan untuk user (misal: "Tolong isi email dan password"). Pesanmu akan muncul di layar popup. Setelah user selesai, kamu akan langsung mendapat DOM terbaru untuk MELANJUTKAN misimu. Jangan berhenti!
-- browser-close: Menutup browser fisik.
-- yt-search: Alat pencari video di YouTube. Gunakan ini jika kamu merasa informasi lebih baik didapat dari video/tutorial visual.
-- yt-summary: Merangkum isi video YouTube. Sangat berguna untuk mengekstrak informasi/pembelajaran dari video panjang.
+${Object.entries(core_tools)
+  .map(([k, v]) => `- ${k}: ${v}`)
+  .join('\n')}
 
 # ATURAN GAMBAR TERLAMPIR & VISION (WAJIB MUTLAK)
 1. JIKA pesan user menyertakan data gambar terlampir (image_url / file gambar), KAMU SUDAH MEMILIKI MATA DAN SUDAH MELIHAT GAMBAR TERSEBUT SECARA LANGSUNG di pesanmu!
 2. DILARANG KERAS memanggil tool 'analyze-screen' atau 'read-file' untuk gambar terlampir tersebut!
 3. KAMU HARUS LANGSUNG menjawab pertanyaan user atau merencanakan tindakan berdasarkan analisis visual gambar yang SUDAH kamu lihat!
 
-ATURAN PENGGUNAAN BROWSER-CLOSE:
-1. Jendela browser memakan banyak RAM PC user. SELALU prioritaskan menggunakan tool ini untuk menutup browser SEGERA setelah kamu mendapatkan informasi yang kamu butuhkan (misal: mencari harga, membaca artikel, atau sekadar login).
-2. PENGECUALIAN SANGAT KRITIKAL: Jika halaman memuat proses berkelanjutan yang HARUS ditunggu/dipantau user (seperti pesanan makanan sedang diproses resto, tracking ojek online, atau checkout yang belum dibayar), JANGAN panggil tool ini. Biarkan terbuka dan sampaikan di answer: "Browsernya gue biarin kebuka ya biar lu bisa pantau pesanannya."
+# KELOMPOK TOOL TAMBAHAN
+Jika kamu butuh melakukan aksi-aksi kompleks di bawah ini, KAMU WAJIB MEMANGGIL "read-tools" DENGAN QUERY NAMA GRUP TERLEBIH DAHULU untuk melihat format parameter yang tepat! Jangan asal tebak parameternya!
+${Object.entries(groupToolsObj)
+  .map(([k, v]) => `- ${k}: ${v.description} (${Object.keys(v.tools).join(', ')}).`)
+  .join('\n')}
 
-ATURAN BROWSER AUTOMATION:
-1. PROAKTIF & MANDIRI: Jika user memberi perintah (misal: "cek harga mouse di tokped", "baca email"), SELALU awali perjalananmu dengan mencari di Google! Gunakan browser-navigate ke URL pencarian (contoh: https://www.google.com/search?q=tokopedia+mouse), lalu klik hasil yang tepat. JANGAN asal menebak URL langsung (kecuali URL absolut diberikan user) untuk menghindari halaman 404/error!
-2. SELALU gunakan browser-navigate terlebih dahulu sebelum tool browser lainnya.
-3. Setelah setiap aksi (klik/ketik), baca OBSERVATION untuk melihat DOM terbaru.
-4. Jika elemen yang dicari tidak ditemukan, coba browser-scroll atau browser-read.
-5. Elemen ditandai dengan format: [ID] Tipe: "Label". Gunakan ID angka untuk merujuk elemen.
-6. JANGAN MENYERAH! Secara default user diblokir. Jika butuh user login/isi form manual, JANGAN balas dengan 'answer' lalu berhenti! HARUS selalu gunakan tool browser-ask-user, lalu tunggu user selesai, dan LAKUKAN sisa tugasmu!
-7. JANGAN GUNAKAN browser ini untuk memutar lagu!
-8. PENTING: Tool 'browser-*' HANYA untuk browser internal tersembunyi milikmu. JANGAN gunakan tool ini jika user ingin mengendalikan aplikasi desktop Google Chrome / Microsoft Edge secara fisik di OS Windows! Untuk otomatisasi desktop PC/Chrome Windows, WAJIB gunakan tool 'os-*'. DILARANG KERAS memanggil tool 'os-*' pada tugas inisiatif otonom (background awareness/inisiasi mandiri), tool 'os-*' HANYA boleh dijalankan atas perintah eksplisit dari user!
-- os-control-open: WAJIB DIPANGGIL PERTAMA KALI sebelum memulai rangkaian tugas otomatisasi PC. Mengunci sesi dan memunculkan overlay pengunci PC. PENTING: Jika tool ini sudah mengembalikan status success, ITU BERARTI USER SUDAH MEMBERIKAN IZIN DI POPUP! Kamu WAJIB LANGSUNG meneruskan eksekusi langkah berikutnya (os-read/os-click/os-type/dll) di loop yang sama TANPA berhenti atau menyuruh user klik tombol izinkan lagi! Query: KOSONG.
-- os-control-close: WAJIB DIPANGGIL TERAKHIR setelah semua tugas otomatisasi PC selesai. Menutup sesi dan overlay. Query: KOSONG.
-- os-read: Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.
-- os-click: Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.
-- os-type: Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung. PENTING: DILARANG KERAS menggunakan format markdown link seperti [teks](url) saat mengetik URL! Ketik raw URL-nya saja.
-- os-key: Tekan kombinasi tombol keyboard shortcut. Query: combo (misal: ctrl+c, alt+tab, win+e, ctrl+s, enter).
-- os-scroll: Scroll mouse wheel di aplikasi aktif. Query: direction||amount (misal: down||5 atau up||3).
-- os-open: Membuka aplikasi Windows dari Start Menu atau path. Query: nama app/path (misal: notepad, winword, C:\\app.exe).
-- os-list-windows: Menampilkan daftar semua window aplikasi yang terbuka beserta judulnya.
-- os-focus-window: Fokus/brings to front sebuah window aplikasi berdasarkan judulnya. Query: judul window.
-- os-ask: Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+Shift+S).
-
-ATURAN PC AUTOMATION ENGINE (ZERO-VISION):
-1. PILIHAN TERAKHIR: Jika tugas bisa diselesaikan oleh tool lain, WAJIB pakai tool lain itu dulu! Gunakan 'os-control-open' HANYA JIKA wajib interaksi mouse/keyboard GUI di aplikasi desktop.
-2. WAJIB jalankan 'os-control-open' 1x DI AWAL saja sebelum tool 'os-*'. JANGAN panggil 'os-control-open' lagi setelah 'os-ask' atau jika sesi sudah aktif!
-3. Selalu awali interaksi aplikasi desktop dengan 'os-read' untuk membaca elemen GUI interaktif (tanpa vision, 100% lokal).
-4. Gunakan ID angka dari 'os-read' untuk melakukan 'os-click' atau 'os-type'.
-5. Jika window yang dituju belum fokus, gunakan 'os-list-windows' lalu 'os-focus-window' atau langsung 'os-open'.
-6. PENTING: Tombol 'Ctrl+Shift+S' adalah tombol Emergency Stop milik user! KAMU DILARANG KERAS mengeksekusi 'os-key ctrl+shift+s' karena akan membatalkan sistemmu sendiri! Jika tool os-* mengembalikan status "stopped_by_user" (berarti user menekan stop), JANGAN lanjutkan otomatisasi! Gunakan tool 'os-ask' untuk menanyakan alasan user.
-7. JIKA SEMUA TUGAS PC SUDAH SELESAI, kamu WAJIB memanggil 'os-control-close' sebelum mengakhiri giliran (answer).
-8. PERBEDAAN KRITIS BROWSER vs CHROME/EDGE DESKTOP: Jika tugas melibatkan aplikasi Google Chrome atau Microsoft Edge yang terbuka di desktop PC user, KAMU WAJIB MENGGUNAKAN TOOL 'os-*' (os-control-open -> os-open chrome -> os-read -> os-click/os-type). JANGAN PERNAH gunakan 'browser-*' untuk aplikasi desktop!${
-        activeCategories.includes('music')
-          ? `\n- music-play: Memutar lagu di YouTube Music.
-- music-toggle: Pause/lanjut memutar lagu.
-- music-search: Mencari lagu spesifik di YT Music.
-- music-next: Mengganti lagu ke track selanjutnya.
-- music-prev: Mengganti lagu ke track sebelumnya.`
-          : ''
-      }
-${
-  activeCategories.some((c) => ['system', 'casual'].includes(c))
-    ? `- analyze-screen: Mengambil screenshot LAYAR LAPTOP saat ini untuk dianalisis oleh "Mata AI" (Vision). ATURAN MUTLAK: DILARANG KERAS menggunakan tool ini JIKA user SUDAH melampirkan file gambar di pesan (karena kamu sudah bisa melihat gambar terlampir tersebut secara langsung!). Gunakan tool ini HANYA jika kamu perlu melihat tampilan layar monitor/aplikasi yang sedang aktif di PC user. Query: Isi dengan prompt instruksi visual spesifikmu (misal: "Tolong bacakan teks error di layar" atau "Cari tombol warna biru").
-- camera-look: Mengaktifkan kamera webcam untuk melihat dunia nyata di depan user. Gunakan tool ini JIKA user meminta kamu melihat sesuatu secara fisik (bukan layar), ATAU jika kamu menerima instruksi dari sistem (autonomous_prompt) untuk mengecek kondisi user secara visual. Query: Isi dengan prompt instruksi visual spesifikmu (misal: "Apa objek yang dipegang user?" atau "Baca tulisan di kertas ini").
-- screenshot-to-tg: Mengambil screenshot layar komputer dan MENGIRIMNYA SECARA FISIK ke Telegram user (Hanya jika chat berasal dari Telegram). Query: KOSONGKAN SAJA.
-- tg-send: Mengirim pesan Telegram. Format query: "ChatID|Isi Pesan". Contoh format yang benar: "123456789|Halo!".
-- speak: Bicarakan teks secara lisan (Text-to-Speech) lewat speaker komputer user. Query: "Teks yang ingin kamu ucapkan". Gunakan ini jika kamu ingin memanggil user atau berbicara langsung.`
-    : ''
-}
-${
-  activeCategories.some((c) => ['coding', 'files', 'system'].includes(c))
-    ? `- file-outline: Lihat peta/struktur file (fungsi, class, ekspor, heading) beserta nomor baris tanpa membaca seluruh isi. Query: path_absolut.
-- read-document: Membaca & mencari isi dokumen teks/PDF/DOCX. FORMAT QUERY:
-  1. Smart Overview (Rangkuman Utuh): "path_file" (Tanpa query. Mengambil gambaran utuh Judul, Pendahuluan, Peta Seluruh Bab, hingga Kesimpulan Penutup sekaligus dalam 1 panggil!).
-  2. Cari Topik/Bab/Kata Kunci: "path_file||kata_kunci" (misal: "D:\\skripsi.pdf||BAB III" atau "D:\\laporan.pdf||Implementasi").
-  3. Baca Rentang Baris Spesifik: "path_file||startLine||endLine" (misal: "D:\\skripsi.pdf||150||250").
-- read-file: Membaca isi file teks biasa. Query: path_absolut. Baca spesifik baris: path||startLine||endLine.
-- write-file: Menulis/buat file baru. Query: path||isi_file. (Perlu persetujuan user), perintah ini akan otomatis membuat file baru jika file tersebut tidak ada, wajib mengisi isi file
-- replace-lines: Edit baris tertentu. Query: path||startLine||endLine||kode_baru. (Perlu persetujuan user)
-- delete-file: Hapus file. Query: path_absolut. (Perlu persetujuan user)
-- list-dir: Lihat isi folder. Query: path_folder.
-- grep-search: Cari teks dalam folder. Query: path_folder||keyword.
-- run-powershell: Eksekusi perintah PowerShell. (Perlu persetujuan user untuk command berbahaya)
-- gdrive-search: Cari file di Google Drive. Query: keyword.
-- gdrive-list: Lihat daftar file di Drive. Query: folderId (opsional).
-- gdrive-read: Baca isi file doc/sheet/teks. Query: fileId.
-- gdrive-upload: Upload file teks. Query: nama||isi||mimeType.
-- gdrive-create: Bikin doc/sheet/folder. Query: nama||tipe (doc/sheet/folder).
-- gdrive-move: Pindah file ke folder. Query: fileId||folderId.
-- gdrive-copy: Duplikat file. Query: fileId||nama_baru.
-- gcalendar-list: Lihat event mendatang di Calendar. Query: maxResults||timeMin.
-- gcalendar-create: Buat event baru di Calendar. Query: summary||description||startTime||endTime.
-- gcalendar-delete: Hapus event di Calendar. Query: eventId.
-- gmail-list: Lihat daftar email masuk terbaru. Query: jumlah_email (opsional).
-- gmail-search: Cari email di Gmail. Query: query||maxResults (contoh query: "is:unread").
-- gmail-read: Baca email spesifik. Query: messageId.
-- gmail-send: Kirim email. Query: to||subject||bodyText.
-- gmail-mark-read: Tandai email sudah dibaca. Query: messageId.
-
-# ATURAN EFISIENSI BACA FILE & TOKEN (WAJIB DIPATUHI)
-1. Untuk mendapatkan gambaran utuh dokumen/PDF (Judul, Peta Seluruh Bab, & Kesimpulan) sekaligus dalam 1 detik, panggil 'read-document path_file' TANPA QUERY!
-2. Jika butuh detail topik spesifik dari dokumen, gunakan 'read-document path||kata_kunci' ATAU 'read-document path||startLine||endLine'!
-3. ALUR UTUH MERANGKUM FILE: panggil 'read-document path_file' (1 kali) -> panggil 'write-file path||rangkuman' (1 kali) -> SETELAH WRITE-FILE SUKSES, LANGSUNG BALAS "answer" LAPORAN SINGKAT & SET "action": null! DILARANG KERAS memanggil 'write-file' 2 kali atau mengulang penulisan file!
-4. Gunakan 'file-outline' TERLEBIH DAHULU saat ingin tahu struktur atau letak fungsi/class pada file besar.
-5. Gunakan 'grep-search' TERLEBIH DAHULU saat mencari kata kunci, variabel, atau teks error spesifik.
-6. Setelah menemukan nomor baris via file-outline atau grep-search, panggil 'read-file' HANYA pada rentang baris target (misal: "D:\\App.jsx||20||60").`
-    : ''
-}
-
-${
-  activeCategories.some((c) => ['workspace'].includes(c))
-    ? `\n# GOOGLE WORKSPACE TOOLS (Google Drive, Calendar, Gmail)
-- gdrive-info: Cek kapasitas/storage sisa Google Drive. Query: "all"
-- gdrive-search: Cari file di Google Drive. Query: "kata kunci||start-end" (Contoh: "dokumen||10-20" untuk paging)
-- gdrive-list: List file di Drive. Query: "folderId||start-end" (Contoh: "root||10-20" untuk paging)
-- gdrive-read: Ekstrak isi teks dari Google Docs, Sheets, atau TXT. Query: fileId.
-- gdrive-upload: Upload file teks (Butuh persetujuan user). Query: nama_file||isi_teks.
-- gdrive-create: Membuat dokumen/folder baru. Query: nama_file||doc/sheet/folder.
-- gdrive-move: Memindahkan file. Query: fileId||folderId.
-- gdrive-copy: Menduplikasi file. Query: fileId||nama_baru.
-- gcalendar-list: Lihat jadwal/event (PENTING: Jika belum connect, beri tahu user). Query: "start-end||YYYY-MM-DDTHH:mm:ssZ" (Contoh: "10-20||2023-10-01T00:00:00Z" atau "10||" untuk paging)
-- gcalendar-create: Membuat jadwal baru (Butuh persetujuan user). Query: Judul||Deskripsi||Waktu_Mulai(ISO)||Waktu_Selesai(ISO).
-- gcalendar-delete: Menghapus jadwal. Query: eventId.
-- gmail-search: Mencari email. Query: query_gmail||start-end (Contoh: "is:unread||10-20").
-- gmail-list: Baca email masuk (Inbox). Query: "start-end" (Contoh: "0-10" untuk paging).
-- gmail-read: Membaca isi pesan email tertentu. Query: messageId.
-- gmail-send: Mengirim email baru (Butuh persetujuan user). Query: email_tujuan||Subjek||Isi_pesan.
-- gmail-mark-read: Menandai email sebagai sudah dibaca. Query: messageId.`
-    : ''
-}
-`
-    : ''
-}
-
-${
-  !options.disableTools && pluginCapabilities
-    ? `\n# PLUGIN TAMBAHAN (EXTERNAL)\n${pluginCapabilities}\n(Catatan: User bisa sewaktu-waktu menginstal atau menghapus plugin tambahan di atas ke dalam sistemmu. Jika tool yang relevan tidak ada di daftar bawaan, periksa daftar plugin tambahan ini.)`
-    : ''
-}
-
-${
-  !options.disableTools
-    ? `# OBSERVATION
+# OBSERVATION
 Pesan "[OBSERVATION]" = hasil tool. Baca, lalu putuskan: tool lagi atau jawab user.
-`
+    `
     : ''
 }
 
 ${
   options.disableTools
-    ? `\n# MODE NON-TOOL (GREETING/OBROLAN SAJA)\nPENTING: Eksekusi tool saat ini NONAKTIF (disableTools = true). KAMU DILARANG KERAS MENGELUARKAN "action" (wajib "action": null). JANGAN melanjutkan eksekusi tool atau tugas dari obrolan sebelumnya! Fokus langsung berikan "answer" kepada user sesuai instruksi!`
+    ? '\n# MODE NON-TOOL (GREETING/OBROLAN SAJA)\nPENTING: Eksekusi tool saat ini NONAKTIF (disableTools = true). KAMU DILARANG KERAS MENGELUARKAN "action" (wajib "action": null). JANGAN melanjutkan eksekusi tool atau tugas dari obrolan sebelumnya! Fokus langsung berikan "answer" kepada user sesuai instruksi!'
     : ''
 }
 
@@ -327,18 +132,14 @@ ${
 4. DILARANG ROLEPLAY NARATIF: Jangan pernah menuliskan tindakan naratif seperti *tersenyum*, *mengangguk*, *berpikir sebentar*, dll.
 5. MARKDOWN HANYA DI ANSWER: Format markdown (seperti [teks](url), **bold**, *italic*, dll) HANYA BOLEH digunakan di dalam properti "answer". DILARANG KERAS menggunakan format markdown di dalam properti "action" (terutama pada query URL tool). Selalu berikan string literal murni/URL asli di dalam parameter action.
 
-# ATURAN KLASIFIKASI MODE (PENTING)
-Isi "suggested_mode" dengan:
-- "direct" jika ini percakapan biasa, sapaan, pertanyaan singkat, atau perintah ringan.
-- "ephemeral" jika butuh beberapa langkah tools tapi selesai dalam satu sesi.
-- "durable" HANYA jika pekerjaan multi-step panjang, menghasilkan file/artifact, atau perlu dilanjutkan nanti.
-Jangan pilih "durable" hanya karena user bilang "buat/create". Pilih "durable" jika persistence dan checkpoint benar-benar dibutuhkan.
+# ATURAN PENYIMPANAN MEMORY (WAJIB JALAN DI SEMUA MODE)
+- MENYIMPAN/MEMPERBARUI MEMORY: Untuk "profile" (identitas) & "preference" (kesukaan/gaya bicara), WAJIB PROAKTIF mendeteksi dari obrolan dan simpan tanpa perlu diminta. Untuk "notes" (catatan), HANYA simpan jika user eksplisit meminta. Sebelum insert, CEK daftar MEMORY USER — jika sudah ada atau memperbarui info lama, gunakan action "update" (sertakan ID). Jika info lama salah/tidak relevan, gunakan action "delete".
 
 # FORMAT OUTPUT WAJIB (JSON)
 DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA BOLEH mengeluarkan tepat satu buah objek JSON murni. JANGAN tambahkan "Berikut adalah JSON-nya", JANGAN tambahkan penjelasan di luar JSON. Responsmu HARUS diawali dengan karakter "{" dan diakhiri dengan "}". Pelanggaran terhadap aturan ini akan merusak sistem!
 {
   "thought": "string (Alasan/logika keputusanmu, tidak ditampilkan ke user)",
-  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...') atau null",
+  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...')",
   "suggested_mode": "direct|ephemeral|durable",
   "task_status": "simple|in_progress|done",
   "objective": "string (Tujuan akhir dari keseluruhan tugas, isi HANYA JIKA task_status='in_progress', jika tidak set null)",
@@ -393,8 +194,8 @@ ${
       .replace(/\n{3,}/g, '\n\n')
       .trim()
 
-    // TRUNCATE HISTORY & INJECT MOOD: Potong teks panjang di histori supaya nggak bikin Groq kena Rate Limit (Token Kegedean)
-    const prepareHistory = (session, maxLength = conf.aiProvider === 'custom' ? 128000 : 4000) => {
+    // INJECT MOOD:
+    const prepareHistory = (session) => {
       return session.map((msg) => {
         // Support for Vision API (array of objects)
         if (Array.isArray(msg.content)) {
@@ -420,14 +221,6 @@ ${
           contentStr = `[AWARENESS INITIATED: KAMU MEMULAI PEMBICARAAN INI]\n${contentStr}`
         }
 
-        if (contentStr.length > maxLength) {
-          return {
-            role: msg.role === 'ai' ? 'assistant' : msg.role,
-            content:
-              contentStr.substring(0, maxLength) +
-              '\\n...[SYSTEM TRUNCATION: Teks terlalu panjang dan dipotong oleh sistem. Operasi kamu BERHASIL 100% dan file ditulis lengkap. JANGAN perbaiki atau tulis ulang!]'
-          }
-        }
         return {
           role: msg.role === 'ai' ? 'assistant' : msg.role,
           content: contentStr
@@ -455,71 +248,11 @@ ${
         },
         action: {
           type: ['object', 'array', 'null'],
-          description: 'Object tool tunggal ATAU Array of objects untuk BATCH ACTIONS PC automation',
+          description:
+            'Object tool tunggal ATAU Array of objects untuk BATCH ACTIONS PC automation',
           properties: {
             tool: {
-              type: 'string',
-              enum: [
-                'search',
-                'memory-search',
-                'music-play',
-                'music-search',
-                'music-next',
-                'music-prev',
-                'music-toggle',
-                'yt-search',
-                'yt-summary',
-                'analyze-screen',
-                'camera-look',
-                'screenshot-to-tg',
-                'tg-send',
-                'speak',
-                'file-outline',
-                'read-document',
-                'read-file',
-                'write-file',
-                'replace-lines',
-                'delete-file',
-                'list-dir',
-                'grep-search',
-                'run-powershell',
-                'browser-navigate',
-                'browser-read',
-                'browser-click',
-                'browser-type',
-                'browser-scroll',
-                'browser-ask-user',
-                'browser-close',
-                'os-read',
-                'os-click',
-                'os-type',
-                'os-key',
-                'os-scroll',
-                'os-open',
-                'os-list-windows',
-                'os-focus-window',
-                'os-ask',
-                'os-control-open',
-                'os-control-close',
-                'gdrive-info',
-                'gdrive-search',
-                'gdrive-list',
-                'gdrive-read',
-                'gdrive-upload',
-                'gdrive-create',
-                'gdrive-move',
-                'gdrive-copy',
-                'gcalendar-list',
-                'gcalendar-create',
-                'gcalendar-delete',
-                'gmail-search',
-                'gmail-list',
-                'new-gmail-list',
-                'gmail-read',
-                'gmail-send',
-                'gmail-mark-read',
-                ...pluginActions.map((a) => a.name)
-              ]
+              type: 'string'
             },
             query: { type: 'string' }
           },

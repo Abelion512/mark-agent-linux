@@ -22,7 +22,7 @@ import yts from 'yt-search'
 import YTMusic from 'ytmusic-api'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import { startTracking, getBuffer, flushBuffer } from './awareness/window-tracker.js'
-import { NATIVE_TOOLS } from './native-tools.js'
+import { NATIVE_TOOLS, _getOSMeta } from './node-tools.js'
 import {
   startTelegramBot,
   stopTelegramBot,

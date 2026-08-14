@@ -1,6 +1,6 @@
 import { jsonrepair } from 'jsonrepair'
 import { generateGeminiResponse } from './services/gemini-web'
-import { _getOSMeta } from './native-tools.js'
+import { _getOSMeta } from './node-tools.js'
 import { _getBrowserSign } from './browser-agent.js'
 import { _getWinTracker } from './awareness/window-tracker.js'
 
