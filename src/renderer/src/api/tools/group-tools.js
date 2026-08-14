@@ -133,12 +133,14 @@ export const group_tools = async () => {
       })
     }
   } catch (err) {
-    return dynamicGroups
+    console.error("Gagal meload external plugin", err)
   }
 
-  // Generate flat map sekali aja buat fast O(1) lookup
-  const flatGroupTools = {}
-  for (const group of Object.values(GROUP_TOOLS_DEFINITION)) {
-    Object.assign(flatGroupTools, group.tools)
-  }
+  return dynamicGroups
+}
+
+// Generate flat map sekali aja buat fast O(1) lookup
+export const group_tools_flat = {}
+for (const group of Object.values(GROUP_TOOLS_DEFINITION)) {
+  Object.assign(group_tools_flat, group.tools)
 }

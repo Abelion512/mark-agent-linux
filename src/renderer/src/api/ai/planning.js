@@ -1,4 +1,4 @@
-﻿import { fetchAI, cleanAndParse } from './core'
+import { fetchAI, cleanAndParse } from './core'
 import { getAllConfig } from '../db'
 import { getCurrentTimeInfo } from './utils'
 import { generateVector, cosineSimilarity } from '../vectorMemory'
@@ -108,7 +108,7 @@ ${Object.entries(core_tools)
 # KELOMPOK TOOL TAMBAHAN
 Jika kamu butuh melakukan aksi-aksi kompleks di bawah ini, KAMU WAJIB MEMANGGIL "read-tools" DENGAN QUERY NAMA GRUP TERLEBIH DAHULU untuk melihat format parameter yang tepat! Jangan asal tebak parameternya!
 ${Object.entries(groupToolsObj)
-  .map(([k, v]) => `- ${k}: ${v.description} (${Object.keys(v.tools).join(', ')}).`)
+  .map(([k, v]) => `- ${k}: ${v.description}`)
   .join('\n')}
 
 # OBSERVATION

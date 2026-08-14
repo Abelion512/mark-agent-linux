@@ -1004,8 +1004,8 @@ export const useMarkPlan = ({
 
                 let res
                 if (tool === 'read-tools') {
-                  const { getGroupTools } = await import('../../api/tools/group-tools.js')
-                  const groups = await getGroupTools()
+                  const { group_tools } = await import('../../api/tools/group-tools.js')
+                  const groups = await group_tools()
                   const groupName = query.trim()
                   if (!groupName) {
                     res = { success: false, message: 'Harap sebutkan nama_grup yang ingin dimuat (misal: "pc_automation").' }
