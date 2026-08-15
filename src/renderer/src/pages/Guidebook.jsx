@@ -618,6 +618,129 @@ const Guidebook = () => {
                   </div>
                 </div>
 
+                {/* Kategori Google Workspace */}
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
+                    <FaGoogle className="text-info" /> Google Workspace
+                  </h3>
+                  <div className="space-y-3">
+                    <ToolCard
+                      name="gdrive-info"
+                      description="Cek kapasitas/storage sisa Google Drive."
+                      needsPermission={false}
+                      queryFormat="all"
+                      howItWorks="Mengambil informasi kapasitas penyimpanan Google Drive Anda."
+                    />
+                    <ToolCard
+                      name="gdrive-search"
+                      description="Cari file di Google Drive."
+                      needsPermission={false}
+                      queryFormat="kata kunci||start-end"
+                      howItWorks="Mencari file/dokumen berdasarkan kata kunci (contoh query: 'dokumen||10-20' untuk paging)."
+                    />
+                    <ToolCard
+                      name="gdrive-list"
+                      description="List file di folder Drive."
+                      needsPermission={false}
+                      queryFormat="folderId||start-end"
+                      howItWorks="Melihat isi folder tertentu di Google Drive."
+                    />
+                    <ToolCard
+                      name="gdrive-read"
+                      description="Ekstrak isi teks dari Google Docs, Sheets, atau TXT."
+                      needsPermission={false}
+                      queryFormat="fileId"
+                      howItWorks="Membaca dan mengekstrak isi teks dokumen Google Drive."
+                    />
+                    <ToolCard
+                      name="gdrive-upload"
+                      description="Upload file teks ke Google Drive."
+                      needsPermission={true}
+                      queryFormat="nama_file||isi_teks"
+                      howItWorks="Mengunggah file teks baru ke Google Drive Anda. Membutuhkan persetujuan."
+                    />
+                    <ToolCard
+                      name="gdrive-create"
+                      description="Membuat dokumen/folder baru."
+                      needsPermission={true}
+                      queryFormat="nama_file||doc/sheet/folder"
+                      howItWorks="Membuat entitas baru (Docs, Sheets, atau Folder) di Google Drive."
+                    />
+                    <ToolCard
+                      name="gdrive-move"
+                      description="Memindahkan file di Google Drive."
+                      needsPermission={true}
+                      queryFormat="fileId||folderId"
+                      howItWorks="Memindahkan file ke dalam folder tertentu."
+                    />
+                    <ToolCard
+                      name="gdrive-copy"
+                      description="Menduplikasi file di Google Drive."
+                      needsPermission={true}
+                      queryFormat="fileId||nama_baru"
+                      howItWorks="Menyalin file dengan nama baru."
+                    />
+
+                    <ToolCard
+                      name="gcalendar-list"
+                      description="Lihat jadwal atau acara di Google Calendar."
+                      needsPermission={false}
+                      queryFormat="start-end||YYYY-MM-DDTHH:mm:ssZ"
+                      howItWorks="Melihat jadwal mendatang. Query contoh: '10-20||2023-10-01T00:00:00Z'."
+                    />
+                    <ToolCard
+                      name="gcalendar-create"
+                      description="Membuat jadwal acara baru."
+                      needsPermission={true}
+                      queryFormat="Judul||Deskripsi||Waktu_Mulai(ISO)||Waktu_Selesai(ISO)"
+                      howItWorks="Menambahkan jadwal ke Google Calendar Anda. Membutuhkan persetujuan."
+                    />
+                    <ToolCard
+                      name="gcalendar-delete"
+                      description="Menghapus jadwal/acara."
+                      needsPermission={true}
+                      queryFormat="eventId"
+                      howItWorks="Menghapus event dari kalender Anda. Membutuhkan persetujuan."
+                    />
+
+                    <ToolCard
+                      name="gmail-search"
+                      description="Mencari email masuk."
+                      needsPermission={false}
+                      queryFormat="query_gmail||start-end"
+                      howItWorks="Mencari email menggunakan standar query Gmail (misal: 'is:unread||10-20')."
+                    />
+                    <ToolCard
+                      name="gmail-list"
+                      description="Membaca email masuk (Inbox)."
+                      needsPermission={false}
+                      queryFormat="start-end"
+                      howItWorks="Melihat list email terbaru di kotak masuk Anda."
+                    />
+                    <ToolCard
+                      name="gmail-read"
+                      description="Membaca isi pesan email tertentu."
+                      needsPermission={false}
+                      queryFormat="messageId"
+                      howItWorks="Membaca isi teks dari sebuah email secara penuh."
+                    />
+                    <ToolCard
+                      name="gmail-send"
+                      description="Mengirim email baru."
+                      needsPermission={true}
+                      queryFormat="email_tujuan||Subjek||Isi_pesan"
+                      howItWorks="Mengirim email ke tujuan yang ditentukan. Membutuhkan persetujuan Anda."
+                    />
+                    <ToolCard
+                      name="gmail-mark-read"
+                      description="Menandai email sebagai sudah dibaca."
+                      needsPermission={false}
+                      queryFormat="messageId"
+                      howItWorks="Menghilangkan status unread pada sebuah pesan."
+                    />
+                  </div>
+                </div>
+
                 {/* Kategori YouTube & Media */}
                 <div>
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
@@ -739,49 +862,6 @@ const Guidebook = () => {
                   </div>
                 </div>
 
-                {/* Kategori Google Workspace */}
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
-                    <FaGoogle className="text-red-500" /> Google Workspace
-                  </h3>
-                  <div className="space-y-3">
-                    <ToolCard
-                      name="gdrive-list / search"
-                      description="Mengelola dan mencari file di Google Drive."
-                      needsPermission={false}
-                      queryFormat="folderId/kata kunci||start-end"
-                      howItWorks="Mengakses Google Drive untuk menampilkan list file atau mencari file tertentu berdasarkan kata kunci."
-                    />
-                    <ToolCard
-                      name="gdrive-read / upload"
-                      description="Membaca isi teks dari dokumen atau mengupload file teks baru."
-                      needsPermission={false}
-                      queryFormat="fileId / nama_file||isi_teks"
-                      howItWorks="Mengekstrak konten langsung dari dalam dokumen di Google Drive, atau membuat file baru."
-                    />
-                    <ToolCard
-                      name="gcalendar-list / create"
-                      description="Melihat jadwal dari Google Calendar atau membuat event baru."
-                      needsPermission={false}
-                      queryFormat="start-end||YYYY-MM-DDTHH:mm:ssZ"
-                      howItWorks="Mengambil daftar kegiatan/jadwal berdasarkan rentang waktu tertentu atau menjadwalkan event baru."
-                    />
-                    <ToolCard
-                      name="gmail-list / search"
-                      description="Membaca inbox atau mencari email tertentu."
-                      needsPermission={false}
-                      queryFormat="query_gmail||start-end"
-                      howItWorks="Mencari dan me-list email masuk berdasarkan status atau kata kunci (contoh: is:unread)."
-                    />
-                    <ToolCard
-                      name="gmail-read / send"
-                      description="Membaca isi pesan email atau mengirim email baru."
-                      needsPermission={true}
-                      queryFormat="email_tujuan||Subjek||Isi_pesan"
-                      howItWorks="Membaca isi penuh dari email atau membuat dan mengirim email baru ke alamat tujuan (membutuhkan konfirmasi user)."
-                    />
-                  </div>
-                </div>
               </div>
             </section>
 

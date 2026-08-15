@@ -155,7 +155,7 @@ const MainLayout = () => {
       {/* Floating Glass Sub-page Overlay */}
       {!isHome && (
         <div className="fixed inset-0 z-50 flex flex-col animate-fade-in bg-transparent pointer-events-none">
-          <div className="flex-1 pointer-events-auto">
+          <div className="flex-1 pointer-events-auto h-full w-full flex flex-col min-h-0 overflow-hidden">
             <Routes>
               <Route path="/config" element={<Configuration />} />
               <Route path="/plugins" element={<Plugins />} />
