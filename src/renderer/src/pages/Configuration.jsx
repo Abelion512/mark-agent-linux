@@ -938,6 +938,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                 >
                   <option value="whisper-small">Local Offline (Whisper Small)</option>
                   <option value="groq-whisper">Groq API Cloud (Whisper Large-v3)</option>
+                  <option value="groq-whisper-turbo">Groq API Cloud (Whisper Large-v3 Turbo)</option>
                 </select>
                 <p className="text-xs opacity-40">
                   Pilih "Groq API Cloud" untuk transkripsi via internet yang sangat ringan di
@@ -945,7 +946,7 @@ const Configuration = ({ isFirstSetup = false, onSetupComplete = null }) => {
                 </p>
               </div>
 
-              {config.localWhisperModel === 'groq-whisper' && (
+              {config.localWhisperModel?.startsWith('groq') && (
                 <div id="tour-groq-key" className="space-y-1.5 p-2 -mx-2 rounded-lg">
                   <div className="flex justify-between items-center">
                     <p className="text-sm font-semibold">

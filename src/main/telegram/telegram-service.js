@@ -177,12 +177,34 @@ export const startTelegramBot = async (token, mainWindow) => {
   }
 }
 
+const formatMarkdownToTelegramHTML = (text) => {
+  if (!text) return ''
+  let html = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  html = html.replace(/```([a-z0-9-]*)\n([\s\S]*?)```/gi, (match, lang, code) => {
+    return lang ? `<pre><code class="language-${lang}">${code}</code></pre>` : `<pre><code>${code}</code></pre>`
+  })
+  
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+  html = html.replace(/\*([^*]+)\*/g, '<i>$1</i>')
+  html = html.replace(/~~([^~]+)~~/g, '<s>$1</s>')
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+  html = html.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>')
+  
+  return html
+}
+
 export const sendTelegramMessage = async (chatId, text) => {
   if (!bot || currentStatus !== 'connected') {
     return { success: false, error: 'Telegram Bot belum terhubung.' }
   }
   try {
-    await bot.telegram.sendMessage(chatId, text, { parse_mode: 'Markdown' })
+    const htmlText = formatMarkdownToTelegramHTML(text)
+    await bot.telegram.sendMessage(chatId, htmlText, { parse_mode: 'HTML' })
     return { success: true }
   } catch (err) {
     try {
@@ -283,7 +305,8 @@ export const sendTelegramToAdmins = async (text) => {
 
   for (const chatId of targetChatIds) {
     try {
-      await bot.telegram.sendMessage(chatId, text, { parse_mode: 'Markdown' })
+      const htmlText = formatMarkdownToTelegramHTML(text)
+      await bot.telegram.sendMessage(chatId, htmlText, { parse_mode: 'HTML' })
     } catch (err) {
       try {
         await bot.telegram.sendMessage(chatId, text)
