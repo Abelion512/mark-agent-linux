@@ -141,7 +141,7 @@ ${
 DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA BOLEH mengeluarkan tepat satu buah objek JSON murni. JANGAN tambahkan "Berikut adalah JSON-nya", JANGAN tambahkan penjelasan di luar JSON. Responsmu HARUS diawali dengan karakter "{" dan diakhiri dengan "}". Pelanggaran terhadap aturan ini akan merusak sistem!
 {
   "thought": "string (Alasan/logika keputusanmu, tidak ditampilkan ke user)",
-  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...')",
+  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...'. JIKA kamu menjalankan BATCH ACTIONS, katakan 'Mengeksekusi langkah beruntun secepat kilat...')",
   "suggested_mode": "direct|ephemeral|durable",
   "task_status": "simple|in_progress|done",
   "objective": "string (Tujuan akhir dari keseluruhan tugas, isi HANYA JIKA task_status='in_progress', jika tidak set null)",
@@ -244,30 +244,36 @@ ${
           type: 'string',
           enum: ['direct', 'ephemeral', 'durable']
         },
-        task_status: {
-          type: 'string',
-          enum: ['simple', 'in_progress', 'done']
-        },
         action: {
-          type: ['object', 'array', 'null'],
-          description:
-            'Object tool tunggal ATAU Array of objects untuk BATCH ACTIONS PC automation',
-          properties: {
-            tool: {
-              type: 'string'
+          anyOf: [
+            {
+              type: 'object',
+              properties: {
+                tool: { type: 'string' },
+                query: { type: 'string' }
+              },
+              required: ['tool', 'query'],
+              additionalProperties: false
             },
-            query: { type: 'string' }
-          },
-          required: ['tool', 'query'],
-          additionalProperties: false
+            {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  tool: { type: 'string' },
+                  query: { type: 'string' }
+                },
+                required: ['tool', 'query'],
+                additionalProperties: false
+              }
+            },
+            { type: 'null' }
+          ],
+          description: 'Object tool tunggal ATAU Array of objects untuk BATCH ACTIONS PC automation'
         },
         answer: {
           type: ['string', 'null'],
           description: 'Jawaban lengkap untuk user. Null jika sedang eksekusi tool.'
-        },
-        task_status: {
-          type: 'string',
-          enum: ['simple', 'in_progress', 'done']
         },
         objective: {
           type: ['string', 'null']

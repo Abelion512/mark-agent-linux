@@ -87,6 +87,11 @@ public class MarkWin32 {
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const uint KEYEVENTF_UNICODE = 0x0004;
     public const ushort VK_RETURN = 0x0D;
+    
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);
+    public const int KEYEVENTF_EXTENDEDKEY = 0x0001;
+    public const byte VK_LWIN = 0x5B;
 
     public static string ListWindowsJson() {
         StringBuilder json = new StringBuilder();
@@ -251,6 +256,8 @@ Write-Output '{"status":"ready"}'
 Write-Output "---MARK_DONE---"
 [Console]::Out.Flush()
 
+$global:ElementCache = @{}
+
 while ($true) {
     $line = [Console]::ReadLine()
     if ($null -eq $line) { break }
@@ -264,7 +271,52 @@ while ($true) {
         if ($cmd -eq "exit") { break }
 
         switch ($cmd) {
+            "read-focus" {
+                $global:ElementCache.Clear()
+                $hwnd = [MarkWin32]::GetTargetWindow()
+                $titleBuilder = New-Object System.Text.StringBuilder 512
+                [MarkWin32]::GetWindowText($hwnd, $titleBuilder, $titleBuilder.Capacity) | Out-Null
+                $windowTitle = $titleBuilder.ToString()
+                
+                $elements = @()
+                try {
+                    $el = [System.Windows.Automation.AutomationElement]::FocusedElement
+                    if ($el) {
+                        $role = $el.Current.ControlType.ProgrammaticName.Replace("ControlType.", "")
+                        $name = $el.Current.Name
+                        $autoId = $el.Current.AutomationId
+                        $rect = $el.Current.BoundingRectangle
+                        
+                        $val = ""
+                        try {
+                            $valuePattern = $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+                            if ($valuePattern) { $val = $valuePattern.Current.Value }
+                        } catch {}
+                        
+                        $elementObj = @{
+                            id = 1
+                            name = if ($name) { $name } else { $autoId }
+                            role = $role
+                            rect = @([int]$rect.X, [int]$rect.Y, [int]$rect.Width, [int]$rect.Height)
+                        }
+                        if ($val) { $elementObj["value"] = $val }
+                        
+                        $global:ElementCache[1] = $el
+                        $elements += $elementObj
+                    }
+                } catch {}
+                
+                $output = @{
+                    window = $windowTitle
+                    process = "focused"
+                    elements = $elements
+                    element_count = $elements.Count
+                    method = "uiautomation-focus"
+                }
+                Write-Output ($output | ConvertTo-Json -Depth 5 -Compress)
+            }
             "read-ui" {
+                $global:ElementCache.Clear()
                 $maxElements = if ($cmdObj.maxElements) { [int]$cmdObj.maxElements } else { 300 }
                 $filterRoles = $cmdObj.roles
 
@@ -335,6 +387,7 @@ while ($true) {
                                 $elementObj["value"] = $val
                             }
 
+                            $global:ElementCache[$idCounter] = $el
                             $elements += $elementObj
                             $idCounter++
                         }
@@ -426,6 +479,49 @@ while ($true) {
                 }
                 Write-Output ($output | ConvertTo-Json -Depth 5 -Compress)
             }
+            "native-invoke" {
+                $id = [int]$cmdObj.id
+                $element = $global:ElementCache[$id]
+                if ($element -ne $null) {
+                    $success = $false
+                    try {
+                        $invokePattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+                        $invokePattern.Invoke()
+                        $success = $true
+                        Write-Output (@{ status="success"; action="native-invoke"; id=$id } | ConvertTo-Json -Compress)
+                    } catch {
+                        try {
+                            $togglePattern = $element.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+                            $togglePattern.Toggle()
+                            $success = $true
+                            Write-Output (@{ status="success"; action="native-invoke-toggle"; id=$id } | ConvertTo-Json -Compress)
+                        } catch {}
+                    }
+                    
+                    if (-not $success) {
+                        try {
+                            $rect = $element.Current.BoundingRectangle
+                            if ($rect.Width -gt 0 -and $rect.Height -gt 0) {
+                                $x = [int]($rect.X + ($rect.Width / 2))
+                                $y = [int]($rect.Y + ($rect.Height / 2))
+                                [MarkWin32]::EnsureTargetWindowFocused()
+                                [MarkWin32]::SetCursorPos($x, $y) | Out-Null
+                                Start-Sleep -Milliseconds 20
+                                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                                Start-Sleep -Milliseconds 20
+                                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                                Write-Output (@{ status="success"; action="native-invoke-fallback-click"; id=$id; x=$x; y=$y } | ConvertTo-Json -Compress)
+                            } else {
+                                Write-Output (@{ status="error"; message="Elemen tidak memiliki InvokePattern dan tidak terlihat di layar (BoundingRect kosong)" } | ConvertTo-Json -Compress)
+                            }
+                        } catch {
+                            Write-Output (@{ status="error"; message="Elemen tidak memiliki InvokePattern dan gagal fallback klik fisik" } | ConvertTo-Json -Compress)
+                        }
+                    }
+                } else {
+                    Write-Output (@{ status="error"; message="ID Elemen tidak ditemukan di cache (Mungkin kadaluarsa, lakukan os-read ulang)" } | ConvertTo-Json -Compress)
+                }
+            }
             "click" {
                 [MarkWin32]::EnsureTargetWindowFocused()
                 $x = [int]$cmdObj.x
@@ -437,6 +533,22 @@ while ($true) {
                 [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
                 
                 Write-Output (@{ status="success"; action="click"; x=$x; y=$y } | ConvertTo-Json -Compress)
+            }
+            "double-click" {
+                [MarkWin32]::EnsureTargetWindowFocused()
+                $x = [int]$cmdObj.x
+                $y = [int]$cmdObj.y
+                [MarkWin32]::SetCursorPos($x, $y) | Out-Null
+                Start-Sleep -Milliseconds 50
+                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                Start-Sleep -Milliseconds 30
+                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                Start-Sleep -Milliseconds 50
+                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                Start-Sleep -Milliseconds 30
+                [MarkWin32]::mouse_event([MarkWin32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                
+                Write-Output (@{ status="success"; action="double-click"; x=$x; y=$y } | ConvertTo-Json -Compress)
             }
             "type" {
                 [MarkWin32]::EnsureTargetWindowFocused()
@@ -458,11 +570,12 @@ while ($true) {
                 $combo = $cmdObj.combo
                 if (-not [string]::IsNullOrEmpty($combo)) {
                     $keys = $combo.ToLower().Trim()
-                    $sendStr = ""
+                    $modifiers = ""
                     
-                    $keys = $keys -replace 'ctrl\+', '^'
-                    $keys = $keys -replace 'alt\+', '%'
-                    $keys = $keys -replace 'shift\+', '+'
+                    if ($keys -match "ctrl\+") { $modifiers += "^"; $keys = $keys -replace "ctrl\+", "" }
+                    if ($keys -match "alt\+") { $modifiers += "%"; $keys = $keys -replace "alt\+", "" }
+                    if ($keys -match "shift\+") { $modifiers += "+"; $keys = $keys -replace "shift\+", "" }
+                    if ($keys -match "win\+") { $keys = $keys -replace "win\+", "" } # SendKeys doesn't support Win key combo directly, but we strip it
                     
                     $specialMap = @{
                         "enter" = "{ENTER}"
@@ -481,10 +594,22 @@ while ($true) {
                         "space" = " "
                     }
 
+                    if ($keys -eq "win") {
+                        [MarkWin32]::keybd_event([MarkWin32]::VK_LWIN, 0, 0, 0)
+                        Start-Sleep -Milliseconds 20
+                        [MarkWin32]::keybd_event([MarkWin32]::VK_LWIN, 0, [MarkWin32]::KEYEVENTF_KEYUP, 0)
+                        Write-Output (@{ status="success"; action="key"; combo=$combo } | ConvertTo-Json -Compress)
+                        continue
+                    }
+
                     if ($specialMap.ContainsKey($keys)) {
-                        $sendStr = $specialMap[$keys]
+                        $sendStr = $modifiers + $specialMap[$keys]
                     } else {
-                        $sendStr = $keys
+                        if ($keys.Length -eq 1) {
+                            $sendStr = $modifiers + $keys
+                        } else {
+                            $sendStr = $modifiers + "{" + $keys + "}"
+                        }
                     }
 
                     try {

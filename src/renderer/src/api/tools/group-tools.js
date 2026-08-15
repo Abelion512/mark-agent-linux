@@ -14,27 +14,32 @@ export const GROUP_TOOLS_DEFINITION = {
     }
   },
   pc_automation: {
-    description: 'Tool untuk interaksi fisik dengan desktop OS Windows.',
+    description:
+      'Tool untuk interaksi fisik dengan desktop OS Windows. [SPEEDRUNNER BATCH MODE]: Kamu BISA mengeksekusi BATCH ACTIONS (mengirim ARRAY aksi) dalam 1 giliran untuk menghindari loading lama. Contoh: [{"tool":"os-click","query":"5"}, {"tool":"os-delay","query":"1000"}, {"tool":"os-type","query":"Teks"}]. Gunakan os-click secara bebas, tetapi KELOMPOKKAN aksimu ke dalam array jika urutannya sudah jelas, jangan satu per satu!',
     tools: {
       'os-control-open':
         'WAJIB DIPANGGIL PERTAMA KALI sebelum memulai rangkaian tugas otomatisasi PC. Mengunci sesi dan memunculkan overlay pengunci PC. PENTING: Jika tool ini sudah mengembalikan status success, ITU BERARTI USER SUDAH MEMBERIKAN IZIN DI POPUP! Kamu WAJIB LANGSUNG meneruskan eksekusi langkah berikutnya (os-read/os-click/os-type/dll) di loop yang sama TANPA berhenti atau menyuruh user klik tombol izinkan lagi! Query: KOSONG.',
       'os-control-close':
         'WAJIB DIPANGGIL TERAKHIR setelah semua tugas otomatisasi PC selesai. Menutup sesi dan overlay. Query: KOSONG.',
       'os-read':
-        'Membaca elemen GUI desktop/aplikasi Windows aktif (UIAutomation/OCR). Mengembalikan daftar elemen interaktif bernomor ID.',
+        'Membaca elemen GUI desktop. Query: Kosongkan untuk scan seluruh layar (LAMBAT, 1-3 detik), atau isi dengan kata "focus" untuk HANYA membaca 1 elemen yang saat ini sedang aktif/tersorot (INSTAN, 1 ms). Gunakan query "focus" setelah kamu menekan tombol TAB/Panah untuk memverifikasi posisimu dengan cepat!',
       'os-click':
         'Klik mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut.',
       'os-type':
-        'Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung. PENTING: DILARANG KERAS menggunakan format markdown link seperti [teks](url) saat mengetik URL! Ketik raw URL-nya saja.',
+        'Ketik teks ke elemen input di aplikasi Windows. Query: ID||teks atau teks langsung. PENTING: DILARANG KERAS MENGETIKKAN EMOJI! DILARANG KERAS menggunakan format markdown link seperti [teks](url) saat mengetik URL! Ketik raw teks saja.',
       'os-key':
         'Tekan kombinasi tombol keyboard shortcut. Query: combo (misal: ctrl+c, alt+tab, win+e, ctrl+s, enter).',
       'os-scroll':
         'Scroll mouse wheel di aplikasi aktif. Query: direction||amount (misal: down||5 atau up||3).',
       'os-open':
-        'Membuka aplikasi Windows dari Start Menu atau path. Query: nama app/path (misal: notepad, winword, C:\\\\app.exe).',
+        'Membuka aplikasi Windows via shell execute. Query: nama executable/path atau URL raw (misal: notepad, calc, https://google.com). DILARANG KERAS menggunakan markdown link [teks](url)! Ketik raw text saja.',
+      'os-search':
+        'Mensimulasikan user mencari APLIKASI di Start Menu dengan tombol Windows. Query: kata kunci (misal: Chrome). PENTING: Tool ini HANYA mengetik di Start Menu. Untuk membuka aplikasinya, kamu WAJIB memanggil BATCH ACTION: os-search -> os-delay (1000) -> os-key (enter). JANGAN panggil os-open/os-double-click setelah os-search!',
+      'os-double-click':
+        'Klik ganda (double click) mouse pada elemen GUI desktop. Query: ID elemen dari os-read atau x||y koordinat absolut. Bisa digunakan untuk memilih file saat input file dari browser atau explorer.',
       'os-list-windows': 'Menampilkan daftar semua window aplikasi yang terbuka beserta judulnya.',
       'os-focus-window':
-        'Fokus/brings to front sebuah window aplikasi berdasarkan judulnya. Query: judul window.',
+        'Fokus sebuah window aplikasi berdasarkan judul. JANGAN MENEBAK JUDUL! WAJIB gunakan os-list-windows terlebih dahulu, lalu gunakan teks judul yang persis ada di daftar tersebut. Query: judul window.',
       'os-ask':
         'Meminta masukan/konfirmasi dari user via dialog floating di layar saat mengontrol PC, ATAU jika user menghentikan otomatisasi (Ctrl+Shift+S).'
     }
@@ -133,7 +138,7 @@ export const group_tools = async () => {
       })
     }
   } catch (err) {
-    console.error("Gagal meload external plugin", err)
+    console.error('Gagal meload external plugin', err)
   }
 
   return dynamicGroups

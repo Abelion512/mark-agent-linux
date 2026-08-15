@@ -404,7 +404,7 @@ export const fetchAI = async (
       const isMistralModel = body.model && body.model.toLowerCase().includes('mistral')
 
       for (let m of body.messages) {
-        let currentRole = m.role === 'system' ? 'user' : m.role
+        let currentRole = m.role
         let currentContent = m.content
 
         // Adaptasi Vision Payload Khusus Mistral (Mistral mengharapkan image_url sebagai string, bukan object)

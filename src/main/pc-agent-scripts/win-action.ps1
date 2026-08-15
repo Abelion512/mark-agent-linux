@@ -14,6 +14,7 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -61,6 +62,11 @@ public class Win32 {
     public const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
     public const uint MOUSEEVENTF_RIGHTUP = 0x0010;
     public const uint MOUSEEVENTF_WHEEL = 0x0800;
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);
+    public const int KEYEVENTF_EXTENDEDKEY = 0x0001;
+    public const byte VK_LWIN = 0x5B;
 
     public static string ListWindowsJson() {
         StringBuilder json = new StringBuilder();
@@ -228,6 +234,19 @@ function Execute-Click {
     Write-Output "({`"status`":`"success`",`"action`":`"click`",`"x`":$X,`"y`":$Y})".Trim("()")
 }
 
+function Execute-DoubleClick {
+    [Win32]::SetCursorPos($X, $Y) | Out-Null
+    Start-Sleep -Milliseconds 50
+    [Win32]::mouse_event([Win32]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+    Start-Sleep -Milliseconds 30
+    [Win32]::mouse_event([Win32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    Start-Sleep -Milliseconds 50
+    [Win32]::mouse_event([Win32]::MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+    Start-Sleep -Milliseconds 30
+    [Win32]::mouse_event([Win32]::MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    Write-Output "({`"status`":`"success`",`"action`":`"doubleclick`",`"x`":$X,`"y`":$Y})".Trim("()")
+}
+
 function Escape-SendKeys {
     param([string]$str)
     if ([string]::IsNullOrEmpty($str)) { return "" }
@@ -287,6 +306,14 @@ function Execute-Key {
             "space" = " "
         }
 
+        if ($keys -eq "win") {
+            [Win32]::keybd_event([Win32]::VK_LWIN, 0, 0, 0)
+            Start-Sleep -Milliseconds 20
+            [Win32]::keybd_event([Win32]::VK_LWIN, 0, [Win32]::KEYEVENTF_KEYUP, 0)
+            Write-Output "({`"status`":`"success`",`"action`":`"key`",`"combo`":`"$Combo`"})".Trim("()")
+            return
+        }
+
         if ($specialMap.ContainsKey($keys)) {
             $sendStr = $specialMap[$keys]
         } else {
@@ -342,6 +369,7 @@ function Execute-FocusWindow {
 
 switch ($Action.ToLower()) {
     "click" { Execute-Click }
+    "doubleclick" { Execute-DoubleClick }
     "type" { Execute-Type }
     "key" { Execute-Key }
     "scroll" { Execute-Scroll }

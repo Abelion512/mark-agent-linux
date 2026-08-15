@@ -8,6 +8,7 @@ import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agen
 import {
   readDesktop,
   executeClick,
+  executeDoubleClick,
   executeType,
   executeKey,
   executeScroll,
@@ -649,9 +650,9 @@ export const NATIVE_TOOLS = {
   },
   'os-read': {
     needsApproval: false,
-    handler: async () => {
+    handler: async (query) => {
       try {
-        const result = await readDesktop()
+        const result = await readDesktop({}, query)
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -713,6 +714,38 @@ export const NATIVE_TOOLS = {
       } catch (e) {
         return { success: false, error: e.message }
       }
+    }
+  },
+  'os-search': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        // Press windows key
+        await executeKey('win')
+        // Wait for Start Menu to open
+        await new Promise((r) => setTimeout(r, 800))
+        // Type the query
+        const result = await executeType(query)
+        return { success: true, data: `[PC-Agent] Opened Start Menu and searched for "${query}". ${result}` }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'os-double-click': {
+    needsApproval: false,
+    handler: async (query) => {
+      return await executeDoubleClick(query)
+    }
+  },
+  'os-delay': {
+    needsApproval: false,
+    handler: async (query) => {
+      let ms = parseInt(query)
+      if (isNaN(ms) || ms < 0) ms = 1000
+      if (ms > 10000) ms = 10000
+      await new Promise((r) => setTimeout(r, ms))
+      return { success: true, data: `[PC-Agent] Delayed for ${ms}ms.` }
     }
   },
   'os-list-windows': {

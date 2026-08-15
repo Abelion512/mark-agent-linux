@@ -686,7 +686,7 @@ function runScriptFallback(scriptName, args = []) {
 /**
  * Read the active desktop GUI elements (UIAutomation with OCR fallback)
  */
-export async function readDesktop(options = {}) {
+export async function readDesktop(options = {}, query = '') {
   if (!isSessionOpen) {
     return {
       window: 'error',
@@ -703,7 +703,8 @@ export async function readDesktop(options = {}) {
   }
   showPCOverlay()
   
-  if (!stateChanged && lastReadResult && (Date.now() - lastReadTimestamp < CACHE_TTL)) {
+  const isFocus = (query === 'focus')
+  if (!isFocus && !stateChanged && lastReadResult && (Date.now() - lastReadTimestamp < CACHE_TTL)) {
     scheduleHidePCOverlay()
     return { ...lastReadResult, method: 'cached' }
   }
@@ -711,7 +712,11 @@ export async function readDesktop(options = {}) {
   try {
     let uiText = ''
     if (isDaemonAlive()) {
-      uiText = await sendCommand({ cmd: 'read-ui', maxElements: options.maxElements || 300, roles: options.roles })
+      if (isFocus) {
+        uiText = await sendCommand({ cmd: 'read-focus' })
+      } else {
+        uiText = await sendCommand({ cmd: 'read-ui', maxElements: options.maxElements || 300, roles: options.roles })
+      }
     } else {
       uiText = await runScriptFallback('read-ui.ps1')
     }
@@ -726,7 +731,7 @@ export async function readDesktop(options = {}) {
     }
 
     // If UIAutomation returned 0 elements or failed, fallback to local OCR
-    if (!parsed || !parsed.elements || parsed.elements.length === 0) {
+    if (!isFocus && (!parsed || !parsed.elements || parsed.elements.length === 0)) {
       console.log(
         '[PC-Agent] UIAutomation returned 0 elements. Executing local WinRT OCR fallback...'
       )
@@ -781,7 +786,7 @@ function resolveCoordinates(query) {
     if (el && el.rect && el.rect.length === 4) {
       const centerX = Math.round(el.rect[0] + el.rect[2] / 2)
       const centerY = Math.round(el.rect[1] + el.rect[3] / 2)
-      return { x: centerX, y: centerY }
+      return { x: centerX, y: centerY, id: id }
     }
   }
 
@@ -807,7 +812,11 @@ export async function executeClick(query) {
   
   let result = ''
   if (isDaemonAlive()) {
-    result = await sendCommand({ cmd: 'click', x: coords.x, y: coords.y })
+    if (coords.id !== undefined) {
+      result = await sendCommand({ cmd: 'native-invoke', id: coords.id, x: coords.x, y: coords.y })
+    } else {
+      result = await sendCommand({ cmd: 'click', x: coords.x, y: coords.y })
+    }
   } else {
     result = await runScriptFallback('win-action.ps1', [
       '-Action',
@@ -821,6 +830,41 @@ export async function executeClick(query) {
   stateChanged = true
   scheduleHidePCOverlay()
   return `[PC-Agent] Clicked at (${coords.x}, ${coords.y}). ${result}`
+}
+
+/**
+ * Double Click an element by ID or coordinates
+ */
+export async function executeDoubleClick(query) {
+  if (!isSessionOpen) {
+    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
+  }
+  if (isStopActive()) {
+    return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
+  }
+  showPCOverlay()
+  const coords = resolveCoordinates(query)
+  if (!coords) {
+    scheduleHidePCOverlay()
+    return `[PC-Agent] Error: Element ID or coordinates '${query}' not found. Try os-read first.`
+  }
+  
+  let result = ''
+  if (isDaemonAlive()) {
+    result = await sendCommand({ cmd: 'double-click', x: coords.x, y: coords.y })
+  } else {
+    result = await runScriptFallback('win-action.ps1', [
+      '-Action',
+      'doubleclick',
+      '-X',
+      coords.x.toString(),
+      '-Y',
+      coords.y.toString()
+    ])
+  }
+  stateChanged = true
+  scheduleHidePCOverlay()
+  return `[PC-Agent] Double-Clicked at (${coords.x}, ${coords.y}). ${result}`
 }
 
 /**
