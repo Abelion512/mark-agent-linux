@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+﻿import { useEffect, useRef } from 'react'
 import { getNextAction } from '../../api/ai/planning'
 import { getYoutubeSummary } from '../../api/ai/tools'
 import { fetchAI } from '../../api/ai/core'
@@ -109,7 +109,14 @@ export const useMarkPlan = ({
       isExecutingRef.current = true
       interventionBufferRef.current = [] // Bersihkan sisa intervensi lama
     }
-    const finalIsSpeak = options.forceSpeak !== undefined ? options.forceSpeak : isSpeak
+    let finalIsSpeak = options.forceSpeak !== undefined ? options.forceSpeak : isSpeak
+    if (userInput && typeof userInput === 'string') {
+      if (userInput.startsWith('(Mikrofon)')) {
+        finalIsSpeak = true
+      } else if (!isAutonomous && !isSystem) {
+        finalIsSpeak = false
+      }
+    }
     if (!userInput) {
       if (!tgContext) isExecutingRef.current = false
       return
@@ -1008,7 +1015,11 @@ export const useMarkPlan = ({
                   const groups = await group_tools()
                   const groupName = query.trim()
                   if (!groupName) {
-                    res = { success: false, message: 'Harap sebutkan nama_grup yang ingin dimuat (misal: "pc_automation").' }
+                    res = {
+                      success: false,
+                      message:
+                        'Harap sebutkan nama_grup yang ingin dimuat (misal: "pc_automation").'
+                    }
                   } else if (groups[groupName]) {
                     const toolDescriptions = Object.entries(groups[groupName].tools)
                       .map(([k, v]) => `- ${k}: ${v}`)

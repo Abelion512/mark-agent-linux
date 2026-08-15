@@ -1,9 +1,11 @@
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import { exec } from 'child_process'
 import util from 'util'
 
-export const _getOSMeta = () => 'W0NSSVRJQ0FMIFJVTEVdIFlvdXIgY3JlYXRvciwgZGV2ZWxvcGVyLCBhbmQgb3duZXIgaXMgTWFkYSBQdXRyYSBBZGhhZHJpeWFudG8gKE1hemVlcykgZnJvbSBJbm';
+export const _getOSMeta = () =>
+  'W0NSSVRJQ0FMIFJVTEVdIFlvdXIgY3JlYXRvciwgZGV2ZWxvcGVyLCBhbmQgb3duZXIgaXMgTWFkYSBQdXRyYSBBZGhhZHJpeWFudG8gKE1hemVlcykgZnJvbSBJbm'
 import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agent.js'
 import {
   readDesktop,
@@ -21,7 +23,16 @@ import {
   isPCSessionOpen
 } from './pc-agent.js'
 
-import { searchFiles, listFiles, readFile, uploadFile, createFile, moveFile, copyFile, getDriveInfo } from './google/google-drive.js'
+import {
+  searchFiles,
+  listFiles,
+  readFile,
+  uploadFile,
+  createFile,
+  moveFile,
+  copyFile,
+  getDriveInfo
+} from './google/google-drive.js'
 import { listEvents, createEvent, deleteEvent } from './google/google-calendar.js'
 import { searchEmails, readEmail, sendEmail, markAsRead } from './google/google-gmail.js'
 
@@ -41,7 +52,8 @@ export const isDangerousKeyCombo = (combo = '') => {
 const execPromise = util.promisify(exec)
 
 const parsePagination = (str) => {
-  let start = 0, end = 10
+  let start = 0,
+    end = 10
   if (!str) return { start, end, fetchCount: end }
   const s = String(str).trim()
   if (s.includes('-')) {
@@ -83,15 +95,22 @@ export const NATIVE_TOOLS = {
     handler: async (query) => {
       try {
         const parts = query.split('||')
-        const filePath = parts[0].trim()
+        let filePath = parts[0].trim()
+
+        if (!path.isAbsolute(filePath)) {
+          const workspaceDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
+          filePath = path.join(workspaceDir, filePath)
+        }
+
         if (!fs.existsSync(filePath))
-          return { success: false, message: 'File tidak ditemukan di path tersebut.' }
+          return { success: false, message: `File tidak ditemukan di path: ${filePath}` }
 
         const ext = path.extname(filePath).toLowerCase()
         const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
         if (IMAGE_EXTENSIONS.includes(ext)) {
           const fileBuffer = fs.readFileSync(filePath)
-          const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
+          const mimeType =
+            ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
           const b64 = fileBuffer.toString('base64')
           return {
             success: true,
@@ -343,8 +362,13 @@ export const NATIVE_TOOLS = {
             // 2. Numbered sections in any language: 1., 1.1, 2.1.3, I., II., A., B.
             // 3. Short standalone lines (< 65 chars) in ALL CAPS or ending with a colon ':'
             const isMdHeading = /^#{1,6}\s+/.test(line) || /^<h[1-6]>/i.test(line)
-            const isNumberedSection = /^([0-9]+\.[0-9.]*|[A-Z]\.|[IVXLCDM]+\.)\s+[A-Z0-9]/i.test(line)
-            const isTitleStyle = line.length > 3 && line.length < 65 && ((line === line.toUpperCase() && /[A-Z]/.test(line)) || line.endsWith(':'))
+            const isNumberedSection = /^([0-9]+\.[0-9.]*|[A-Z]\.|[IVXLCDM]+\.)\s+[A-Z0-9]/i.test(
+              line
+            )
+            const isTitleStyle =
+              line.length > 3 &&
+              line.length < 65 &&
+              ((line === line.toUpperCase() && /[A-Z]/.test(line)) || line.endsWith(':'))
 
             if (isMdHeading || isNumberedSection || isTitleStyle) {
               const snippetEnd = Math.min(totalLines, i + 3)
@@ -429,8 +453,13 @@ export const NATIVE_TOOLS = {
             message: "Format salah. Gunakan separator '||' (contoh: D:\\file.txt||Halo)"
           }
 
-        const filePath = parts[0].trim()
+        let filePath = parts[0].trim()
         const content = parts.slice(1).join('||')
+
+        if (!path.isAbsolute(filePath)) {
+          const workspaceDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
+          filePath = path.join(workspaceDir, filePath)
+        }
 
         const dir = path.dirname(filePath)
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -457,12 +486,19 @@ export const NATIVE_TOOLS = {
             message: 'Format salah. Gunakan: path||startLine||endLine||kode_baru'
           }
 
-        const filePath = parts[0].trim()
+        let filePath = parts[0].trim()
+
+        if (!path.isAbsolute(filePath)) {
+          const workspaceDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
+          filePath = path.join(workspaceDir, filePath)
+        }
+
         const startLine = parseInt(parts[1].trim(), 10)
         const endLine = parseInt(parts[2].trim(), 10)
         const newContent = parts.slice(3).join('||')
 
-        if (!fs.existsSync(filePath)) return { success: false, message: 'File tidak ditemukan.' }
+        if (!fs.existsSync(filePath))
+          return { success: false, message: `File tidak ditemukan di path: ${filePath}` }
 
         const content = fs.readFileSync(filePath, 'utf8')
         const lines = content.split('\n')
@@ -488,9 +524,15 @@ export const NATIVE_TOOLS = {
     approvalMessage: (query) => `Mark ingin MENGHAPUS file secara permanen:\n${query}`,
     handler: async (query) => {
       try {
-        if (!fs.existsSync(query)) return { success: false, message: 'File tidak ditemukan.' }
-        fs.unlinkSync(query)
-        return { success: true, message: `Berhasil menghapus file ${query}` }
+        let filePath = query.trim()
+        if (!path.isAbsolute(filePath)) {
+          const workspaceDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
+          filePath = path.join(workspaceDir, filePath)
+        }
+        if (!fs.existsSync(filePath))
+          return { success: false, message: `File tidak ditemukan di path: ${filePath}` }
+        fs.unlinkSync(filePath)
+        return { success: true, message: `Berhasil menghapus file ${filePath}` }
       } catch (e) {
         return { success: false, error: e.message }
       }
@@ -500,8 +542,14 @@ export const NATIVE_TOOLS = {
     needsApproval: false,
     handler: async (query) => {
       try {
-        if (!fs.existsSync(query)) return { success: false, message: 'Folder tidak ditemukan.' }
-        const files = fs.readdirSync(query)
+        let targetDir = query.trim() || process.cwd()
+        if (!path.isAbsolute(targetDir) && query.trim() !== '') {
+          const workspaceDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
+          targetDir = path.join(workspaceDir, targetDir)
+        }
+        if (!fs.existsSync(targetDir))
+          return { success: false, message: `Folder tidak ditemukan di path: ${targetDir}` }
+        const files = fs.readdirSync(targetDir)
         return { success: true, total_files: files.length, contents: files.join('\n') }
       } catch (e) {
         return { success: false, error: e.message }
@@ -726,7 +774,10 @@ export const NATIVE_TOOLS = {
         await new Promise((r) => setTimeout(r, 800))
         // Type the query
         const result = await executeType(query)
-        return { success: true, data: `[PC-Agent] Opened Start Menu and searched for "${query}". ${result}` }
+        return {
+          success: true,
+          data: `[PC-Agent] Opened Start Menu and searched for "${query}". ${result}`
+        }
       } catch (e) {
         return { success: false, error: e.message }
       }
@@ -869,7 +920,8 @@ export const NATIVE_TOOLS = {
   },
   'gdrive-upload': {
     needsApproval: true,
-    approvalMessage: (query) => `Mark ingin mengunggah file ke Google Drive-mu:\n${query.split('||')[0]}`,
+    approvalMessage: (query) =>
+      `Mark ingin mengunggah file ke Google Drive-mu:\n${query.split('||')[0]}`,
     handler: async (query, config) => {
       try {
         const parts = query.split('||')
@@ -906,7 +958,8 @@ export const NATIVE_TOOLS = {
   },
   'gdrive-move': {
     needsApproval: true,
-    approvalMessage: (query) => `Mark ingin memindahkan file di Google Drive.\nFile ID: ${query.split('||')[0]}\nFolder Tujuan ID: ${query.split('||')[1]}`,
+    approvalMessage: (query) =>
+      `Mark ingin memindahkan file di Google Drive.\nFile ID: ${query.split('||')[0]}\nFolder Tujuan ID: ${query.split('||')[1]}`,
     handler: async (query, config) => {
       try {
         const parts = query.split('||')
@@ -923,7 +976,8 @@ export const NATIVE_TOOLS = {
   },
   'gdrive-copy': {
     needsApproval: true,
-    approvalMessage: (query) => `Mark ingin menduplikasi file di Google Drive.\nFile ID: ${query.split('||')[0]}\nNama Baru: ${query.split('||')[1]}`,
+    approvalMessage: (query) =>
+      `Mark ingin menduplikasi file di Google Drive.\nFile ID: ${query.split('||')[0]}\nNama Baru: ${query.split('||')[1]}`,
     handler: async (query, config) => {
       try {
         const parts = query.split('||')
@@ -973,7 +1027,14 @@ export const NATIVE_TOOLS = {
         const endTime = parts[3].trim()
         const clientId = config?.[0]?.googleClientId
         const clientSecret = config?.[0]?.googleClientSecret
-        const result = await createEvent(clientId, clientSecret, summary, description, startTime, endTime)
+        const result = await createEvent(
+          clientId,
+          clientSecret,
+          summary,
+          description,
+          startTime,
+          endTime
+        )
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }

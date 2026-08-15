@@ -139,7 +139,7 @@ export const useVAD = ({
       const micId = config[0]?.micDeviceId
       const audioSettings = {
         echoCancellation: false,
-        noiseSuppression: true,
+        noiseSuppression: false,
         autoGainControl: false
       }
 
