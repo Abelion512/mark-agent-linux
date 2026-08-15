@@ -356,6 +356,29 @@ export const fetchAI = async (
       let rawText = await response.text()
       
       let cleanText = rawText.trim()
+
+      if (cleanText.includes('data: {') || cleanText.includes('"chat.completion.chunk"')) {
+        console.log(`\n==================== [FETCH AI SSE STREAM] ====================`)
+        let fullContent = ''
+        let fullReasoning = ''
+        const lines = cleanText.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const chunk = JSON.parse(line.substring(6).trim())
+              const delta = chunk.choices?.[0]?.delta || {}
+              if (delta.content) fullContent += delta.content
+              if (delta.reasoning_content) fullReasoning += delta.reasoning_content
+            } catch (e) {}
+          }
+        }
+        console.log(fullContent)
+        console.log(`===================================================================\n`)
+        return {
+          choices: [{ message: { role: 'assistant', content: fullContent, reasoning: fullReasoning || null } }]
+        }
+      }
+
       const firstBrace = cleanText.indexOf('{')
       const lastBrace = cleanText.lastIndexOf('}')
       
