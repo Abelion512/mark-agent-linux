@@ -130,6 +130,7 @@ const Guidebook = () => {
         <button
           onClick={() => navigate('/')}
           className="btn btn-ghost btn-sm gap-2 text-white/70 hover:text-white mr-6"
+          style={{ WebkitAppRegion: 'no-drag' }}
         >
           <FaArrowLeft /> Kembali
         </button>

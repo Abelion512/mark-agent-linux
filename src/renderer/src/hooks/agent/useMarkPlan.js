@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { getNextAction } from '../../api/ai/planning'
 import { getYoutubeSummary } from '../../api/ai/tools'
 import { fetchAI } from '../../api/ai/core'
@@ -135,7 +135,21 @@ export const useMarkPlan = ({
     const timestampStr = getCurrentTimeInfo()
 
     let finalContent = userInput
-    if (isSystem) finalContent = `[SYSTEM INSTRUCTION]: ${userInput}`
+    if (userInput.startsWith('/')) {
+      const skillName = userInput.slice(1).split(' ')[0].trim()
+      try {
+        const skillContent = await window.api.readSkill(skillName)
+        if (skillContent) {
+          finalContent = `[SYSTEM INSTRUCTION - SKILL ACTIVATED]: Kamu sekarang harus bertindak dan mengikuti seluruh instruksi dalam dokumen skill berikut ini secara ketat:\n\n=== SKILL: ${skillName} ===\n${skillContent}\n====================\n\nInstruksi dari user: ${userInput.replace('/' + skillName, '').trim() || 'Jalankan skill ini sekarang!'}`
+        } else {
+          finalContent = `Skill "${skillName}" tidak ditemukan di direktori Mark Skills.`
+        }
+      } catch (err) {
+        console.error('Error loading skill:', err)
+      }
+    } else if (isSystem) {
+      finalContent = `[SYSTEM INSTRUCTION]: ${userInput}`
+    }
     if (isAutonomous)
       finalContent = `[SISTEM INTERNAL - INISIATIF OTONOM]: Otak bawah sadarmu berinisiatif untuk melakukan tindakan berikut: "${userInput}". LAKUKAN TUGAS INI! Bicaralah seolah-olah kamu yang memiliki inisiatif itu sendiri tanpa disuruh. PENTING: DILARANG KERAS menggunakan tool 'os-*' (seperti os-control-open, os-click, os-type, dll) untuk interaksi PC secara otonom! Respons "answer"-mu HARUS SANGAT SINGKAT, santai, dan cuek (Maks 1-2 kalimat pendek). DILARANG KERAS menggunakan sapaan kaku (seperti "Yoi Mada") ATAU menawarkan bantuan di akhir kalimat! Boleh kosongkan (null) jika tidak perlu bicara.`
 

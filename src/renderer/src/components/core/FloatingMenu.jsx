@@ -11,7 +11,8 @@ import {
   FaNetworkWired,
   FaHeartbeat,
   FaBook,
-  FaGoogle
+  FaGoogle,
+  FaBrain
 } from 'react-icons/fa'
 
 const FloatingMenu = ({ onOpenHistory, tgStatus = 'disconnected' }) => {
@@ -62,6 +63,13 @@ const FloatingMenu = ({ onOpenHistory, tgStatus = 'disconnected' }) => {
             className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/10 transition-colors text-white/80 hover:text-white text-sm font-medium text-left"
           >
             <FaPuzzlePiece className="text-primary" /> Plugins
+          </button>
+
+          <button
+            onClick={() => handleNav('/skills')}
+            className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/10 transition-colors text-white/80 hover:text-white text-sm font-medium text-left"
+          >
+            <FaBrain className="text-primary" /> Mark Skills
           </button>
 
           <button

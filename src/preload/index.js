@@ -86,6 +86,18 @@ const api = {
   reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
   createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
   togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
+  tgTakeScreenshot: (chatId) => ipcRenderer.send('tg:trigger-screenshot', { chatId }),
+  tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
+  tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),
+  getPlugins: () => ipcRenderer.invoke('plugin:get-list'),
+  executeNativeTool: (toolName, query, config) => ipcRenderer.invoke('native-tool:execute', toolName, query, config),
+  checkToolApproval: (toolName, query) => ipcRenderer.invoke('native-tool:needs-approval', toolName, query),
+  executePlugin: (action, query) => ipcRenderer.invoke('plugin:execute', action, query),
+  openPluginFolder: () => ipcRenderer.invoke('plugin:open-folder'),
+  openSpecificFolder: (path) => ipcRenderer.invoke('plugin:open-specific-folder', path),
+  reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
+  createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
+  togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
   deletePlugin: (name) => ipcRenderer.invoke('plugin:delete', name),
   removeTgListeners: () => {
     ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking']
@@ -110,7 +122,14 @@ const api = {
   osOpen: (target) => ipcRenderer.invoke('os:open', target),
   osListWindows: () => ipcRenderer.invoke('os:list-windows'),
   osFocusWindow: (title) => ipcRenderer.invoke('os:focus-window', title),
-  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query)
+  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query),
+
+  // Skills
+  getSkills: () => ipcRenderer.invoke('get-skills'),
+  readSkill: (name) => ipcRenderer.invoke('read-skill', name),
+  saveSkill: (name, content) => ipcRenderer.invoke('save-skill', name, content),
+  deleteSkill: (name) => ipcRenderer.invoke('delete-skill', name),
+  installSkill: (sourcePath) => ipcRenderer.invoke('install-skill', sourcePath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

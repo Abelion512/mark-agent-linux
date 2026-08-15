@@ -90,6 +90,18 @@ export const isDangerousCommand = (cmd) =>
   DANGEROUS_KEYWORDS.some((k) => cmd.toLowerCase().includes(k.toLowerCase()))
 
 export const NATIVE_TOOLS = {
+  'read-skills': {
+    needsApproval: false,
+    execute: async (query) => {
+      const skillName = query.trim()
+      if (!skillName) return { success: false, message: 'Nama skill kosong' }
+      const skillPath = path.join(os.homedir(), 'Documents', 'Mark Skills', `${skillName}.md`)
+      if (fs.existsSync(skillPath)) {
+        return { success: true, content: await fs.promises.readFile(skillPath, 'utf8') }
+      }
+      return { success: false, message: `Skill ${skillName} tidak ditemukan` }
+    }
+  },
   'read-file': {
     needsApproval: false,
     handler: async (query) => {
@@ -108,7 +120,7 @@ export const NATIVE_TOOLS = {
         const ext = path.extname(filePath).toLowerCase()
         const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
         if (IMAGE_EXTENSIONS.includes(ext)) {
-          const fileBuffer = fs.readFileSync(filePath)
+          const fileBuffer = await fs.promises.readFile(filePath)
           const mimeType =
             ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
           const b64 = fileBuffer.toString('base64')
@@ -120,7 +132,7 @@ export const NATIVE_TOOLS = {
           }
         }
 
-        const content = fs.readFileSync(filePath, 'utf8')
+        const content = await fs.promises.readFile(filePath, 'utf8')
         const lines = content.split('\n')
         const totalLines = lines.length
 

@@ -60,6 +60,17 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
   const [isDragging, setIsDragging] = useState(false)
   const lastPromptRef = useRef('')
 
+  const [skills, setSkills] = useState([])
+  const [filteredSkills, setFilteredSkills] = useState([])
+  const [showSkillList, setShowSkillList] = useState(false)
+  const [selectedSkillIndex, setSelectedSkillIndex] = useState(0)
+
+  useEffect(() => {
+    if (window.api && window.api.getSkills) {
+      window.api.getSkills().then(setSkills).catch(console.error)
+    }
+  }, [])
+
   useEffect(() => {
     if (!isLoading && inputRef.current) {
       setTimeout(() => {
@@ -189,8 +200,36 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
     }
   }
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = async () => {
     let finalPrompt = inputText
+    let userText = inputText
+    const skillMatches = inputText.match(/(?:\s|^)\/([a-zA-Z0-9_-]+)/g)
+
+    if (skillMatches && skillMatches.length > 0 && window.api && window.api.readSkill) {
+      let combinedSkillsContent = ''
+      const loadedSkills = []
+      
+      for (const match of skillMatches) {
+        const skillName = match.trim().substring(1) // Hilangkan spasi dan '/'
+        try {
+          const skillContent = await window.api.readSkill(skillName)
+          if (skillContent) {
+            combinedSkillsContent += `\n\n--- SKILL: ${skillName.toUpperCase()} ---\n${skillContent}`
+            loadedSkills.push(skillName)
+            userText = userText.replace(match, '') // Hapus slash command dari teks yang dilihat AI
+          }
+        } catch (e) {
+          console.error('[InputBar] Failed to read skill:', skillName, e)
+        }
+      }
+
+      userText = userText.trim()
+
+      if (loadedSkills.length > 0) {
+        finalPrompt = `${userText}\n\n=== SYSTEM INSTRUCTION: SKILL DIAKTIFKAN ===\nBerikut adalah instruksi skill khusus yang WAJIB kamu kombinasikan dan ikuti secara ketat untuk mengeksekusi permintaan di atas:\n${combinedSkillsContent}\n=========================================`
+      }
+    }
+
     if (attachedFiles.length > 0) {
       const filePathsText = attachedFiles.map((f) => `"${f.path}"`).join(', ')
       if (finalPrompt.trim()) {
@@ -218,6 +257,58 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
     setTimeout(() => {
       if (inputRef.current) inputRef.current.focus()
     }, 50)
+  }
+
+  const handleTextChange = (e) => {
+    const val = e.target.value
+    setInputText(val)
+    
+    if (val.startsWith('/')) {
+      const query = val.slice(1).toLowerCase()
+      const matches = skills.filter(s => s.toLowerCase().includes(query))
+      setFilteredSkills(matches)
+      setShowSkillList(true)
+      setSelectedSkillIndex(0)
+    } else {
+      setShowSkillList(false)
+    }
+  }
+
+  const selectSkill = (skill) => {
+    setInputText(`/${skill} `)
+    setShowSkillList(false)
+    if (inputRef.current) inputRef.current.focus()
+  }
+
+  const handleKeyDown = (e) => {
+    if (showSkillList && filteredSkills.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedSkillIndex(prev => (prev + 1) % filteredSkills.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedSkillIndex(prev => (prev - 1 + filteredSkills.length) % filteredSkills.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        selectSkill(filteredSkills[selectedSkillIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        setShowSkillList(false)
+        return
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (!isSendDisabled) {
+        handleFormSubmit()
+      }
+    }
   }
 
   const isSendDisabled = !inputText.trim() && attachedFiles.length === 0
@@ -352,21 +443,38 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
             </div>
           )}
         </div>
+        {/* Skill Autocomplete Dropdown */}
+        {showSkillList && filteredSkills.length > 0 && (
+          <div className="absolute bottom-full left-12 mb-2 w-64 bg-base-300/95 backdrop-blur-xl border border-[var(--glass-border)] rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
+            <div className="p-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/5">
+              Available Skills
+            </div>
+            <div className="max-h-48 overflow-y-auto no-scrollbar">
+              {filteredSkills.map((skill, idx) => (
+                <div
+                  key={skill}
+                  onClick={() => selectSkill(skill)}
+                  className={`px-4 py-2 text-sm cursor-pointer transition-colors flex items-center gap-2 ${
+                    idx === selectedSkillIndex 
+                      ? 'bg-emerald-500/20 text-emerald-400' 
+                      : 'hover:bg-white/10 text-gray-300'
+                  }`}
+                >
+                  <span className="opacity-50">/</span>
+                  <span className="font-medium">{skill}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Input Textarea */}
         <textarea
           ref={inputRef}
           rows={1}
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              if (!isSendDisabled) {
-                handleFormSubmit()
-              }
-            }
-          }}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
           placeholder={
             isLoading
               ? 'Beri intervensi ke Mark...'

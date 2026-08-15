@@ -4,6 +4,8 @@ import Configuration from './pages/Configuration'
 import LiveAudio from './pages/LiveAudio'
 import TelegramBot from './pages/TelegramBot'
 import Plugins from './pages/Plugins'
+import Skills from './pages/Skills'
+import SkillEditor from './pages/SkillEditor'
 import Knowledge from './pages/Knowledge'
 import Guidebook from './pages/Guidebook'
 import RelationalGrowth from './pages/RelationalGrowth'
@@ -159,6 +161,8 @@ const MainLayout = () => {
             <Routes>
               <Route path="/config" element={<Configuration />} />
               <Route path="/plugins" element={<Plugins />} />
+              <Route path="/skills" element={<Skills />} />
+              <Route path="/skill-editor/:id" element={<SkillEditor />} />
               <Route path="/live-audio" element={<LiveAudio />} />
               <Route path="/telegram-bot" element={<TelegramBot />} />
               <Route path="/google-workspace" element={<GoogleWorkspace />} />

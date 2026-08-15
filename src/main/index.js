@@ -37,6 +37,7 @@ import {
   getGoogleStatus
 } from './google/google-service.js'
 import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
+import { setupSkillIPC } from './skills/skill-manager.js'
 import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
 
@@ -405,6 +406,7 @@ app.whenReady().then(async () => {
   // Load plugin & Inisialisasi IPC Bridge
   await loadPlugins()
   initPluginIPC()
+  setupSkillIPC()
 
   setupYoutubeFix()
 
