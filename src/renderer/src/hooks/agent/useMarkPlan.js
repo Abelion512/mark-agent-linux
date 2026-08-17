@@ -824,17 +824,6 @@ export const useMarkPlan = ({
               } else if (tool.startsWith('music')) {
                 // --- MUSIC ---
                 resultString = await handleMusic(tool, query)
-              } else if (tool === 'tg-send') {
-                // --- TELEGRAM SEND ---
-                const [targetChatId, targetText] = (query || '').split('|')
-                if (targetChatId && targetText) {
-                  const res = await window.api.tgSendMessage(targetChatId.trim(), targetText.trim())
-                  resultString = res?.success
-                    ? `Berhasil mengirim pesan Telegram ke ${targetChatId}`
-                    : `Gagal: ${res?.error || 'Unknown'}`
-                } else {
-                  resultString = `Gagal: format query salah (harus "ChatID|pesan"): ${query}`
-                }
               } else if (tool === 'memory-search') {
                 // --- MEMORY SEARCH ---
                 const results = await searchExtendedMemory(query)

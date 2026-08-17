@@ -108,7 +108,7 @@ export const GROUP_TOOLS_DEFINITION = {
       'screenshot-to-tg':
         'Mengambil screenshot layar komputer dan MENGIRIMNYA SECARA FISIK ke Telegram user (Hanya jika chat berasal dari Telegram). Query: KOSONGKAN SAJA.',
       'tg-send':
-        'Mengirim pesan Telegram. Format query: "ChatID|Isi Pesan". Contoh format yang benar: "123456789|Halo!".',
+        'Mengirim pesan teks ATAU file fisik ke Telegram. Format query: chatId||tipe(text/file)||konten. Jika tipe="text", konten=isi pesan. Jika tipe="file", konten=path absolute file. WAJIB MENGGUNAKAN DOUBLE PIPE (||) SEBAGAI PEMISAH, JANGAN PERNAH GUNAKAN SINGLE PIPE (|)!!! Contoh benar: "1234567||text||Halo!" atau "1234567||file||C:\\Data.xlsx".',
       speak:
         'Bicarakan teks secara lisan (Text-to-Speech) lewat speaker komputer user. Query: "Teks yang ingin kamu ucapkan". Gunakan ini jika kamu ingin memanggil user atau berbicara langsung.'
     }

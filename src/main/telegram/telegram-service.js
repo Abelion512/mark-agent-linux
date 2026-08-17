@@ -1,7 +1,8 @@
-import { Telegraf } from 'telegraf'
+import { Telegraf, Input } from 'telegraf'
 import { app, ipcMain } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import yts from 'yt-search'
 import { execFile } from 'child_process'
 import ffmpeg from 'ffmpeg-static'
@@ -148,7 +149,7 @@ export const startTelegramBot = async (token, mainWindow) => {
 
       if (botWindow && !botWindow.isDestroyed()) {
         botWindow.webContents.send('tg:request-agent-execution', {
-          text,
+          text: `[Telegram from ${chatId} - ${senderName}]:\n${text}`,
           isAdmin: true,
           senderName,
           msgId,
@@ -156,6 +157,99 @@ export const startTelegramBot = async (token, mainWindow) => {
           isGroup: ctx.chat?.type !== 'private',
           chatSession: recentHistory
         })
+      }
+    })
+
+    bot.on(['document', 'photo'], async (ctx) => {
+      const senderId = String(ctx.from?.id || '')
+      const senderUsername = (ctx.from?.username || '').toLowerCase()
+      const config = getGlobalConfig()
+      const adminList = (config.tgAdminIds || '').split(',').map((item) => item.trim().toLowerCase().replace(/^@/, '')).filter(Boolean)
+      const isAdmin = adminList.includes(senderId.toLowerCase()) || (senderUsername && adminList.includes(senderUsername))
+
+      if (!isAdmin) {
+        await ctx.reply('Maaf, kamu belum punya akses ke MARK.')
+        return
+      }
+
+      const chatId = String(ctx.chat?.id || senderId)
+      const senderName = ctx.from?.first_name ? `${ctx.from.first_name} ${ctx.from.last_name || ''}`.trim() : ctx.from?.username || senderId
+      
+      let fileId = ''
+      let originalName = ''
+      
+      if (ctx.message.document) {
+        fileId = ctx.message.document.file_id
+        originalName = ctx.message.document.file_name || `document_${Date.now()}`
+      } else if (ctx.message.photo) {
+        const photo = ctx.message.photo[ctx.message.photo.length - 1]
+        fileId = photo.file_id
+        originalName = `photo_${Date.now()}.jpg`
+      }
+
+      const statusMsg = await ctx.reply(`Sedang mengunduh file ${originalName}...`)
+
+      try {
+        const fileUrl = await ctx.telegram.getFileLink(fileId)
+        const saveDir = path.join(os.homedir(), 'Documents', 'Mark Workspace', 'Telegram')
+        if (!fs.existsSync(saveDir)) fs.mkdirSync(saveDir, { recursive: true })
+        
+        const savePath = path.join(saveDir, originalName)
+        
+        const response = await fetch(fileUrl)
+        const buffer = await response.arrayBuffer()
+        fs.writeFileSync(savePath, Buffer.from(buffer))
+
+        await ctx.telegram.editMessageText(chatId, statusMsg.message_id, undefined, `Berhasil mengunduh: ${originalName}`)
+
+        const caption = ctx.message.caption || ''
+        const text = `[FILE TERLAMPIR]: "${savePath}"\n${caption ? `Caption dari user: ${caption}` : 'Silakan baca/analisa file gambar atau dokumen ini jika perlu.'}`
+
+        const msgId = `${chatId}-${ctx.message.message_id}`
+        const uiMsgPayload = {
+          id: msgId,
+          chatId: chatId,
+          sender: senderName,
+          text: `📎 Mengirim file: ${originalName}\n${caption}`,
+          isGroup: ctx.chat?.type !== 'private',
+          chatTitle: ctx.chat?.title || senderName,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          type: 'incoming'
+        }
+
+        uiMessageHistory.push(uiMsgPayload)
+        if (uiMessageHistory.length > MAX_UI_HISTORY) uiMessageHistory.shift()
+
+        if (botWindow && !botWindow.isDestroyed()) {
+          botWindow.webContents.send('tg:message', uiMsgPayload)
+          botWindow.webContents.send('tg:thinking', { sender: senderName, chatId })
+        }
+
+        pendingRequestsMap.set(msgId, { ctx, chatId, text })
+        setTimeout(() => pendingRequestsMap.delete(msgId), 300000)
+
+        const recentHistory = uiMessageHistory
+          .filter((m) => m.chatId === chatId)
+          .slice(-10)
+          .map((m) => ({
+            role: m.type === 'incoming' ? 'user' : 'assistant',
+            content: m.type === 'incoming' ? m.text : m.reply
+          }))
+
+        if (botWindow && !botWindow.isDestroyed()) {
+          botWindow.webContents.send('tg:request-agent-execution', {
+            text: `[Telegram from ${chatId} - ${senderName}]:\n${text}`,
+            isAdmin: true,
+            senderName,
+            msgId,
+            chatId,
+            isGroup: ctx.chat?.type !== 'private',
+            chatSession: recentHistory
+          })
+        }
+      } catch (e) {
+        console.error('Failed to download file from Telegram:', e)
+        ctx.reply(`Gagal mengunduh file: ${e.message}`)
       }
     })
 
@@ -213,6 +307,27 @@ export const sendTelegramMessage = async (chatId, text) => {
     } catch (fallbackErr) {
       return { success: false, error: fallbackErr.message }
     }
+  }
+}
+
+export const sendTelegramFile = async (chatId, filePath, caption = '') => {
+  if (!bot || currentStatus !== 'connected') {
+    return { success: false, error: 'Telegram Bot belum terhubung.' }
+  }
+  if (!fs.existsSync(filePath)) {
+    return { success: false, error: `File tidak ditemukan: ${filePath}` }
+  }
+  try {
+    const filename = path.basename(filePath)
+    const fileStream = fs.createReadStream(filePath)
+    await bot.telegram.sendDocument(
+      chatId,
+      { source: fileStream, filename: filename },
+      { caption }
+    )
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err.message }
   }
 }
 
