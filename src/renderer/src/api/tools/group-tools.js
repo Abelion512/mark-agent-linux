@@ -35,8 +35,7 @@ export const GROUP_TOOLS_DEFINITION = {
         'Tekan kombinasi tombol keyboard shortcut. Query: combo (misal: ctrl+c, alt+tab, win+e, ctrl+s, enter).',
       'os-scroll':
         'Scroll mouse wheel di aplikasi aktif. Query: direction||amount (misal: down||5 atau up||3).',
-      'os-open':
-        'Membuka aplikasi Windows via shell execute. Query: nama executable/path atau URL raw (misal: notepad, calc, https://google.com). DILARANG KERAS menggunakan markdown link [teks](url)! Ketik raw text saja.',
+
       'os-search':
         'Mensimulasikan user mencari APLIKASI di Start Menu dengan tombol Windows. Query: kata kunci (misal: Chrome). PENTING: Tool ini HANYA mengetik di Start Menu. Untuk membuka aplikasinya, kamu WAJIB memanggil BATCH ACTION: os-search -> os-delay (1000) -> os-key (enter). JANGAN panggil os-open/os-double-click setelah os-search!',
       'os-double-click':

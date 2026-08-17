@@ -11,5 +11,6 @@ export const core_tools = {
   "read-document": "Membaca & mencari isi dokumen teks/PDF/DOCX. Panggil tanpa query untuk Smart Overview, atau gunakan kata kunci (path||keyword) atau baris (path||startLine||endLine).",
   "run-powershell": "Eksekusi perintah PowerShell. (Perlu persetujuan user untuk command berbahaya).",
   "browser-search": "Mencari informasi di internet.",
-  "read-skills": "WAJIB dipanggil jika user meminta kamu menggunakan Skill tertentu (misal: /speedrunner). Membaca file pedoman skill `.md` untuk mengubah perilakumu. Query: nama_skill (tanpa ekstensi .md)."
+  "read-skills": "WAJIB dipanggil jika user meminta kamu menggunakan Skill tertentu (misal: /speedrunner). Membaca file pedoman skill `.md` untuk mengubah perilakumu. Query: nama_skill (tanpa ekstensi .md).",
+  "open": "Membuka aplikasi Windows via shell execute. Query: nama executable/path atau URL raw (misal: notepad, https://google.com). DILARANG KERAS menggunakan markdown link [teks](url)! Ketik raw text saja."
 }

@@ -813,7 +813,7 @@ export const NATIVE_TOOLS = {
       }
     }
   },
-  'os-open': {
+  'open': {
     needsApproval: false,
     handler: async (query) => {
       try {

@@ -981,9 +981,6 @@ export async function executeScroll(query) {
  * Open an application
  */
 export async function openApp(target) {
-  if (!isSessionOpen) {
-    return '[PC-Agent] ERROR: OS Control belum dibuka! Kamu WAJIB mengeksekusi tool "os-control-open" terlebih dahulu sebelum menggunakan tool PC automation.'
-  }
   if (isStopActive()) {
     return `[PC-Agent] Stopped by user: ${lastStopReason || 'User pressed Ctrl+Shift+S'}`
   }

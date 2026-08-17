@@ -13,6 +13,7 @@ import {
   FaLock
 } from 'react-icons/fa'
 import ConfirmModal from './ConfirmModal'
+import { NATIVE_SKILLS } from './native-skills'
 
 const EMOJIS = [
   '😂',
@@ -67,7 +68,13 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
 
   useEffect(() => {
     if (window.api && window.api.getSkills) {
-      window.api.getSkills().then(setSkills).catch(console.error)
+      window.api.getSkills().then(loadedSkills => {
+        const nativeSkillList = NATIVE_SKILLS.map(s => ({
+          name: s.name,
+          description: s.description
+        }))
+        setSkills([...nativeSkillList, ...loadedSkills])
+      }).catch(console.error)
     }
   }, [])
 
@@ -211,6 +218,16 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
       
       for (const match of skillMatches) {
         const skillName = match.trim().substring(1) // Hilangkan spasi dan '/'
+
+        // INTERCEPT BUILT-IN SKILLS
+        const nativeSkill = NATIVE_SKILLS.find(s => s.name.toLowerCase() === skillName.toLowerCase())
+        if (nativeSkill) {
+          combinedSkillsContent += `\n\n--- SKILL BAWAAN: ${skillName.toUpperCase()} ---\n${nativeSkill.content}`
+          loadedSkills.push(skillName)
+          userText = userText.replace(match, '')
+          continue
+        }
+
         try {
           const skillData = await window.api.readSkill(skillName)
           if (skillData) {
@@ -218,7 +235,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
             const content = typeof skillData === 'string' ? skillData : skillData.content
             const basePath = typeof skillData === 'object' && skillData.basePath ? skillData.basePath : ''
 
-            combinedSkillsContent += `\n\n--- SKILL: ${skillName.toUpperCase()} ---\n`
+            combinedSkillsContent += `\n\n--- SKILL EXTERNAL: ${skillName.toUpperCase()} ---\n`
             if (basePath) {
                combinedSkillsContent += `[LOKASI ABSOLUT SKILL INI (Base Path): ${basePath}]\n\n`
             }
