@@ -8,6 +8,10 @@ export const GROUP_TOOLS_DEFINITION = {
       'browser-click': 'Klik elemen. Query: ID angka. Mengembalikan DOM terbaru setelah klik.',
       'browser-type': 'Ketik teks di kolom input. Query: ID||teks. Mengembalikan DOM terbaru.',
       'browser-scroll': 'Scroll halaman. Query: "up" atau "down".',
+      'browser-extract': 'Ekstrak teks/data via CSS Selector. Kembalikan JSON. Query: selector CSS (misal: ".product-price").',
+      'browser-script': 'Eksekusi custom Javascript di browser (Bisa untuk manipulasi DOM / bypass). Query: script JS murni.',
+      'browser-screenshot': 'Ambil screenshot web utuh dan simpan ke OS. Query: namafile.png.',
+      'browser-download': 'Download URL secara fisik ke OS. Query: URL||namafile.ext.',
       'browser-ask-user':
         'JIKA terhalang form login/CAPTCHA, BUKAKAN HALAMANNYA DULU (misal klik tombol \'Login\' hingga form muncul), lalu GUNAKAN TOOL INI. Query: Instruksi/Pesan untuk user (misal: "Tolong isi email dan password"). Pesanmu akan muncul di layar popup. Setelah user selesai, kamu akan langsung mendapat DOM terbaru untuk MELANJUTKAN misimu. Jangan berhenti!',
       'browser-close': 'Menutup browser fisik.'

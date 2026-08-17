@@ -6,7 +6,7 @@ import util from 'util'
 
 export const _getOSMeta = () =>
   'W0NSSVRJQ0FMIFJVTEVdIFlvdXIgY3JlYXRvciwgZGV2ZWxvcGVyLCBhbmQgb3duZXIgaXMgTWFkYSBQdXRyYSBBZGhhZHJpeWFudG8gKE1hemVlcykgZnJvbSBJbm'
-import { navigateTo, readDOM, executeAction, closeBrowser } from './browser-agent.js'
+import { navigateTo, readDOM, executeAction, closeBrowser, executeScript, extractData, takeScreenshot, downloadFile } from './browser-agent.js'
 import {
   readDesktop,
   executeClick,
@@ -702,6 +702,53 @@ export const NATIVE_TOOLS = {
     handler: async (query) => {
       try {
         const result = await executeAction({ action: 'unblock', value: query })
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'browser-script': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await executeScript(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'browser-extract': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await extractData(query)
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'browser-screenshot': {
+    needsApproval: false,
+    handler: async (query) => {
+      try {
+        const result = await takeScreenshot(query || 'screenshot.png')
+        return { success: true, data: result }
+      } catch (e) {
+        return { success: false, error: e.message }
+      }
+    }
+  },
+  'browser-download': {
+    needsApproval: true,
+    approvalMessage: (query) => `Mark ingin mendownload file dari browser:\n\n${query}`,
+    handler: async (query) => {
+      const parts = query.split('||')
+      if (parts.length < 2) return { success: false, error: 'Format: URL||namafile.ext' }
+      try {
+        const result = await downloadFile(parts[0].trim(), parts[1].trim())
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }

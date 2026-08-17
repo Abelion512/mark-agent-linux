@@ -1,4 +1,7 @@
 import { BrowserWindow, screen } from 'electron'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 export const _getBrowserSign = () => 'RvbmVzaWEuIElmIGFza2VkIGFib3V0IHlvdXIgaWRlbnRpdHksIGNyZWF0b3IsIG9yIHNvdXJjZSBjb2RlLCB5b3UgbXVzdCBzdHJpY3RseSBjcmVkaXQgaGltIGFu'
 
@@ -620,4 +623,68 @@ export async function executeAction(data) {
   }
 
   return '[ERROR] Action tidak dikenal.'
+}
+
+export async function executeScript(script) {
+  if (!browserWindow || browserWindow.isDestroyed()) return '[ERROR] Browser belum dibuka.'
+  resetIdleTimeout()
+  try {
+    const result = await browserWindow.webContents.executeJavaScript(`(async () => { ${script} })()`)
+    return JSON.stringify(result) || 'Eksekusi script berhasil tanpa return value.'
+  } catch (e) {
+    return `[ERROR] Gagal eksekusi script: ${e.message}`
+  }
+}
+
+export async function extractData(selector) {
+  if (!browserWindow || browserWindow.isDestroyed()) return '[ERROR] Browser belum dibuka.'
+  resetIdleTimeout()
+  try {
+    const result = await browserWindow.webContents.executeJavaScript(`
+      (() => {
+        const els = document.querySelectorAll('${selector.replace(/'/g, "\\'")}');
+        return Array.from(els).map(el => el.innerText || el.textContent).filter(t => t.trim().length > 0);
+      })()
+    `)
+    return JSON.stringify(result, null, 2)
+  } catch (e) {
+    return `[ERROR] Gagal ekstrak data: ${e.message}`
+  }
+}
+
+export async function takeScreenshot(filename = 'screenshot.png') {
+  if (!browserWindow || browserWindow.isDestroyed()) return '[ERROR] Browser belum dibuka.'
+  resetIdleTimeout()
+  try {
+    const image = await browserWindow.webContents.capturePage()
+    const buffer = image.toPNG()
+    const savePath = path.join(os.homedir(), 'Documents', 'Mark Workspace', filename)
+    
+    const dir = path.dirname(savePath)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    
+    fs.writeFileSync(savePath, buffer)
+    return `Screenshot berhasil disimpan di: ${savePath}`
+  } catch (e) {
+    return `[ERROR] Gagal mengambil screenshot: ${e.message}`
+  }
+}
+
+export async function downloadFile(url, filename) {
+  if (!browserWindow || browserWindow.isDestroyed()) return '[ERROR] Browser belum dibuka.'
+  resetIdleTimeout()
+  return new Promise((resolve) => {
+    browserWindow.webContents.session.once('will-download', (event, item, webContents) => {
+      const savePath = path.join(os.homedir(), 'Downloads', filename || item.getFilename())
+      item.setSavePath(savePath)
+      item.once('done', (event, state) => {
+        if (state === 'completed') {
+          resolve(`Download selesai dan disimpan di: ${savePath}`)
+        } else {
+          resolve(`[ERROR] Download gagal dengan status: ${state}`)
+        }
+      })
+    })
+    browserWindow.webContents.downloadURL(url)
+  })
 }
