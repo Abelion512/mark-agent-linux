@@ -129,7 +129,16 @@ const api = {
   readSkill: (name) => ipcRenderer.invoke('read-skill', name),
   saveSkill: (name, content) => ipcRenderer.invoke('save-skill', name, content),
   deleteSkill: (name) => ipcRenderer.invoke('delete-skill', name),
-  installSkill: (sourcePath) => ipcRenderer.invoke('install-skill', sourcePath)
+  installSkill: (sourcePath) => ipcRenderer.invoke('install-skill', sourcePath),
+  showOpenDialog: () => ipcRenderer.invoke('show-open-dialog'),
+  
+  // VSCode-like Skill Manager
+  getSkillTree: (name) => ipcRenderer.invoke('get-skill-tree', name),
+  readSkillFile: (name, relativePath) => ipcRenderer.invoke('read-skill-file', name, relativePath),
+  saveSkillFile: (name, relativePath, content) => ipcRenderer.invoke('save-skill-file', name, relativePath, content),
+  createSkillItem: (name, relativePath, isFolder) => ipcRenderer.invoke('create-skill-item', name, relativePath, isFolder),
+  deleteSkillItem: (name, relativePath) => ipcRenderer.invoke('delete-skill-item', name, relativePath),
+  renameSkillItem: (name, oldPath, newPath) => ipcRenderer.invoke('rename-skill-item', name, oldPath, newPath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

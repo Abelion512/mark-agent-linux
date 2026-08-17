@@ -212,9 +212,18 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
       for (const match of skillMatches) {
         const skillName = match.trim().substring(1) // Hilangkan spasi dan '/'
         try {
-          const skillContent = await window.api.readSkill(skillName)
-          if (skillContent) {
-            combinedSkillsContent += `\n\n--- SKILL: ${skillName.toUpperCase()} ---\n${skillContent}`
+          const skillData = await window.api.readSkill(skillName)
+          if (skillData) {
+            // Support both old string format and new object format
+            const content = typeof skillData === 'string' ? skillData : skillData.content
+            const basePath = typeof skillData === 'object' && skillData.basePath ? skillData.basePath : ''
+
+            combinedSkillsContent += `\n\n--- SKILL: ${skillName.toUpperCase()} ---\n`
+            if (basePath) {
+               combinedSkillsContent += `[LOKASI ABSOLUT SKILL INI (Base Path): ${basePath}]\n\n`
+            }
+            combinedSkillsContent += `${content}`
+            
             loadedSkills.push(skillName)
             userText = userText.replace(match, '') // Hapus slash command dari teks yang dilihat AI
           }
@@ -226,7 +235,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
       userText = userText.trim()
 
       if (loadedSkills.length > 0) {
-        finalPrompt = `${userText}\n\n=== SYSTEM INSTRUCTION: SKILL DIAKTIFKAN ===\nBerikut adalah instruksi skill khusus yang WAJIB kamu kombinasikan dan ikuti secara ketat untuk mengeksekusi permintaan di atas:\n${combinedSkillsContent}\n=========================================`
+        finalPrompt = `${userText}\n\n=== SYSTEM INSTRUCTION: SKILL DIAKTIFKAN ===\nBerikut adalah instruksi skill khusus yang WAJIB kamu kombinasikan dan ikuti secara ketat untuk mengeksekusi permintaan di atas. Jika skill memiliki referensi sub-file, kamu BISA membacanya menggunakan tool "read-file" dengan menggabungkan "LOKASI ABSOLUT" di bawah ini beserta path relatifnya:\n${combinedSkillsContent}\n=========================================`
       }
     }
 
@@ -265,7 +274,7 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
     
     if (val.startsWith('/')) {
       const query = val.slice(1).toLowerCase()
-      const matches = skills.filter(s => s.toLowerCase().includes(query))
+      const matches = skills.filter(s => s.name.toLowerCase().includes(query))
       setFilteredSkills(matches)
       setShowSkillList(true)
       setSelectedSkillIndex(0)
@@ -274,8 +283,8 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
     }
   }
 
-  const selectSkill = (skill) => {
-    setInputText(`/${skill} `)
+  const selectSkill = (skillObj) => {
+    setInputText(`/${skillObj.name} `)
     setShowSkillList(false)
     if (inputRef.current) inputRef.current.focus()
   }
@@ -445,23 +454,25 @@ const InputBar = ({ onSubmit, isLoading, isRecording, isProcessing, audioIntensi
         </div>
         {/* Skill Autocomplete Dropdown */}
         {showSkillList && filteredSkills.length > 0 && (
-          <div className="absolute bottom-full left-12 mb-2 w-64 bg-base-300/95 backdrop-blur-xl border border-[var(--glass-border)] rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
+          <div className="absolute bottom-full left-12 mb-2 w-[400px] bg-base-300/95 backdrop-blur-xl border border-[var(--glass-border)] rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
             <div className="p-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/5">
               Available Skills
             </div>
-            <div className="max-h-48 overflow-y-auto no-scrollbar">
-              {filteredSkills.map((skill, idx) => (
+            <div className="max-h-64 overflow-y-auto no-scrollbar">
+              {filteredSkills.map((skillObj, idx) => (
                 <div
-                  key={skill}
-                  onClick={() => selectSkill(skill)}
-                  className={`px-4 py-2 text-sm cursor-pointer transition-colors flex items-center gap-2 ${
+                  key={skillObj.name}
+                  onClick={() => selectSkill(skillObj)}
+                  className={`px-4 py-3 cursor-pointer transition-colors flex flex-col gap-1 border-b border-white/5 last:border-0 ${
                     idx === selectedSkillIndex 
                       ? 'bg-emerald-500/20 text-emerald-400' 
                       : 'hover:bg-white/10 text-gray-300'
                   }`}
                 >
-                  <span className="opacity-50">/</span>
-                  <span className="font-medium">{skill}</span>
+                  <div className="font-semibold text-sm">/{skillObj.name}</div>
+                  <div className={`text-xs ${idx === selectedSkillIndex ? 'text-emerald-400/80' : 'text-gray-400'} line-clamp-2`}>
+                    {skillObj.description}
+                  </div>
                 </div>
               ))}
             </div>

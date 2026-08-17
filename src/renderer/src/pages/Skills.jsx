@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Plus, FileText, Upload, ArrowLeft } from 'lucide-react'
+import { Plus, FileText, Upload, ArrowLeft, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const Skills = () => {
   const [skills, setSkills] = useState([])
   const [newSkillName, setNewSkillName] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const navigate = useNavigate()
 
   const loadSkills = async () => {
     try {
+      setIsRefreshing(true)
       const list = await window.api.getSkills()
       setSkills(list)
     } catch (e) {
       console.error(e)
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500)
     }
   }
 
@@ -24,7 +28,18 @@ const Skills = () => {
     if (!newSkillName.trim()) return
     const name = newSkillName.trim().replace(/\s+/g, '-').toLowerCase()
     try {
-      await window.api.saveSkill(name, `# Skill: ${name}\n\nTulis instruksi di sini...`)
+      const template = `---
+name: ${name}
+description: Tulis deskripsi singkat tentang skill ini...
+---
+
+# Skill: ${name}
+
+Tulis instruksi mendetail untuk AI di sini...
+- Gunakan format checklist [ ] jika ada langkah-langkah.
+- Tambahkan blok 🚫 **Critical Rules** untuk batasan mutlak.
+`
+      await window.api.saveSkill(name, template)
       setNewSkillName('')
       navigate(`/skill-editor/${name}`)
     } catch (e) {
@@ -37,7 +52,11 @@ const Skills = () => {
       const filePaths = await window.api.showOpenDialog()
       if (filePaths && filePaths.length > 0) {
         for (const path of filePaths) {
-          await window.api.installSkill(path)
+          try {
+            await window.api.installSkill(path)
+          } catch (err) {
+            alert(err.message || 'Gagal menginstal skill package.')
+          }
         }
         await loadSkills()
       }
@@ -78,9 +97,19 @@ const Skills = () => {
                 </p>
               </div>
             </div>
-            <button className="btn btn-outline btn-success btn-sm gap-2" onClick={handleInstall} style={{ WebkitAppRegion: 'no-drag' }}>
-              <Upload size={14} /> Install Skill (.md)
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                className="btn btn-ghost btn-sm btn-circle" 
+                onClick={loadSkills} 
+                style={{ WebkitAppRegion: 'no-drag' }}
+                title="Refresh Skills"
+              >
+                <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              </button>
+              <button className="btn btn-outline btn-success btn-sm gap-2" onClick={handleInstall} style={{ WebkitAppRegion: 'no-drag' }}>
+                <Upload size={14} /> Install Skill (.zip)
+              </button>
+            </div>
           </div>
 
           {/* Form Create New */}
@@ -113,11 +142,11 @@ const Skills = () => {
               Installed Skills
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {skills.map(skill => (
+              {skills.map(skillObj => (
                 <div 
-                  key={skill}
+                  key={skillObj.name}
                   className="card bg-base-100/50 backdrop-blur-xl border border-base-content/10 shadow-xl hover:border-primary/30 transition-all cursor-pointer group"
-                  onClick={() => navigate(`/skill-editor/${skill}`)}
+                  onClick={() => navigate(`/skill-editor/${skillObj.name}`)}
                 >
                   <div className="card-body p-5">
                     <div className="flex items-start gap-4">
@@ -125,8 +154,8 @@ const Skills = () => {
                         <FileText size={24} />
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">{skill}</h3>
-                        <p className="text-xs opacity-50 mt-1 truncate">Klik untuk mengedit instruksi AI.</p>
+                        <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">{skillObj.name}</h3>
+                        <p className="text-xs opacity-70 mt-1 line-clamp-2">{skillObj.description}</p>
                       </div>
                     </div>
                   </div>

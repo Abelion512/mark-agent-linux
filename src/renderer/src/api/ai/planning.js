@@ -1,4 +1,4 @@
-﻿import { fetchAI, cleanAndParse } from './core'
+import { fetchAI, cleanAndParse } from './core'
 import { getAllConfig } from '../db'
 import { getCurrentTimeInfo } from './utils'
 import { generateVector, cosineSimilarity } from '../vectorMemory'
@@ -49,12 +49,28 @@ export const getNextAction = async (
     const userId = options.waContext ? options.waContext.senderJid : 'owner'
 
     const groupToolsObj = await group_tools()
+    
+    let skills = []
+    try {
+      if (window.api && window.api.getSkills) {
+        skills = await window.api.getSkills()
+      }
+    } catch (e) {
+      console.error('Failed to get skills for planning', e)
+    }
 
     const systemPrompt = `
 Kamu adalah Mark (Metacognitive Artificial Relational Knowledge), sebuah entitas asisten AI canggih dan otonom.
 
 ${await getPersonaPrompt(userId, conf.personality)}
 ${options.currentMusicTrack ? `\n# STATUS PLAYER MUSIK (REAL-TIME):\nLagu yang AKTIF DIPUTAR SEKARANG: "${options.currentMusicTrack.title}" oleh ${options.currentMusicTrack.artist}.\nPENTING: Lagu di playlist bisa berganti otomatis. JANGAN TERKECUH oleh riwayat chat lama yang menyebutkan lagu sebelumnya! Untuk semua pertanyaan atau obrolan tentang musik yang sedang berjalan, HANYA gunakan data REAL-TIME ini sebagai referensi utama!` : ''}
+${
+  skills.length > 0
+    ? `\n# MARK SKILLS (KEMAMPUAN KUSTOM)
+Kamu memiliki skill kustom yang **HANYA BISA DIAKTIFKAN OLEH USER** melalui slash command (/). JIKA user meminta bantuan yang cocok dengan daftar skill di bawah, kamu dilarang menjalankannya sendiri! SARANKAN user untuk mengetik perintahnya di chat input (contoh: "Silakan ketik /nama-skill ya bos").
+${skills.map(s => `- /${s.name}: ${s.description}`).join('\n')}`
+    : ''
+}
 ${
   !options.disableTools
     ? `
