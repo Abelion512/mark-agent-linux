@@ -241,7 +241,7 @@ export const useMarkAgent = () => {
       if (lastAiMsg && lastAiMsg.content && lastSyncedMsgIdRef.current !== msgKey) {
         lastSyncedMsgIdRef.current = msgKey
         if (window.api?.tgBroadcastToAdmins && !lastAiMsg.isProactive) {
-          window.api.tgBroadcastToAdmins(`💻 *Mark (PC)*:\n${lastAiMsg.content}`)
+          window.api.tgBroadcastToAdmins(`*Mark (PC)*:\n${lastAiMsg.content}`)
         }
       }
     }

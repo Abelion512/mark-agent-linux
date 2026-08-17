@@ -5,7 +5,31 @@ const ApprovalContext = createContext();
 export const ApprovalProvider = ({ children }) => {
   const [approvalData, setApprovalData] = useState(null);
 
+  React.useEffect(() => {
+    if (window.api?.onTgCommandAccept) {
+      window.api.onTgCommandAccept((data) => {
+        setApprovalData(prev => {
+          if (prev) {
+            prev.resolve(true);
+            if (data?.chatId && window.api.tgSendMessage) {
+              window.api.tgSendMessage(data.chatId, '[INFO]: Permintaan persetujuan telah diizinkan.');
+            }
+            return null;
+          } else {
+            if (data?.chatId && window.api.tgSendMessage) {
+              window.api.tgSendMessage(data.chatId, '[INFO]: Tidak ada permintaan persetujuan yang sedang menunggu.');
+            }
+          }
+          return prev;
+        });
+      });
+    }
+  }, []);
+
   const requestApproval = useCallback((message, tool, query) => {
+    if (window.api?.tgBroadcastToAdmins) {
+      window.api.tgBroadcastToAdmins(`[INFO]: Persetujuan Dibutuhkan\nTool: \`${tool}\`\n\n${message}\n\nKetik /accept untuk mengizinkan.`);
+    }
     return new Promise((resolve) => {
       setApprovalData({ message, tool, query, resolve });
     });

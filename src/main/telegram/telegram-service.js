@@ -7,7 +7,7 @@ import yts from 'yt-search'
 import { execFile } from 'child_process'
 import ffmpeg from 'ffmpeg-static'
 import { desktopCapturer } from 'electron'
-import { getGlobalConfig } from '../ai-bridge.js'
+import { getGlobalConfig, abortAllFetches, activeAbortControllers } from '../ai-bridge.js'
 
 let bot = null
 let currentStatus = 'disconnected'
@@ -83,7 +83,29 @@ export const startTelegramBot = async (token, mainWindow) => {
         if (senderUsername) usernameToChatIdMap.set(senderUsername, chatId)
         saveChatIdsToFile()
       }
-      ctx.reply('👋 Halo! Saya Mark (AI OS Companion). Bot Telegram ini telah terhubung.')
+      ctx.reply('Halo! Saya Mark (AI OS Companion). Bot Telegram ini telah terhubung.')
+    })
+
+    bot.command('info', (ctx) => {
+      ctx.reply('**Daftar Perintah MARK:**\n\n/start - Memulai bot\n/info - Menampilkan daftar perintah\n/abort - Menghentikan proses AI yang sedang berjalan\n/accept - Mengizinkan prompt persetujuan (needsApproval)', { parse_mode: 'Markdown' })
+    })
+
+    bot.command('abort', (ctx) => {
+      if (activeAbortControllers.size > 0) {
+        abortAllFetches()
+        ctx.reply('[INFO]: Membatalkan proses AI saat ini...')
+      } else {
+        ctx.reply('[INFO]: Tidak ada proses AI yang sedang berjalan.')
+      }
+    })
+
+    bot.command('accept', (ctx) => {
+      if (botWindow && !botWindow.isDestroyed()) {
+        const chatId = String(ctx.chat?.id || ctx.from?.id || '')
+        botWindow.webContents.send('tg:command-accept', { chatId })
+      } else {
+        ctx.reply('[ERROR]: UI Mark tidak terhubung.')
+      }
     })
 
     bot.on('text', async (ctx) => {
@@ -136,7 +158,13 @@ export const startTelegramBot = async (token, mainWindow) => {
         botWindow.webContents.send('tg:thinking', { sender: senderName, chatId })
       }
 
-      pendingRequestsMap.set(msgId, { ctx, chatId, text })
+      let loadingMsgId = null
+      try {
+        const loadingMsg = await ctx.reply('[LOADING]: Sedang diproses...', { disable_notification: true })
+        loadingMsgId = loadingMsg.message_id
+      } catch (e) {}
+
+      pendingRequestsMap.set(msgId, { ctx, chatId, text, loadingMsgId })
       setTimeout(() => pendingRequestsMap.delete(msgId), 300000)
 
       const recentHistory = uiMessageHistory
@@ -162,34 +190,37 @@ export const startTelegramBot = async (token, mainWindow) => {
 
     bot.on(['document', 'photo'], async (ctx) => {
       const senderId = String(ctx.from?.id || '')
+      const senderName = ctx.from?.first_name ? `${ctx.from.first_name} ${ctx.from.last_name || ''}`.trim() : ctx.from?.username || senderId
+      const chatId = String(ctx.chat?.id || senderId)
+
       const senderUsername = (ctx.from?.username || '').toLowerCase()
       const config = getGlobalConfig()
-      const adminList = (config.tgAdminIds || '').split(',').map((item) => item.trim().toLowerCase().replace(/^@/, '')).filter(Boolean)
+      const adminList = (config.tgAdminIds || '')
+        .split(',')
+        .map((item) => item.trim().toLowerCase().replace(/^@/, ''))
+        .filter(Boolean)
       const isAdmin = adminList.includes(senderId.toLowerCase()) || (senderUsername && adminList.includes(senderUsername))
 
       if (!isAdmin) {
         await ctx.reply('Maaf, kamu belum punya akses ke MARK.')
         return
       }
-
-      const chatId = String(ctx.chat?.id || senderId)
-      const senderName = ctx.from?.first_name ? `${ctx.from.first_name} ${ctx.from.last_name || ''}`.trim() : ctx.from?.username || senderId
       
-      let fileId = ''
-      let originalName = ''
-      
-      if (ctx.message.document) {
-        fileId = ctx.message.document.file_id
-        originalName = ctx.message.document.file_name || `document_${Date.now()}`
-      } else if (ctx.message.photo) {
-        const photo = ctx.message.photo[ctx.message.photo.length - 1]
-        fileId = photo.file_id
-        originalName = `photo_${Date.now()}.jpg`
-      }
-
-      const statusMsg = await ctx.reply(`Sedang mengunduh file ${originalName}...`)
-
       try {
+        let fileId = ''
+        let originalName = ''
+        
+        if (ctx.message.document) {
+          fileId = ctx.message.document.file_id
+          originalName = ctx.message.document.file_name || `document_${Date.now()}`
+        } else if (ctx.message.photo) {
+          const photo = ctx.message.photo[ctx.message.photo.length - 1]
+          fileId = photo.file_id
+          originalName = `photo_${Date.now()}.jpg`
+        }
+
+        const statusMsg = await ctx.reply(`[INFO]: Sedang mengunduh file ${originalName}...`)
+      
         const fileUrl = await ctx.telegram.getFileLink(fileId)
         const saveDir = path.join(os.homedir(), 'Documents', 'Mark Workspace', 'Telegram')
         if (!fs.existsSync(saveDir)) fs.mkdirSync(saveDir, { recursive: true })
@@ -200,7 +231,7 @@ export const startTelegramBot = async (token, mainWindow) => {
         const buffer = await response.arrayBuffer()
         fs.writeFileSync(savePath, Buffer.from(buffer))
 
-        await ctx.telegram.editMessageText(chatId, statusMsg.message_id, undefined, `Berhasil mengunduh: ${originalName}`)
+        await ctx.telegram.editMessageText(chatId, statusMsg.message_id, undefined, `[INFO]: Berhasil mengunduh: ${originalName}\n[LOADING]: Sedang diproses...`)
 
         const caption = ctx.message.caption || ''
         const text = `[FILE TERLAMPIR]: "${savePath}"\n${caption ? `Caption dari user: ${caption}` : 'Silakan baca/analisa file gambar atau dokumen ini jika perlu.'}`
@@ -210,7 +241,7 @@ export const startTelegramBot = async (token, mainWindow) => {
           id: msgId,
           chatId: chatId,
           sender: senderName,
-          text: `📎 Mengirim file: ${originalName}\n${caption}`,
+          text: `[FILE]: Mengirim file: ${originalName}\n${caption}`,
           isGroup: ctx.chat?.type !== 'private',
           chatTitle: ctx.chat?.title || senderName,
           time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
@@ -225,7 +256,7 @@ export const startTelegramBot = async (token, mainWindow) => {
           botWindow.webContents.send('tg:thinking', { sender: senderName, chatId })
         }
 
-        pendingRequestsMap.set(msgId, { ctx, chatId, text })
+        pendingRequestsMap.set(msgId, { ctx, chatId, text, loadingMsgId: statusMsg.message_id })
         setTimeout(() => pendingRequestsMap.delete(msgId), 300000)
 
         const recentHistory = uiMessageHistory
@@ -462,6 +493,11 @@ ipcMain.on('tg:agent-execution-done', async (event, data) => {
   }
 
   if (bot && chatId) {
+    if (reqObj?.loadingMsgId) {
+      try {
+        await bot.telegram.deleteMessage(chatId, reqObj.loadingMsgId)
+      } catch (e) {}
+    }
     try {
       await bot.telegram.sendMessage(chatId, replyText, { parse_mode: 'Markdown' })
     } catch (e) {
