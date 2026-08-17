@@ -7,6 +7,15 @@ let activeAskUser = false
 let activeAskUserMessage = ''
 let globalAskUserResolve = null
 let isForceClosing = false
+let idleTimeout = null
+
+function resetIdleTimeout() {
+  if (idleTimeout) clearTimeout(idleTimeout)
+  idleTimeout = setTimeout(() => {
+    console.log('[BROWSER AGENT] Idle for 5 minutes, destroying hidden window to save RAM...')
+    closeBrowser()
+  }, 5 * 60 * 1000) // 5 menit
+}
 
 const DOM_PARSER_SCRIPT = `
 (() => {
@@ -145,6 +154,7 @@ const DOM_PARSER_SCRIPT = `
 `
 
 export async function navigateTo(url) {
+  resetIdleTimeout()
   if (!browserWindow || browserWindow.isDestroyed()) {
     browserWindow = new BrowserWindow({
       show: false,
@@ -278,6 +288,7 @@ export async function navigateTo(url) {
 }
 
 export async function closeBrowser() {
+  if (idleTimeout) clearTimeout(idleTimeout)
   if (browserWindow && !browserWindow.isDestroyed()) {
     isForceClosing = true
     browserWindow.close()
@@ -303,6 +314,7 @@ export async function closeBrowser() {
 }
 
 export async function readDOM() {
+  resetIdleTimeout()
   if (!browserWindow || browserWindow.isDestroyed()) {
     return '[ERROR] Browser belum dibuka. Gunakan browser-navigate dulu.'
   }
@@ -338,6 +350,7 @@ export function showBrowser() {
   }
 }
 export async function executeAction(data) {
+  resetIdleTimeout()
   if (!browserWindow || browserWindow.isDestroyed()) {
     return '[ERROR] Browser belum dibuka.'
   }
