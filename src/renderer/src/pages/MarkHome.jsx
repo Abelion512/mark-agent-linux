@@ -89,6 +89,7 @@ const MarkHome = () => {
       window.api.onWindowMaximized((isMax) => {
         setIsMaxWindow(isMax)
       })
+      window.api.getWindowState?.().then((s) => setIsMaxWindow(s.isMaximized || s.isFullScreen))
     }
     
     const handleOpenMap = () => setIsMemoryMapOpen(true)

@@ -104,7 +104,12 @@ const api = {
   osOpen: (target) => ipcRenderer.invoke('os:open', target),
   osListWindows: () => ipcRenderer.invoke('os:list-windows'),
   osFocusWindow: (title) => ipcRenderer.invoke('os:focus-window', title),
-  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query)
+  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query),
+  onWindowMaximized: (cb) => {
+    ipcRenderer.removeAllListeners('window-state')
+    ipcRenderer.on('window-state', (_, state) => cb(state.isMaximized || state.isFullScreen))
+  },
+  getWindowState: () => ipcRenderer.invoke('window:get-state')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
