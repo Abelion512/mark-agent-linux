@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useCallback, useRef, useEffect } from 'react'
+import { ShieldAlert } from 'lucide-react'
 
 const ApprovalContext = createContext()
 
@@ -109,23 +110,23 @@ export const ApprovalProvider = ({ children }) => {
     <ApprovalContext.Provider value={{ requestApproval }}>
       {children}
       {approvalData && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-base-200 border border-base-300 p-6 rounded-2xl shadow-2xl max-w-lg w-full">
-            <h3 className="text-xl font-bold text-error mb-4 flex items-center gap-2">
-              <span className="text-2xl">⚠️</span> Mark meminta izin
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[response-fade-in_0.15s_ease-out_forwards]">
+          <div className="bg-base-200 border border-white/10 p-6 rounded-2xl shadow-2xl max-w-lg w-full">
+            <h3 className="text-lg font-bold text-error mb-2 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-error" /> Mark Meminta Izin
             </h3>
-            <p className="mb-2 text-sm text-base-content/80">
-              Mark membutuhkan persetujuan Anda untuk melanjutkan eksekusi tool ini.
+            <p className="mb-3 text-xs text-base-content/70">
+              Operasi ini berada di luar folder workspace aktif atau tergolong berisiko. Mohon konfirmasi untuk melanjutkan.
             </p>
-            <div className="whitespace-pre-wrap font-mono text-sm bg-base-300 p-4 rounded-xl overflow-x-auto max-h-60 overflow-y-auto shadow-inner border border-base-100 mb-6">
+            <div className="whitespace-pre-wrap font-mono text-xs bg-base-300 p-3.5 rounded-xl overflow-x-auto max-h-56 overflow-y-auto shadow-inner border border-white/5 mb-4 text-base-content/90">
               {approvalData.message}
             </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <button className="btn btn-ghost" onClick={handleReject}>
+            <div className="flex justify-end gap-2.5 mt-4">
+              <button className="btn btn-ghost btn-sm" onClick={handleReject}>
                 Tolak
               </button>
-              <button className="btn btn-error" onClick={handleApprove}>
-                Izinkan ✓
+              <button className="btn btn-error btn-sm shadow-md" onClick={handleApprove}>
+                Izinkan
               </button>
             </div>
           </div>

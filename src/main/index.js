@@ -233,13 +233,13 @@ ipcMain.handle('native-tool:execute', async (event, toolName, query, config) => 
   }
 })
 
-ipcMain.handle('native-tool:needs-approval', (event, toolName, query) => {
+ipcMain.handle('native-tool:needs-approval', (event, toolName, query, config) => {
   const tool = NATIVE_TOOLS[toolName]
   if (!tool) return { needsApproval: false }
-  const needs = typeof tool.needsApproval === 'function' ? tool.needsApproval(query) : tool.needsApproval
+  const needs = typeof tool.needsApproval === 'function' ? tool.needsApproval(query, config) : tool.needsApproval
   return { 
     needsApproval: needs,
-    message: needs && tool.approvalMessage ? tool.approvalMessage(query) : null
+    message: needs && tool.approvalMessage ? (typeof tool.approvalMessage === 'function' ? tool.approvalMessage(query, config) : tool.approvalMessage) : null
   }
 })
 

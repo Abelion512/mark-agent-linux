@@ -336,7 +336,10 @@ export const useMarkPlan = ({
       }
       // 9. Built-in Native Tools
       else if (checkTools(tool)) {
-        const approvalCheck = await window.api.checkToolApproval(tool, query)
+        const approvalCheck = await window.api.checkToolApproval(tool, query, {
+          workspaceRoot: context.workspaceRoot,
+          autoApproveWorkspace: true
+        })
 
         if (approvalCheck.needsApproval && requestApproval) {
           const userApproved = await requestApproval(approvalCheck.message, tool, query)
@@ -1298,7 +1301,10 @@ export const useMarkPlan = ({
               window.api?.executeNativeTool
             ) {
               const artifactQuery = `${currentStep.artifactPath}||${decision.answer}`
-              const approval = await window.api.checkToolApproval('write-file', artifactQuery)
+              const approval = await window.api.checkToolApproval('write-file', artifactQuery, {
+                workspaceRoot: opts.workspaceRoot,
+                autoApproveWorkspace: true
+              })
               const approved =
                 !approval?.needsApproval ||
                 (requestApproval &&
