@@ -14,6 +14,7 @@ import { ApprovalProvider } from './contexts/ApprovalContext'
 import { YoutubeMusicPlayer } from './components/YoutubeMusicPlayer'
 import { GlobalCameraManager } from './components/GlobalCameraManager'
 import { getAllConfig } from './api/db'
+import { setLiteMode } from './api/vectorMemory'
 import { runWhatsappAgent } from './api/waAgent'
 
 const GlobalListener = () => {
@@ -107,30 +108,34 @@ function App() {
 
       // 1.5 Load Embeddings Model
       try {
-        setLoadingText('Memuat Memori Kognitif...')
-        const { getExtractor } = await import('./api/vectorMemory')
-        let memStats = {}
-        await getExtractor((info) => {
-          if (info.status === 'initiate') {
-            memStats[info.file] = { loaded: 0, total: info.total || 0 }
-          } else if (info.status === 'progress') {
-            if (memStats[info.file]) {
-              memStats[info.file].loaded = info.loaded
-              memStats[info.file].total = info.total
+        const lm = await window.api.getLiteMode()
+        setLiteMode(lm.isLite)
+        if (!lm.isLite) {
+          setLoadingText('Memuat Memori Kognitif...')
+          const { getExtractor } = await import('./api/vectorMemory')
+          let memStats = {}
+          await getExtractor((info) => {
+            if (info.status === 'initiate') {
+              memStats[info.file] = { loaded: 0, total: info.total || 0 }
+            } else if (info.status === 'progress') {
+              if (memStats[info.file]) {
+                memStats[info.file].loaded = info.loaded
+                memStats[info.file].total = info.total
+              }
+              const values = Object.values(memStats)
+              const totalBytes = values.reduce((acc, curr) => acc + curr.total, 0)
+              const loadedBytes = values.reduce((acc, curr) => acc + curr.loaded, 0)
+              if (totalBytes > 0) {
+                const percent = Math.round((loadedBytes / totalBytes) * 100)
+                const loadedMB = (loadedBytes / 1024 / 1024).toFixed(1)
+                const totalMB = (totalBytes / 1024 / 1024).toFixed(1)
+                setLoadingText(`Mengunduh Memori AI... ${percent}% (${loadedMB}MB / ${totalMB}MB)`)
+              }
+            } else if (info.status === 'done' || info.status === 'ready') {
+              setLoadingText('Membangunkan Mark...')
             }
-            const values = Object.values(memStats)
-            const totalBytes = values.reduce((acc, curr) => acc + curr.total, 0)
-            const loadedBytes = values.reduce((acc, curr) => acc + curr.loaded, 0)
-            if (totalBytes > 0) {
-              const percent = Math.round((loadedBytes / totalBytes) * 100)
-              const loadedMB = (loadedBytes / 1024 / 1024).toFixed(1)
-              const totalMB = (totalBytes / 1024 / 1024).toFixed(1)
-              setLoadingText(`Mengunduh Memori AI... ${percent}% (${loadedMB}MB / ${totalMB}MB)`)
-            }
-          } else if (info.status === 'done' || info.status === 'ready') {
-            setLoadingText('Membangunkan Mark...')
-          }
-        })
+          })
+        }
       } catch (e) {
         console.error('[App] Failed to load Transformers:', e)
       }
