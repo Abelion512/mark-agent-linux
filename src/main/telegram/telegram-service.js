@@ -87,21 +87,7 @@ export const startTelegramBot = async (token, mainWindow) => {
     })
 
     bot.command('info', (ctx) => {
-      ctx.reply(
-        '**Daftar Perintah MARK:**\n\n' +
-        '/start - Memulai bot\n' +
-        '/info - Menampilkan daftar perintah\n' +
-        '/workspace - Menampilkan direktori workspace aktif\n' +
-        '/abort - Menghentikan proses AI yang sedang berjalan\n' +
-        '/accept - Mengizinkan prompt persetujuan (needsApproval)\n' +
-        '/reject - Menolak prompt persetujuan',
-        { parse_mode: 'Markdown' }
-      )
-    })
-
-    bot.command('workspace', (ctx) => {
-      const defaultDir = path.join(os.homedir(), 'Documents', 'Mark Workspace')
-      ctx.reply(`[WORKSPACE AKTIF]:\n\`${defaultDir}\`\n\n(Semua operasi file di dalam folder workspace diizinkan otomatis tanpa perlu approval)`, { parse_mode: 'Markdown' })
+      ctx.reply('**Daftar Perintah MARK:**\n\n/start - Memulai bot\n/info - Menampilkan daftar perintah\n/abort - Menghentikan proses AI yang sedang berjalan\n/accept - Mengizinkan prompt persetujuan (needsApproval)\n/reject - Menolak prompt persetujuan', { parse_mode: 'Markdown' })
     })
 
     bot.command('abort', (ctx) => {

@@ -53,38 +53,6 @@ export const isDangerousKeyCombo = (combo = '') => {
   return DANGEROUS_KEY_COMBOS.some((bad) => normalized.includes(bad.replace(/\s+/g, '')))
 }
 
-export function normalizePath(p) {
-  if (!p) return ''
-  let resolved = path.resolve(p).replace(/[\\/]+/g, '/')
-  if (/^[a-zA-Z]:\//.test(resolved)) {
-    resolved = resolved[0].toUpperCase() + resolved.slice(1)
-  }
-  return resolved
-}
-
-export function isPathInTrustedRoot(targetPath, config) {
-  if (!targetPath) return false
-  const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
-  const normTarget = normalizePath(targetPath)
-  const normRoot = normalizePath(activeRoot)
-
-  if (normTarget === normRoot || normTarget.startsWith(normRoot.endsWith('/') ? normRoot : normRoot + '/')) {
-    return true
-  }
-
-  if (Array.isArray(config?.trustedPaths)) {
-    for (const tp of config.trustedPaths) {
-      if (!tp) continue
-      const normTP = normalizePath(tp)
-      if (normTarget === normTP || normTarget.startsWith(normTP.endsWith('/') ? normTP : normTP + '/')) {
-        return true
-      }
-    }
-  }
-
-  return false
-}
-
 const execPromise = util.promisify(exec)
 
 const parsePagination = (str) => {
@@ -593,15 +561,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'write-file': {
-    needsApproval: (query, config) => {
-      if (config?.autoApproveWorkspace !== false) {
-        const filePath = (query || '').split('||')[0]?.trim()
-        if (filePath && isPathInTrustedRoot(filePath, config)) {
-          return false
-        }
-      }
-      return true
-    },
+    needsApproval: true,
     approvalMessage: (query) => `Mark ingin menulis/membuat file:\n${query.split('||')[0].trim()}`,
     handler: async (query, config) => {
       try {
@@ -643,15 +603,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'replace-content': {
-    needsApproval: (query, config) => {
-      if (config?.autoApproveWorkspace !== false) {
-        const filePath = (query || '').split('||')[0]?.trim()
-        if (filePath && isPathInTrustedRoot(filePath, config)) {
-          return false
-        }
-      }
-      return true
-    },
+    needsApproval: true,
     approvalMessage: (query) => {
       const parts = query.split('||')
       return `Mark ingin mengedit isi kode pada berkas:\n${parts[0]?.trim()}`
@@ -720,15 +672,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'replace-lines': {
-    needsApproval: (query, config) => {
-      if (config?.autoApproveWorkspace !== false) {
-        const filePath = (query || '').split('||')[0]?.trim()
-        if (filePath && isPathInTrustedRoot(filePath, config)) {
-          return false
-        }
-      }
-      return true
-    },
+    needsApproval: true,
     approvalMessage: (query) => {
       const parts = query.split('||')
       return `Mark ingin mengganti baris ${parts[1]} hingga ${parts[2]} di file:\n${parts[0].trim()}`
@@ -776,15 +720,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'delete-file': {
-    needsApproval: (query, config) => {
-      if (config?.autoApproveWorkspace !== false) {
-        const filePath = (query || '').trim()
-        if (filePath && isPathInTrustedRoot(filePath, config)) {
-          return false
-        }
-      }
-      return true
-    },
+    needsApproval: true,
     approvalMessage: (query) => `Mark ingin MENGHAPUS file secara permanen:\n${query}`,
     handler: async (query, config) => {
       try {
@@ -1053,12 +989,7 @@ export const NATIVE_TOOLS = {
     }
   },
   'git-commit': {
-    needsApproval: (query, config) => {
-      if (config?.autoApproveWorkspace !== false) {
-        return false
-      }
-      return true
-    },
+    needsApproval: true,
     approvalMessage: (query) => `Mark ingin melakukan git commit dengan pesan:\n"${query}"`,
     handler: async (query, config) => {
       const parts = query ? query.split('||') : []
