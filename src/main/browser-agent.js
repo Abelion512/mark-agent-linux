@@ -607,6 +607,10 @@ export async function executeAction(data) {
       resetIdleTimer()
       return new Promise((resolve) => {
         globalAskUserResolve = async (comment) => {
+          if (!browserWindow || browserWindow.isDestroyed()) {
+            resolve('[ERROR] Browser closed before response.')
+            return
+          }
           // Auto-scan ulang DOM setelah unblock supaya AI tau state halaman setelah user interaksi
           const newDOM = await readDOM()
           resolve(`[LAPORAN USER]: ${comment}\n\n[DOM TERBARU SETELAH USER INTERAKSI]:\n${newDOM}`)
