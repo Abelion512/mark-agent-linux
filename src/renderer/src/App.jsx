@@ -96,7 +96,17 @@ function App() {
 
   useEffect(() => {
     const checkConfig = async () => {
-      // 1. Init Orama and Hydrate from Dexie
+      // 1. Detect lite mode FIRST — set flag before any hydration so generateVector
+      //    uses hash embeddings instead of triggering WASM extractor load.
+      let lm = null;
+      try {
+        lm = await window.api.getLiteMode();
+        setLiteMode(lm.isLite);
+      } catch (e) {
+        console.error('[App] Failed to get lite mode status:', e);
+      }
+
+      // 2. Init Orama and Hydrate from Dexie
       try {
         setLoadingText('Memuat Knowledge Base...')
         await initOramaIndices()
@@ -106,11 +116,9 @@ function App() {
         console.error('[App] Failed to init Orama:', e)
       }
 
-      // 1.5 Load Embeddings Model
+      // 1.5 Load Embeddings Model (skip in lite mode)
       try {
-        const lm = await window.api.getLiteMode()
-        setLiteMode(lm.isLite)
-        if (!lm.isLite) {
+        if (!lm?.isLite) {
           setLoadingText('Memuat Memori Kognitif...')
           const { getExtractor } = await import('./api/vectorMemory')
           let memStats = {}
