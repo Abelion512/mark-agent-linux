@@ -6,9 +6,31 @@ build
 .eslintcache
 *.log*
 .env
+.env.*
+!.env.example
 .vscode
 workflow
 mark_chrome_profile
 web.whatsapp.com.html
 /web.whatsapp.com_files
 PLUGIN_SYSTEM_SRS.md
+
+# Large artifacts that broke pushes before (GH001 >100MB)
+*.heapsnapshot
+*.har
+
+# Python envs (tiktok-pipeline)
+.venv/
+venv/
+__pycache__/
+
+# electron-vite crash-config copies
+electron.vite.config.*.mjs
+!electron.vite.config.mjs
+
+# Claude local state
+.claude/worktrees/
+.claude/settings.local.json
+
+# OS noise
+Thumbs.db
