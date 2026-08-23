@@ -46,20 +46,64 @@ const MarkHome = () => {
   const [currentResponse, setCurrentResponse] = useState(null)
   const [showMusicWidget, setShowMusicWidget] = useState(false)
   const [isMusicAnimatingOut, setIsMusicAnimatingOut] = useState(false)
+  const [isMaxWindow, setIsMaxWindow] = useState(false)
+  const [ttsIntensity, setTtsIntensity] = useState(0)
+  const [easterEgg, setEasterEgg] = useState(null)
+  const eggTimerRef = useRef(null)
+
+  // Easter-egg pool (clock is one random option)
+  const EASTER_EGGS = [
+    'clock',
+    // space for future easter eggs
+  ]
+
+  const hideEgg = () => {
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+    setEasterEgg(null)
+  }
+
+  const handleOrbClick = () => {
+    if (!isMaxWindow) return
+    if (easterEgg) return hideEgg()
+    const pick = EASTER_EGGS[Math.floor(Math.random() * EASTER_EGGS.length)]
+    setEasterEgg(pick)
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+    eggTimerRef.current = setTimeout(hideEgg, 15000)
+  }
 
   useEffect(() => {
+    const handleTtsIntensity = (e) => {
+      setTtsIntensity(e.detail || 0)
+      if (window.isMarkSpeaking) {
+        setOrbStatus('speaking')
+      } else {
+        setOrbStatus((prev) => prev === 'speaking' ? 'idle' : prev)
+      }
+    }
+    window.addEventListener('mark-intensity', handleTtsIntensity)
+    return () => window.removeEventListener('mark-intensity', handleTtsIntensity)
+  }, [setOrbStatus])
+
+  useEffect(() => {
+    if (window.api?.onWindowMaximized) {
+      window.api.onWindowMaximized((isMax) => {
+        setIsMaxWindow(isMax)
+      })
+    }
+    
     const handleOpenMap = () => setIsMemoryMapOpen(true)
     window.addEventListener('open-memory-map', handleOpenMap)
     return () => window.removeEventListener('open-memory-map', handleOpenMap)
   }, [])
 
   const handleVoiceTranscript = (text) => {
-    setMessage(text)
+    const prefixedText = `(Mikrofon) ${text}`
+    setMessage(prefixedText)
     setIsSpeak(true) // Sets global state
-    handlePlanningCommand(text, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
+    handlePlanningCommand(prefixedText, null, false, null, { forceSpeak: true }) // Pass forceSpeak option
   }
 
-  const { isRecording, toggleRecording, toastMessage } = useVAD({
+  const { isRecording, isProcessing, audioIntensity, toggleRecording, startRecording, stopRecording, toastMessage } = useVAD({
     onTranscript: handleVoiceTranscript
   })
 
@@ -67,13 +111,17 @@ const MarkHome = () => {
   const hasAutoStartedRef = useRef(false)
 
   useEffect(() => {
-    if (location.state?.autoStartMic) {
-      if (hasAutoStartedRef.current !== location.state.autoStartMic) {
-        hasAutoStartedRef.current = location.state.autoStartMic
-        toggleRecording()
+    if (location.state?.autoToggleMic) {
+      if (hasAutoStartedRef.current !== location.state.autoToggleMic) {
+        hasAutoStartedRef.current = location.state.autoToggleMic
+        if (isLoading || isAgentBusy) {
+          console.warn('[VAD] Ignored toggle because agent is busy')
+        } else {
+          toggleRecording()
+        }
       }
     }
-  }, [location.state?.autoStartMic, toggleRecording])
+  }, [location.state?.autoToggleMic, toggleRecording, isLoading, isAgentBusy])
 
   // Handle music widget exit animation
   useEffect(() => {
@@ -93,9 +141,13 @@ const MarkHome = () => {
     }
   }, [isPlaying, currentTrack?.title, showMusicWidget])
 
-  // Sync orb status based on isLoading
+  // Sync orb status based on isLoading, isRecording, and isProcessing
   useEffect(() => {
-    if (isLoading) {
+    if (isRecording) {
+      setOrbStatus('listening')
+    } else if (isProcessing) {
+      setOrbStatus('thinking')
+    } else if (isLoading) {
       // If last message is thinking, then thinking. Else speaking/executing
       const lastMsg = chatData[chatData.length - 1]
       if (lastMsg?.isThinking) {
@@ -110,7 +162,7 @@ const MarkHome = () => {
     } else {
       setOrbStatus('idle')
     }
-  }, [isLoading, chatData, setOrbStatus])
+  }, [isLoading, chatData, isRecording, isProcessing, setOrbStatus])
 
   // Derived currentResponse from chatData
   useEffect(() => {
@@ -122,7 +174,8 @@ const MarkHome = () => {
           // It's a loading state, we might show a short text
           setCurrentResponse({
             text: lastItem.content || 'Memproses instruksi...',
-            type: 'short'
+            type: 'short',
+            isThinking: true
           })
         } else {
           // Final response
@@ -138,18 +191,16 @@ const MarkHome = () => {
             mood: lastItem.mood
           })
 
-          // Trigger holographic beam (speaking animation) to project the text
-          if (!lastItem.isThinking) {
-            setOrbStatus('speaking')
-            setTimeout(() => setOrbStatus('idle'), 2500) // Project the beam for 2.5 seconds
-          }
+          // State 'speaking' kini diatur otomatis oleh event mark-intensity
+          // sehingga getaran & status sinkron 100% dengan durasi audio TTS sebenarnya.
         }
       } else {
         // User message, we can clear current response or show "Processing..."
         if (isLoading) {
           setCurrentResponse({
             text: 'Memproses...',
-            type: 'short'
+            type: 'short',
+            isThinking: true
           })
         } else {
           setCurrentResponse({
@@ -177,12 +228,45 @@ const MarkHome = () => {
       }
     }
   }
+  const mood = currentResponse?.mood || 'neutral';
+  let bgGlowColor = 'var(--color-primary)';
+  if (orbStatus === 'error') {
+    bgGlowColor = '#ef4444';
+  } else {
+    switch (mood) {
+      case 'joy': bgGlowColor = '#facc15'; break;
+      case 'sadness': bgGlowColor = '#3b82f6'; break;
+      case 'fear': bgGlowColor = '#a855f7'; break;
+      case 'anger': bgGlowColor = '#ef4444'; break;
+      case 'disgust': bgGlowColor = '#22c55e'; break;
+      case 'anxiety': bgGlowColor = '#f97316'; break;
+      case 'envy': bgGlowColor = '#14b8a6'; break;
+      case 'embarrassment': bgGlowColor = '#ec4899'; break;
+      case 'ennui': bgGlowColor = '#6b7280'; break;
+      default: bgGlowColor = 'var(--color-primary)'; break;
+    }
+  }
 
   return (
-    <div className="h-screen bg-[var(--base-300)] text-white overflow-hidden relative font-['Poppins',sans-serif]">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(var(--n))_0%,transparent_70%)] opacity-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none" />
+    <div 
+      className="h-screen text-white overflow-hidden relative transition-colors duration-1000 bg-transparent rounded-xl border border-white/5 shadow-2xl"
+      style={{ backgroundColor: `color-mix(in srgb, ${bgGlowColor} 12%, rgba(0,0,0,${config?.[0]?.windowOpacity ?? 0.85}))` }}
+    >
+
+      <style>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes spin-slow-reverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+      `}</style>
+
+      {/* Subtle Hologram Scanlines & Texture */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-20 pointer-events-none mix-blend-overlay z-0" />
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-screen z-0" />
 
       {isBooting && (
         <div className="fixed inset-0 bg-base-300 flex flex-col items-center justify-center gap-5 z-[999]">
@@ -206,74 +290,128 @@ const MarkHome = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex flex-col items-center w-full h-full px-4 pt-[10vh] pb-40 overflow-y-auto custom-scrollbar">
-        {/* The Orb & Neural Flow */}
-        <div className="relative flex items-center justify-center w-full max-w-3xl mt-10 mb-8 h-64">
-          <ThoughtNeuralFlow processes={activeProcesses} />
-          <OrbVisualizer
-            status={orbStatus}
-            intensity={0.5}
-            mood={currentResponse?.mood || 'neutral'}
-          />
+      <div className="relative z-10 flex flex-col md:flex-row w-full h-full px-4 lg:px-12 pb-[120px] overflow-hidden">
+        
+        {/* Left Panel: The Orb & Neural Flow (Fixed) */}
+        <div className="w-full md:w-1/2 h-[40vh] md:h-full flex flex-col items-center justify-center relative">
+          <div 
+            className="relative flex items-center justify-center w-full max-w-lg h-64 md:h-96"
+            style={{ 
+              transform: isMaxWindow ? 'scale(1)' : 'scale(0.6)', 
+              transition: 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginTop: isMaxWindow ? '0' : '-2rem'
+            }}
+          >
+            
+            {/* Jarvis-Style Holographic HUD centered around Orb */}
+            <div className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none mix-blend-screen opacity-50 z-0 scale-125">
+              <svg viewBox="0 0 500 500" className="w-[500px] h-[500px] absolute">
+                 {/* Outer Ring */}
+                 <circle cx="250" cy="250" r="230" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="2 10" className="origin-center animate-[spin-slow_40s_linear_infinite]" />
+                 
+                 {/* Middle Segmented Ring */}
+                 <circle cx="250" cy="250" r="180" fill="none" stroke={bgGlowColor} strokeWidth="2" strokeDasharray="80 20 10 20" className="origin-center animate-[spin-slow-reverse_30s_linear_infinite]" />
+                 
+                 {/* Inner Ring */}
+                 <circle cx="250" cy="250" r="140" fill="none" stroke={bgGlowColor} strokeWidth="1" strokeDasharray="5 15" className="origin-center animate-[spin-slow_20s_linear_infinite]" />
+                 
+                 {/* Solid Inner Border */}
+                 <circle cx="250" cy="250" r="125" fill="none" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-50" />
+
+                 {/* Crosshairs */}
+                 <line x1="250" y1="0" x2="250" y2="110" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="250" y1="390" x2="250" y2="500" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="0" y1="250" x2="110" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 <line x1="390" y1="250" x2="500" y2="250" stroke={bgGlowColor} strokeWidth="0.5" className="opacity-40" />
+                 
+                 {/* Decorative Tech Nodes */}
+                 <circle cx="250" cy="20" r="3" fill={bgGlowColor} />
+                 <circle cx="250" cy="480" r="3" fill={bgGlowColor} />
+                 <circle cx="20" cy="250" r="3" fill={bgGlowColor} />
+                 <circle cx="480" cy="250" r="3" fill={bgGlowColor} />
+              </svg>
+            </div>
+
+            <ThoughtNeuralFlow processes={activeProcesses} />
+            <div className="z-10 relative">
+              <OrbVisualizer
+                status={orbStatus}
+                intensity={orbStatus === 'speaking' ? ttsIntensity : 0}
+                mood={currentResponse?.mood || 'neutral'}
+                showClock={easterEgg === 'clock'}
+                onClockClick={handleOrbClick}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Dynamic Response Area */}
-        <div className="w-full max-w-4xl mt-8 flex flex-col items-center justify-center transition-all duration-500 ease-in-out">
-          {currentResponse && <ResponseArea currentResponse={currentResponse} />}
+        {/* Right Panel: Dynamic Response Area (Scrollable) */}
+        <div 
+          className="w-full md:w-1/2 h-full flex flex-col overflow-y-auto no-scrollbar md:pl-8 md:pr-4"
+          style={{ maskImage: 'linear-gradient(to bottom, transparent, black 3rem, black calc(100% - 3rem), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 3rem, black calc(100% - 3rem), transparent)' }}
+        >
+          <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-start transition-all duration-500 ease-in-out pt-[10vh] pb-20 min-h-full">
+            {currentResponse && <ResponseArea currentResponse={currentResponse} />}
 
-          {/* Centered Now Playing Info */}
-          {showMusicWidget && (
-            <div
-              className={`mt-8 flex flex-col items-center ${isMusicAnimatingOut ? 'animate-[holo-dismiss_0.5s_ease-in_forwards]' : 'animate-[holo-project-in_0.5s_ease-out_forwards]'}`}
-            >
-              <div className="relative group w-48 h-48 mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-primary/20">
-                {currentTrack.thumbnail ? (
-                  <img
-                    src={currentTrack.thumbnail}
-                    alt="Album Art"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    onError={(e) => {
-                      e.target.onerror = null
-                      e.target.src = musicCoverFallback
-                    }}
-                  />
-                ) : (
-                  <img
-                    src={musicCoverFallback}
-                    alt="Default Album Art"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                )}
-                {/* Audio visualizer overlay */}
-                {isPlaying && (
-                  <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center pb-4 gap-1">
-                    <span
-                      className="w-1.5 h-4 bg-primary rounded-t-full animate-[music-bar_1s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.1s' }}
+            {/* Centered Now Playing Info */}
+            {showMusicWidget && (
+              <div
+                className={`mt-8 flex flex-col items-center ${isMusicAnimatingOut ? 'animate-[holo-dismiss_0.5s_ease-in_forwards]' : 'animate-[holo-project-in_0.5s_ease-out_forwards]'}`}
+              >
+                <div className="relative group w-48 h-48 mb-4 rounded-sm overflow-hidden border border-white/10 shadow-2xl shadow-primary/20">
+                  {/* HUD Brackets */}
+                  <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-white/30 pointer-events-none z-10" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-white/30 pointer-events-none z-10" />
+                  {currentTrack.thumbnail ? (
+                    <img
+                      src={currentTrack.thumbnail}
+                      alt="Album Art"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.src = musicCoverFallback
+                      }}
                     />
-                    <span
-                      className="w-1.5 h-6 bg-primary rounded-t-full animate-[music-bar_1.2s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.3s' }}
+                  ) : (
+                    <img
+                      src={musicCoverFallback}
+                      alt="Default Album Art"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    <span
-                      className="w-1.5 h-3 bg-primary rounded-t-full animate-[music-bar_0.8s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.2s' }}
-                    />
-                    <span
-                      className="w-1.5 h-5 bg-primary rounded-t-full animate-[music-bar_1.1s_ease-in-out_infinite]"
-                      style={{ animationDelay: '0.4s' }}
-                    />
-                  </div>
-                )}
+                  )}
+                  {/* Audio visualizer overlay */}
+                  {isPlaying && (
+                    <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-center pb-4 gap-1">
+                      <span
+                        className="w-1.5 h-4 bg-primary rounded-t-full animate-[music-bar_1s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.1s' }}
+                      />
+                      <span
+                        className="w-1.5 h-6 bg-primary rounded-t-full animate-[music-bar_1.2s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.3s' }}
+                      />
+                      <span
+                        className="w-1.5 h-3 bg-primary rounded-t-full animate-[music-bar_0.8s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.2s' }}
+                      />
+                      <span
+                        className="w-1.5 h-5 bg-primary rounded-t-full animate-[music-bar_1.1s_ease-in-out_infinite]"
+                        style={{ animationDelay: '0.4s' }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-white text-center max-w-md truncate">
+                  {currentTrack.title}
+                </h3>
+                <p className="text-sm text-white/50 text-center max-w-sm truncate mt-1">
+                  {currentTrack.artist}
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-white text-center max-w-md truncate">
-                {currentTrack.title}
-              </h3>
-              <p className="text-sm text-white/50 text-center max-w-sm truncate mt-1">
-                {currentTrack.artist}
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -285,7 +423,10 @@ const MarkHome = () => {
         }}
         isLoading={isLoading || isAgentBusy}
         isRecording={isRecording}
-        onToggleRecord={toggleRecording}
+        isProcessing={isProcessing}
+        audioIntensity={audioIntensity}
+        onStartRecord={startRecording}
+        onStopRecord={stopRecording}
         onStop={handleStop}
         source={inputSource}
       />
