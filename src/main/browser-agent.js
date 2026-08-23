@@ -1,10 +1,27 @@
 import { BrowserWindow, screen } from 'electron'
+import { detectLiteMode } from './utils/systemInfo'
 
 let browserWindow = null
 let activeAskUser = false
 let activeAskUserMessage = ''
 let globalAskUserResolve = null
 let isForceClosing = false
+
+// Lite-mode idle timer: auto-closes the hidden BrowserWindow after 60s of no browser activity.
+let idleTimer = null
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer)
+  const { isLite } = detectLiteMode()
+  if (!isLite) return
+  if (activeAskUser) return
+  idleTimer = setTimeout(() => {
+    // Re-check activeAskUser: it may have become true during the idle window.
+    if (!activeAskUser) {
+      closeBrowser().catch(() => {})
+    }
+  }, 60_000)
+}
 
 const DOM_PARSER_SCRIPT = `
 (() => {
@@ -272,10 +289,14 @@ export async function navigateTo(url) {
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
   // Auto-scan DOM setelah navigate
-  return await readDOM()
+  const result = await readDOM()
+  resetIdleTimer()
+  return result
 }
 
 export async function closeBrowser() {
+  clearTimeout(idleTimer)
+  idleTimer = null
   if (browserWindow && !browserWindow.isDestroyed()) {
     isForceClosing = true
     browserWindow.close()
@@ -322,6 +343,7 @@ export async function readDOM() {
     console.error('Failed to capture browser preview:', e)
   }
 
+  resetIdleTimer()
   return result
 }
 
@@ -334,6 +356,7 @@ export function showBrowser() {
     browserWindow.setAlwaysOnTop(true)
     browserWindow.setAlwaysOnTop(false)
   }
+  resetIdleTimer()
 }
 export async function executeAction(data) {
   if (!browserWindow || browserWindow.isDestroyed()) {
@@ -576,8 +599,12 @@ export async function executeAction(data) {
         })()`
       )
 
-      if (isReinject) return 'reinjected'
+      if (isReinject) {
+        resetIdleTimer()
+        return 'reinjected'
+      }
 
+      resetIdleTimer()
       return new Promise((resolve) => {
         globalAskUserResolve = async (comment) => {
           // Auto-scan ulang DOM setelah unblock supaya AI tau state halaman setelah user interaksi
@@ -586,6 +613,7 @@ export async function executeAction(data) {
         }
       })
     } catch (e) {
+      resetIdleTimer()
       return `[ERROR] Gagal menunggu respon user: ${e.message}`
     }
   }
@@ -601,8 +629,10 @@ export async function executeAction(data) {
       })()`
       )
       .catch(() => {})
+    resetIdleTimer()
     return 'Browser unlocked.'
   }
 
+  resetIdleTimer()
   return '[ERROR] Action tidak dikenal.'
 }
