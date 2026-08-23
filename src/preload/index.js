@@ -104,7 +104,9 @@ const api = {
   osOpen: (target) => ipcRenderer.invoke('os:open', target),
   osListWindows: () => ipcRenderer.invoke('os:list-windows'),
   osFocusWindow: (title) => ipcRenderer.invoke('os:focus-window', title),
-  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query)
+  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query),
+  getLiteMode: () => ipcRenderer.invoke('system:get-lite-mode'),
+  onLiteModeChanged: (cb) => ipcRenderer.on('system:lite-mode-changed', (_e, d) => cb(d))
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -80,6 +80,10 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('system:lite-mode-changed', detectLiteMode())
+  })
+
   // Sembunyikan window saat tombol close diklik (masuk tray)
   mainWindow.on('close', function (event) {
     if (!isQuiting) {
@@ -96,6 +100,8 @@ ipcMain.on('remote-music-command', (event, command, payload) => {
     mainWindow.webContents.send('execute-music-command', command, payload)
   }
 })
+
+ipcMain.handle('system:get-lite-mode', () => detectLiteMode())
 
 import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
 
@@ -166,6 +172,8 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
     mainWindow.focus()
   }
 })
+
+import { detectLiteMode } from './utils/systemInfo'
 
 import {
   startWhatsappBot,
