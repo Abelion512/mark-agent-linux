@@ -116,6 +116,15 @@ db.version(19).stores({
   })
 })
 
+db.version(20).stores({
+  subagents: 'id, status, parentSessionId, createdAt, updatedAt',
+  subagent_messages: '++id, subagentId, sender, timestamp'
+})
+
+db.version(21).stores({
+  learnedSkills: 'id, name, createdAt, updatedAt'
+})
+
 // --- VALIDATION ---
 const VALID_TYPES = ['profile', 'preference', 'notes', 'learn'];
 
@@ -241,11 +250,12 @@ export async function getAllConfig() {
       if (data[0].windowOpacity === undefined) {
         data[0].windowOpacity = 0.85
       }
-      if (!data[0].localWhisperModel) {
-        data[0].localWhisperModel = 'whisper-small'
-      }
+      // P10 Linux patch: WhatNew boot trigger masih baca field ini
       if (data[0].lastSeenWhatsNewVersion === undefined) {
         data[0].lastSeenWhatsNewVersion = null
+      }
+      if (!data[0].localWhisperModel) {
+        data[0].localWhisperModel = 'whisper-small'
       }
     }
     return data || []
@@ -268,24 +278,220 @@ export async function saveConfiguration(data) {
   }
 }
 
+export async function getAlwaysAllowedPaths() {
+  try {
+    const configs = await db.config.toArray()
+    if (configs && configs.length > 0 && Array.isArray(configs[0].alwaysAllowedPaths)) {
+      return configs[0].alwaysAllowedPaths
+    }
+    return []
+  } catch (error) {
+    console.error('Error in getAlwaysAllowedPaths logic:', error)
+    return []
+  }
+}
+
+export async function addAlwaysAllowedPath(pathToAdd) {
+  try {
+    if (!pathToAdd) return []
+    const configs = await db.config.toArray()
+    const currentConfig = (configs && configs[0]) || { id: 1 }
+    const currentList = Array.isArray(currentConfig.alwaysAllowedPaths)
+      ? currentConfig.alwaysAllowedPaths
+      : []
+
+    if (!currentList.includes(pathToAdd)) {
+      const updatedList = [...currentList, pathToAdd]
+      const newConfig = { ...currentConfig, id: 1, alwaysAllowedPaths: updatedList }
+      await db.config.put(newConfig)
+      if (window.api && window.api.syncConfig) {
+        window.api.syncConfig(newConfig)
+      }
+      window.dispatchEvent(new CustomEvent('config-updated', { detail: newConfig }))
+      return updatedList
+    }
+    return currentList
+  } catch (error) {
+    console.error('Error in addAlwaysAllowedPath logic:', error)
+    return []
+  }
+}
+
+export async function removeAlwaysAllowedPath(pathToRemove) {
+  try {
+    const configs = await db.config.toArray()
+    const currentConfig = (configs && configs[0]) || { id: 1 }
+    const currentList = Array.isArray(currentConfig.alwaysAllowedPaths)
+      ? currentConfig.alwaysAllowedPaths
+      : []
+
+    const updatedList = currentList.filter((p) => p !== pathToRemove)
+    const newConfig = { ...currentConfig, id: 1, alwaysAllowedPaths: updatedList }
+    await db.config.put(newConfig)
+    if (window.api && window.api.syncConfig) {
+      window.api.syncConfig(newConfig)
+    }
+    window.dispatchEvent(new CustomEvent('config-updated', { detail: newConfig }))
+    return updatedList
+  } catch (error) {
+    console.error('Error in removeAlwaysAllowedPath logic:', error)
+    return []
+  }
+}
+
 export async function getAllSessionTitle() {
   try {
     const data = await db.sessions.toArray()
-    console.log(data)
+    data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
     return data || []
   } catch (error) {
     console.error('Error in getAllSessionTitle logic:', error)
     return []
   }
 }
+
+export async function getAllSessions() {
+  try {
+    const sessions = await db.sessions.toArray()
+    if (!sessions || sessions.length === 0) {
+      const defaultSession = { id: 1, title: 'Main Thread', data: [], timestamp: Date.now() }
+      await db.sessions.put(defaultSession)
+      return [defaultSession]
+    }
+    // Pastikan session id: 1 ada
+    const hasMain = sessions.some((s) => s.id === 1)
+    if (!hasMain) {
+      await db.sessions.put({ id: 1, title: 'Main Thread', data: [], timestamp: Date.now() })
+      sessions.unshift({ id: 1, title: 'Main Thread', data: [], timestamp: Date.now() })
+    }
+    sessions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    return sessions
+  } catch (error) {
+    console.error('Error in getAllSessions:', error)
+    return [{ id: 1, title: 'Main Thread', data: [], timestamp: Date.now() }]
+  }
+}
+
 export async function getChatData(id) {
   try {
-    const session = await db.sessions.where('id').equals(id).toArray()
-    console.log(session[0].data)
-    return session[0].data
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    const session = await db.sessions.get(numId)
+    return session?.data || []
   } catch (error) {
     console.error('Error in getChatData logic:', error)
     return []
+  }
+}
+
+export async function getSession(id) {
+  try {
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    return await db.sessions.get(numId)
+  } catch (error) {
+    console.error('Error in getSession:', error)
+    return null
+  }
+}
+
+export async function createSession(title = 'Percakapan Baru', initialData = []) {
+  try {
+    const timestamp = Date.now()
+    const id = await db.sessions.add({
+      title: title.trim() || 'Percakapan Baru',
+      data: initialData,
+      timestamp
+    })
+    return { id, title, data: initialData, timestamp }
+  } catch (error) {
+    console.error('Error in createSession:', error)
+    throw error
+  }
+}
+
+export async function saveSession(id, data, title = null, workspaceRoot = null) {
+  try {
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    const existing = await db.sessions.get(numId)
+    const updatePayload = {
+      id: numId,
+      data: data,
+      timestamp: Date.now()
+    }
+    if (title) {
+      updatePayload.title = title
+    } else if (existing?.title) {
+      updatePayload.title = existing.title
+    } else {
+      updatePayload.title = numId === 1 ? 'Main Thread' : 'Percakapan Baru'
+    }
+    if (workspaceRoot !== null && workspaceRoot !== undefined) {
+      updatePayload.workspaceRoot = workspaceRoot
+    } else if (existing?.workspaceRoot) {
+      updatePayload.workspaceRoot = existing.workspaceRoot
+    }
+    await db.sessions.put(updatePayload)
+    return true
+  } catch (error) {
+    console.error('Error in saveSession:', error)
+    return false
+  }
+}
+
+export async function setSessionWorkspace(id, workspaceRoot) {
+  try {
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    const existing = await db.sessions.get(numId)
+    if (existing) {
+      existing.workspaceRoot = workspaceRoot
+      existing.timestamp = Date.now()
+      await db.sessions.put(existing)
+      return true
+    } else {
+      await db.sessions.put({
+        id: numId,
+        title: numId === 1 ? 'Main Thread' : 'Percakapan Baru',
+        data: [],
+        workspaceRoot,
+        timestamp: Date.now()
+      })
+      return true
+    }
+  } catch (e) {
+    console.error('Error in setSessionWorkspace:', e)
+    return false
+  }
+}
+
+export async function deleteSession(id) {
+  try {
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    if (numId === 1) {
+      // Main Thread tidak boleh dihapus barisnya, hanya dikosongkan pesannya
+      await db.sessions.put({ id: 1, title: 'Main Thread', data: [], timestamp: Date.now() })
+      return true
+    }
+    await db.sessions.delete(numId)
+    return true
+  } catch (error) {
+    console.error('Error in deleteSession:', error)
+    return false
+  }
+}
+
+export async function renameSession(id, newTitle) {
+  try {
+    const numId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id
+    const existing = await db.sessions.get(numId)
+    if (existing) {
+      existing.title = newTitle.trim() || existing.title
+      existing.timestamp = Date.now()
+      await db.sessions.put(existing)
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('Error in renameSession:', error)
+    return false
   }
 }
 
@@ -395,3 +601,67 @@ export async function saveRelationship(data) {
     console.error('[DB] Error saveRelationship:', error)
   }
 }
+
+// --- LEARNED SKILLS (METASYSTEM SELF-IMPROVEMENT) ---
+export async function saveLearnedSkill({ name, description, content }) {
+  try {
+    const cleanName = (name || '').toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/^-+|-+$/g, '')
+    if (!cleanName || !content) return null
+
+    // Cek apakah skill dengan nama ini sudah ada (update) atau baru (create)
+    const existing = await db.learnedSkills.where('name').equalsIgnoreCase(cleanName).first()
+    const id = existing?.id || `learned_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    
+    const skillData = {
+      id,
+      name: cleanName,
+      description: description || 'Prosedur teknis teruji buatan Mark',
+      content: content.trim(),
+      createdAt: existing?.createdAt || Date.now(),
+      updatedAt: Date.now()
+    }
+
+    await db.learnedSkills.put(skillData)
+    console.log(`[DB] Learned skill saved: /${cleanName}`, skillData)
+    return skillData
+  } catch (err) {
+    console.error('[DB] Error saveLearnedSkill:', err)
+    return null
+  }
+}
+
+export async function getLearnedSkill(name) {
+  try {
+    if (!name) return null
+    const cleanName = name.toLowerCase().trim()
+    return await db.learnedSkills.where('name').equalsIgnoreCase(cleanName).first()
+  } catch (err) {
+    console.error('[DB] Error getLearnedSkill:', err)
+    return null
+  }
+}
+
+export async function getAllLearnedSkills() {
+  try {
+    return await db.learnedSkills.orderBy('createdAt').reverse().toArray()
+  } catch (err) {
+    console.error('[DB] Error getAllLearnedSkills:', err)
+    return []
+  }
+}
+
+export async function deleteLearnedSkill(idOrName) {
+  try {
+    if (!idOrName) return false
+    const existing = (await db.learnedSkills.get(idOrName)) || (await db.learnedSkills.where('name').equalsIgnoreCase(idOrName).first())
+    if (existing) {
+      await db.learnedSkills.delete(existing.id)
+      return true
+    }
+    return false
+  } catch (err) {
+    console.error('[DB] Error deleteLearnedSkill:', err)
+    return false
+  }
+}
+
