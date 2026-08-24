@@ -1,6 +1,20 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+
+const isWindows = process.platform === 'win32'
+
+const getWorkspaceDir = () => {
+  if (isWindows) return getWorkspaceDir()
+  const xdgData = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
+  return path.join(xdgData, 'mark', 'workspace')
+}
+
+const getSkillsDir = () => {
+  if (isWindows) return getSkillsDir()
+  const xdgData = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
+  return path.join(xdgData, 'mark', 'skills')
+}
 import { exec } from 'child_process'
 import util from 'util'
 
@@ -55,21 +69,6 @@ export const isDangerousKeyCombo = (combo = '') => {
 
 const execPromise = util.promisify(exec)
 
-const isWindows = process.platform === 'win32'
-
-// Linux-native: XDG data dir; Windows tetap Documents (kompatibel dengan build lama)
-const getWorkspaceDir = () => {
-  if (isWindows) return getWorkspaceDir()
-  const xdgData = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
-  return path.join(xdgData, 'mark', 'workspace')
-}
-
-const getSkillsDir = () => {
-  if (isWindows) return path.join(os.homedir(), 'Documents', 'Mark Skills')
-  const xdgData = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
-  return path.join(xdgData, 'mark', 'skills')
-}
-
 const parsePagination = (str) => {
   let start = 0,
     end = 10
@@ -89,7 +88,7 @@ const parsePagination = (str) => {
   return { start, end, fetchCount }
 }
 
-// Helper: Cek apakah command PowerShell berbahaya
+// Helper: Cek apakah command shell berbahaya
 const DANGEROUS_KEYWORDS = [
   'Remove-Item',
   'rm ',
@@ -114,7 +113,7 @@ export const NATIVE_TOOLS = {
     handler: async (query) => {
       const skillName = (query || '').trim()
       if (!skillName) return { success: false, error: 'Nama skill kosong' }
-      const skillDir = getSkillsDir()
+      const skillDir = path.join(os.homedir(), 'Documents', 'Mark Skills')
 
       // 1. Cek jika folder skill berisi SKILL.md
       const folderSkillPath = path.join(skillDir, skillName, 'SKILL.md')
@@ -143,83 +142,6 @@ export const NATIVE_TOOLS = {
       }
     }
   },
-  'browser-search': {
-    needsApproval: false,
-    handler: async (query) => {
-      try {
-        const searchQuery = query ? query.trim() : ''
-        if (!searchQuery) return { success: false, message: 'Query pencarian kosong.' }
-
-        let results = []
-        try {
-          const { search: ddgSearch, SafeSearchType } = await import('duck-duck-scrape')
-          const searchRes = await ddgSearch(searchQuery, {
-            safeSearch: SafeSearchType.OFF
-          })
-          if (searchRes && searchRes.results && searchRes.results.length > 0) {
-            results = searchRes.results.slice(0, 5).map((r) => ({
-              title: r.title,
-              url: r.url,
-              snippet: r.description || r.snippet || ''
-            }))
-          }
-        } catch (ddgErr) {
-          console.warn('[browser-search] duck-duck-scrape failed, trying HTTP fallback:', ddgErr.message)
-        }
-
-        if (results.length === 0) {
-          try {
-            const axios = (await import('axios')).default
-            const htmlRes = await axios.get(
-              `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`,
-              {
-                headers: {
-                  'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                },
-                timeout: 10000
-              }
-            )
-            const html = htmlRes.data || ''
-            const matches = [...html.matchAll(/<a class="result__url" href="([^"]+)">/g)]
-            const snippetMatches = [...html.matchAll(/<a class="result__snippet[^>]*>([^<]+)<\/a>/g)]
-            const titleMatches = [...html.matchAll(/<a class="result__a"[^>]*>([^<]+)<\/a>/g)]
-
-            for (let i = 0; i < Math.min(5, titleMatches.length); i++) {
-              results.push({
-                title: titleMatches[i]?.[1] || 'Web Result',
-                url: matches[i]?.[1] || '',
-                snippet: snippetMatches[i]?.[1] || ''
-              })
-            }
-          } catch (fetchErr) {
-            console.error('[browser-search] HTTP fallback error:', fetchErr.message)
-          }
-        }
-
-        if (results.length === 0) {
-          return {
-            success: true,
-            data: `Tidak ditemukan hasil pencarian web langsung untuk "${searchQuery}".`
-          }
-        }
-
-        const formatted = results
-          .map(
-            (r, idx) =>
-              `${idx + 1}. [${r.title}](${r.url})\n   Snippet: ${r.snippet.replace(/\n+/g, ' ')}`
-          )
-          .join('\n\n')
-
-        return {
-          success: true,
-          data: `[HASIL PENCARIAN WEB UNTUK: "${searchQuery}"]\n\n${formatted}`
-        }
-      } catch (err) {
-        return { success: false, message: `Gagal melakukan web search: ${err.message}` }
-      }
-    }
-  },
   'read-file': {
     needsApproval: false,
     handler: async (query, config) => {
@@ -227,7 +149,7 @@ export const NATIVE_TOOLS = {
         const parts = query.split('||')
         let filePath = parts[0].trim()
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -295,7 +217,7 @@ export const NATIVE_TOOLS = {
     handler: async (query, config) => {
       try {
         let filePath = query.trim()
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -590,7 +512,7 @@ export const NATIVE_TOOLS = {
         let filePath = parts[0].trim()
         const content = parts.slice(1).join('||')
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -637,7 +559,7 @@ export const NATIVE_TOOLS = {
         const targetContent = parts[1]
         const replacementContent = parts.slice(2).join('||')
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -703,7 +625,7 @@ export const NATIVE_TOOLS = {
 
         let filePath = parts[0].trim()
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -740,7 +662,7 @@ export const NATIVE_TOOLS = {
     handler: async (query, config) => {
       try {
         let filePath = query.trim()
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(filePath)) {
           filePath = path.join(activeRoot, filePath)
         }
@@ -758,7 +680,7 @@ export const NATIVE_TOOLS = {
     handler: async (query, config) => {
       try {
         let targetDir = query?.trim() || ''
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(targetDir)) {
           targetDir = targetDir ? path.join(activeRoot, targetDir) : activeRoot
         }
@@ -779,7 +701,7 @@ export const NATIVE_TOOLS = {
         const pattern = parts[0]?.trim() || '*'
         const subDir = parts[1]?.trim() || ''
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         const targetDir = path.isAbsolute(subDir) ? subDir : (subDir ? path.join(activeRoot, subDir) : activeRoot)
 
         if (!fs.existsSync(targetDir)) {
@@ -866,7 +788,7 @@ export const NATIVE_TOOLS = {
           return { success: false, message: 'Kata kunci pencarian tidak boleh kosong.' }
         }
 
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+        const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         if (!path.isAbsolute(dirPath)) {
           dirPath = dirPath && dirPath !== '.' ? path.join(activeRoot, dirPath) : activeRoot
         }
@@ -971,13 +893,11 @@ export const NATIVE_TOOLS = {
     handler: async (query, config) => {
       if (!query) return { success: false, message: 'Tidak ada perintah yang diberikan.' }
       try {
-        const activeRoot = config?.workspaceRoot || getWorkspaceDir()
-        // Linux-native: jalankan via bash; Windows tetap PowerShell
         const cmd = isWindows
           ? `powershell.exe -Command "${query}"`
           : `bash -c "${query.replace(/"/g, '\\"')}"`
         const { stdout, stderr } = await execPromise(cmd, {
-          cwd: activeRoot
+          cwd: config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
         })
         return {
           success: true,
@@ -996,14 +916,14 @@ export const NATIVE_TOOLS = {
   'git-status': {
     needsApproval: false,
     handler: async (query, config) => {
-      const activeRoot = config?.workspaceRoot || (query?.trim() ? query.trim() : getWorkspaceDir())
+      const activeRoot = config?.workspaceRoot || (query?.trim() ? query.trim() : path.join(os.homedir(), 'Documents', 'Mark Workspace'))
       return await getGitStatus(activeRoot)
     }
   },
   'git-diff': {
     needsApproval: false,
     handler: async (query, config) => {
-      const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+      const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
       return await getGitDiff(activeRoot, query?.trim() || '')
     }
   },
@@ -1014,7 +934,7 @@ export const NATIVE_TOOLS = {
       const parts = query ? query.split('||') : []
       const message = parts[0]?.trim() || 'Mark Agent Commit'
       const customCwd = parts[1]?.trim()
-      const activeRoot = customCwd || config?.workspaceRoot || getWorkspaceDir()
+      const activeRoot = customCwd || config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
       return await gitCommit(activeRoot, message)
     }
   },
@@ -1022,7 +942,7 @@ export const NATIVE_TOOLS = {
     needsApproval: true,
     approvalMessage: (query) => `Mark ingin me-rollback perubahan git:\n"${query || 'Seluruh file (reset --hard)'}"`,
     handler: async (query, config) => {
-      const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+      const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
       return await gitRevert(activeRoot, query?.trim() || '')
     }
   },
@@ -1036,7 +956,7 @@ export const NATIVE_TOOLS = {
       }
       const taskId = parts[0].trim()
       const command = parts.slice(1).join('||').trim()
-      const activeRoot = config?.workspaceRoot || getWorkspaceDir()
+      const activeRoot = config?.workspaceRoot || path.join(os.homedir(), 'Documents', 'Mark Workspace')
       return spawnBackgroundTask(taskId, command, activeRoot)
     }
   },
@@ -1066,14 +986,13 @@ export const NATIVE_TOOLS = {
   },
   'browser-navigate': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async (query) => {
       try {
         let url = query.trim()
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
           url = 'https://' + url
         }
-        const sessionId = config?.sessionId || 'default'
-        const result = await navigateTo(url, sessionId)
+        const result = await navigateTo(url)
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1081,10 +1000,9 @@ export const NATIVE_TOOLS = {
     }
   },
   'browser-close': {
-    handler: async (query, config) => {
+    handler: async () => {
       try {
-        const sessionId = config?.sessionId || (query?.trim() ? query.trim() : 'default')
-        const result = await closeBrowser(sessionId)
+        const result = await closeBrowser()
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1093,10 +1011,9 @@ export const NATIVE_TOOLS = {
   },
   'browser-read': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async () => {
       try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await readDOM(sessionId)
+        const result = await readDOM()
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1105,12 +1022,11 @@ export const NATIVE_TOOLS = {
   },
   'browser-click': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async (query) => {
       const id = parseInt(query.trim(), 10)
       if (isNaN(id)) return { success: false, error: 'ID harus berupa angka.' }
       try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await executeAction({ action: 'click', id }, sessionId)
+        const result = await executeAction({ action: 'click', id })
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1119,15 +1035,14 @@ export const NATIVE_TOOLS = {
   },
   'browser-type': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async (query) => {
       const parts = query.split('||')
       if (parts.length < 2) return { success: false, error: 'Format: ID||teks' }
       const id = parseInt(parts[0].trim(), 10)
       const text = parts.slice(1).join('||')
       if (isNaN(id)) return { success: false, error: 'ID harus berupa angka.' }
       try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await executeAction({ action: 'type', id, value: text }, sessionId)
+        const result = await executeAction({ action: 'type', id, value: text })
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1136,14 +1051,13 @@ export const NATIVE_TOOLS = {
   },
   'browser-scroll': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async (query) => {
       const direction = query.trim().toLowerCase()
       if (direction !== 'up' && direction !== 'down') {
         return { success: false, error: "Gunakan 'up' atau 'down'." }
       }
       try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await executeAction({ action: 'scroll', direction }, sessionId)
+        const result = await executeAction({ action: 'scroll', direction })
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1152,61 +1066,9 @@ export const NATIVE_TOOLS = {
   },
   'browser-ask-user': {
     needsApproval: false,
-    handler: async (query, config) => {
+    handler: async (query) => {
       try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await executeAction({ action: 'unblock', value: query }, sessionId)
-        return { success: true, data: result }
-      } catch (e) {
-        return { success: false, error: e.message }
-      }
-    }
-  },
-  'browser-script': {
-    needsApproval: false,
-    handler: async (query, config) => {
-      try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await executeScript(query, sessionId)
-        return { success: true, data: result }
-      } catch (e) {
-        return { success: false, error: e.message }
-      }
-    }
-  },
-  'browser-extract': {
-    needsApproval: false,
-    handler: async (query, config) => {
-      try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await extractData(query, sessionId)
-        return { success: true, data: result }
-      } catch (e) {
-        return { success: false, error: e.message }
-      }
-    }
-  },
-  'browser-screenshot': {
-    needsApproval: false,
-    handler: async (query, config) => {
-      try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await takeScreenshot(query || 'screenshot.png', sessionId)
-        return { success: true, data: result }
-      } catch (e) {
-        return { success: false, error: e.message }
-      }
-    }
-  },
-  'browser-download': {
-    needsApproval: true,
-    approvalMessage: (query) => `Mark ingin mendownload file dari browser:\n\n${query}`,
-    handler: async (query, config) => {
-      const parts = query.split('||')
-      if (parts.length < 2) return { success: false, error: 'Format: URL||namafile.ext' }
-      try {
-        const sessionId = config?.sessionId || 'default'
-        const result = await downloadFile(parts[0].trim(), parts[1].trim(), sessionId)
+        const result = await executeAction({ action: 'unblock', value: query })
         return { success: true, data: result }
       } catch (e) {
         return { success: false, error: e.message }
@@ -1666,44 +1528,5 @@ export const NATIVE_TOOLS = {
         return { success: false, error: e.message }
       }
     }
-  },
-  
-  // ----------------------------------------------------------------------
-  // TELEGRAM TOOLS
-  // ----------------------------------------------------------------------
-  'tg-send': {
-    needsApproval: false,
-    handler: async (query) => {
-      try {
-        const logPath = path.join(os.homedir(), 'Desktop', 'tg_debug.txt')
-        fs.appendFileSync(logPath, `\n\n--- NEW RUN ---\nRaw Query: ${query}\n`)
-        
-        const parts = query.split(/\|+/)
-        if (parts.length < 2) return { success: false, error: 'Format: chatId||tipe(text/file)||konten' }
-        const chatId = parts[0].trim()
-        const type = parts[1].trim().toLowerCase()
-        const content = parts.slice(2).join('||').trim()
-        
-        fs.appendFileSync(logPath, `Type evaluated to: "${type}"\nContent evaluated to: "${content}"\n`)
-
-        if (type === 'file') {
-          fs.appendFileSync(logPath, `Branch: FILE. Calling sendTelegramFile...\n`)
-          const result = await sendTelegramFile(chatId, content)
-          fs.appendFileSync(logPath, `Result: ${JSON.stringify(result)}\n`)
-          return { success: result.success, data: result.success ? `Berhasil mengirim file ke Telegram.` : `Gagal: ${result.error}` }
-        } else {
-          fs.appendFileSync(logPath, `Branch: TEXT. Calling sendTelegramMessage...\n`)
-          const result = await sendTelegramMessage(chatId, content)
-          fs.appendFileSync(logPath, `Result: ${JSON.stringify(result)}\n`)
-          return { success: result.success, data: result.success ? `Berhasil mengirim pesan ke Telegram.` : `Gagal: ${result.error}` }
-        }
-      } catch (e) {
-        const errPath = path.join(os.homedir(), 'Desktop', 'tg_debug.txt')
-        fs.appendFileSync(errPath, `CRASH: ${e.stack}\n`)
-        return { success: false, error: e.message }
-      }
-    }
   }
 }
-
-export const getNativeToolsDefinition = () => NATIVE_TOOLS

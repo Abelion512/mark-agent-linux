@@ -8,8 +8,6 @@ import Knowledge from './pages/Knowledge'
 import Guidebook from './pages/Guidebook'
 import RelationalGrowth from './pages/RelationalGrowth'
 import GoogleWorkspace from './pages/GoogleWorkspace'
-import Skills from './pages/Skills'
-import SkillEditor from './pages/SkillEditor'
 import Subagents from './pages/Subagents'
 import ChatStudio from './pages/ChatStudio'
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
@@ -166,15 +164,12 @@ const MainLayout = ({ isStandalone = false }) => {
               <Route path="/chat" element={<ChatStudio />} />
               <Route path="/config" element={<Configuration />} />
               <Route path="/plugins" element={<Plugins />} />
-              <Route path="/skills" element={<Skills />} />
-              <Route path="/skill-editor/:id" element={<SkillEditor />} />
               <Route path="/live-audio" element={<LiveAudio />} />
               <Route path="/telegram-bot" element={<TelegramBot />} />
               <Route path="/google-workspace" element={<GoogleWorkspace />} />
               <Route path="/knowledge" element={<Knowledge />} />
               <Route path="/guidebook" element={<Guidebook />} />
               <Route path="/relational" element={<RelationalGrowth />} />
-              <Route path="/subagents" element={<Subagents />} />
             </Routes>
           </div>
         </div>

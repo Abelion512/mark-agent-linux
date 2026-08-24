@@ -3,60 +3,41 @@ import { jsonrepair } from 'jsonrepair'
 
 export const fetchAI = async (
   messages,
-  signalOrOptions = null,
+  signal,
   isSmallTask = false,
   jsonSchema = null,
   configOverride = null
 ) => {
-  let signal = signalOrOptions
-  let smallTask = isSmallTask
-  let schema = jsonSchema
-  let override = configOverride
-
-  if (
-    signalOrOptions &&
-    typeof signalOrOptions === 'object' &&
-    !(signalOrOptions instanceof AbortSignal) &&
-    typeof signalOrOptions.addEventListener !== 'function'
-  ) {
-    signal = signalOrOptions.signal || null
-    smallTask = signalOrOptions.isSmallTask ?? isSmallTask
-    schema = signalOrOptions.jsonSchema ?? jsonSchema
-    override = signalOrOptions.configOverride ?? configOverride
-  }
-
   const currentConfig = await getAllConfig()
-  const conf = { ...(currentConfig[0] || {}), ...(override || {}) }
+  const conf = { ...(currentConfig[0] || {}), ...(configOverride || {}) }
 
   return new Promise((resolve, reject) => {
-    let hasResolved = false
+    let hasResolved = false;
 
     const onAbort = () => {
-      if (hasResolved) return
-      hasResolved = true
-      if (window.api && window.api.abortFetchAI) window.api.abortFetchAI()
-      const err = new Error('AbortError')
-      err.name = 'AbortError'
-      reject(err)
+      if (hasResolved) return;
+      hasResolved = true;
+      if (window.api.abortFetchAI) window.api.abortFetchAI();
+      const err = new Error('AbortError');
+      err.name = 'AbortError';
+      reject(err);
     }
 
     if (signal) {
-      if (signal.aborted) return onAbort()
-      if (typeof signal.addEventListener === 'function') {
-        signal.addEventListener('abort', onAbort)
-      }
+      if (signal.aborted) return onAbort();
+      signal.addEventListener('abort', onAbort);
     }
 
     if (import.meta.env?.DEV) {
-      console.groupCollapsed(`[fetchAI] ${smallTask ? 'Small' : 'Main'} task, ${messages.length} msgs`);
+      console.groupCollapsed(`[fetchAI] ${isSmallTask ? 'Small' : 'Main'} task, ${messages.length} msgs`);
       console.log(`%c~${Math.round((messages.reduce((s,m) => s + (m.content?.length||0), 0)) / 2.5)} est. tokens`, 'color: #ef4444');
       console.groupEnd();
     }
 
-    window.api.fetchAI({ messages, config: conf, isSmallTask: smallTask, jsonSchema: schema }).then(result => {
+    window.api.fetchAI({ messages, config: conf, isSmallTask, jsonSchema }).then(result => {
       if (hasResolved) return;
       hasResolved = true;
-      if (signal && typeof signal.removeEventListener === 'function') signal.removeEventListener('abort', onAbort);
+      if (signal) signal.removeEventListener('abort', onAbort);
 
       if (import.meta.env?.DEV && result?.error) {
         console.error('[fetchAI] Error:', result.error.message)

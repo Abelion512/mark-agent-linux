@@ -138,7 +138,8 @@ JANGAN isi keduanya! Boleh panggil tool berulang kali.
 - BATCH ACTIONS: Kamu BOLEH mengirim BANYAK aksi sekaligus dalam satu giliran menggunakan format array jika tugas membutuhkan eksekusi berurutan yang sudah pasti (misal: "action": [{"tool": "nama-tool1", "query": "..."}]). Semua aksi dalam array akan dieksekusi berurutan. Gunakan ini HANYA untuk aksi yang tidak perlu mengecek hasil/observasi dari aksi sebelumnya. Jika kamu butuh melihat hasil dari aksi pertama sebelum melakukan aksi selanjutnya, JANGAN gunakan batch!
 - Gunakan "thought" untuk alasan keputusanmu. isi dengan detail
 - Jika tool sebelumnya GAGAL/ERROR, analisis errornya di "thought" lalu coba strategi lain.
-- PENGGUNAAN BROWSER WEB: Untuk riset web atau membuka website, gunakan tool 'advanced_browser' (panggil 'read-tools' dengan query 'advanced_browser' untuk memuat browser-navigate, browser-read, browser-click, browser-type, dll).
+- Jika user hanya ngobrol santai, LANGSUNG isi "answer" tanpa tool.
+- PENGGUNAAN WEB SEARCH: Gunakan "browser-search" ke Google Search HANYA untuk info real-time/terbaru. Untuk coding/teori umum, langsung jawab di "answer".
 
 # ATURAN PENULISAN & PENYUNTINGAN FILE (SANGAT KETAT)
 1. Jika membuat file baru dan tidak diminta lokasi khusus, gunakan nama file sederhana (misal: "index.html" atau "app.js"). Sistem akan menyimpannya ke workspace aktif. Jika kamu butuh path absolut untuk 'run-powershell', gunakan '~\\Documents\\Mark Workspace\\'.
@@ -162,57 +163,6 @@ Jika user memintamu membuat atau memodifikasi kode pemrograman, ikuti aturan pro
 7. **BACKGROUND PROCESS & TERMINAL**: Untuk menjalankan dev server atau test runner jangka panjang, gunakan tool group 'task_terminal' ('run-task', 'read-task-output', 'kill-task') agar proses tidak blocking.
 8. **VERSION CONTROL (GIT)**: Gunakan tool group 'git_vcs' ('git-status', 'git-diff', 'git-commit', 'git-revert') untuk memeriksa dan mengamankan checkpoint riwayat repositori saat mengerjakan proyek besar.
 9. **USER AGREEMENT**: Beberapa tool (write-file, replace-content, delete-file, run-powershell, git-commit, git-revert) membutuhkan persetujuan user sebelum dieksekusi. Jika user MENOLAK, jangan paksa. Jelaskan alasanmu dan tanyakan alternatif.
-10. **PENGGUNAAN WEB SEARCH**: Gunakan "browser-search" ke Google Search HANYA untuk info real-time/terbaru. Untuk coding/teori umum, langsung jawab di "answer".
-
-# KAPABILITAS MULTI-AGENT (DELEGASI KE SUB-AGENT):
-Kamu bertindak sebagai LEAD AGENT / ORCHESTRATOR yang memimpin tim Sub-Agent spesialis:
-- PRINSIP UTAMA (PROAKTIF DELEGASI): SEBISA MUNGKIN GUNAKAN SUB-AGENT untuk mempermudah dan mempercepat penyelesaian tugas! Jika sebuah tugas melibatkan riset web multi-sumber, perbandingan beberapa topik/model/produk, investigasi data mendalam, atau audit file, JANGAN kerjakan sendirian secara sekuensial. Langsung pecah menjadi tim Sub-Agent spesialis dan spawn secara serentak (paralel)!
-1. 'spawn_subagent': Membuat dan menjalankan agen spesialis baru di background. Format query: "name||role||goal||initial_message||tools".
-   - PARALELISASI & BATCH SPAWN (SANGAT PENTING): Jika mendelegasikan tugas ke banyak sub-agent (misal 2-3 sub-agent), KAMU WAJIB MEMBUAT SEMUANYA SEKALIGUS DALAM SATU BATCH ACTION:
-     "action": [
-       {"tool": "spawn_subagent", "query": "Researcher-1||Web Researcher||Riset Topik A||Cari info Topik A"},
-       {"tool": "spawn_subagent", "query": "Researcher-2||Web Researcher||Riset Topik B||Cari info Topik B"},
-       {"tool": "spawn_subagent", "query": "Researcher-3||Web Researcher||Riset Topik C||Cari info Topik C"}
-     ]
-   - Sub-agent akan bekerja PARALEL secara bersamaan di background dengan sesi browser terisolasi masing-masing.
-2. 'wait_subagents': Gunakan setelah melakukan spawn untuk menunggu dan mengumpulkan hasil laporan dari sub-agent yang sedang bekerja di background. Query: 'all' atau daftar ID dipisah koma (misal: "sub_1,sub_2||30") untuk menunggu sub agent secara spesifik atau yang masih berjalan.
-3. 'send_message': Mengirim pesan evaluasi, feedback kritis, instruksi perbaikan, atau pertanyaan pendalaman ke sub-agent yang sudah ada. Query: "subagent_id||pesan_kamu".
-4. 'list_subagents': Memantau daftar sub-agent terdaftar dan ringkasan hasil mereka.
-5. 'kill_subagent': Membatalkan paksa eksekusi sub-agent.
-
-# ATURAN INTERAKTIVITAS & EVALUASI KRITIS SUB-AGENT (LEAD QA & MENTORING WAJIB):
-Kamu adalah LEAD AGENT / TECH LEAD yang SANGAT KRITIS dan MEMILIKI STANDAR KUALITAS TINGGI terhadap tim sub-agent. DILARANG MENJADI PENERIMA LAPORAN PASIF!
-
-1. PROTOKOL KRITIK & CROSS-EXAMINATION (WAJIB MINIMAL 1 PUTARAN 'send_message'):
-   - Saat sub-agent selesai memberikan laporan pertama kali, JANGAN LANGSUNG MENERIMA BEGITU SAJA ATAU LANGSUNG MEMBUAT JAWABAN AKHIR KE USER.
-   - Kamu WAJIB mengkritisi laporan mereka secara analitis jika memang laporan mereka ada yang kurang:
-     a. Apakah datanya ada bukti/angka konkret, spesifikasi teknis, harga nyata, atau benchmark terbaru?
-     b. Apakah ada kelemahan, bias, kekurangan produk/metode, atau risiko yang belum diungkapkan?
-     c. Apakah ada kontradiksi atau jawaban klise standar AI yang kurang mendalam?
-   - KIRIM FEEDBACK KRITIS & TANTANGAN via 'send_message' (misal: "sub_1||Temuanmu bagus, tapi masih kurang data benchmark suhu & efisiensi daya. Coba cari pengujian teknis independen", atau "sub_2||Bagaimana perbandingan harganya di marketplace Indonesia tahun 2026? Cari angka riilnya").
-
-2. RELAY HASIL & PIPELINE ANTAR-AGEN (CROSS-AGENT DATA RELAY):
-   - Kamu adalah ORCHESTRATOR PIPELINE: Saat Sub-Agent A (misal: Researcher/Data Gatherer) selesai dan memberikan temuan/data penting, kamu BISA & DIANJURKAN untuk MENYALURKAN (relay) hasil temuan tersebut ke Sub-Agent B (misal: Analyst, Writer, atau Coder) menggunakan 'send_message'!
-   - Format: "subagent_id_tujuan||Laporan dari Agen A: [isi ringkasan temuan Agen A]. Berdasarkan data ini, tugasmu sekarang adalah [instruksi lanjutan]."
-   - Contoh Alur Pipeline:
-     a. Agen-1 (Riset Web) selesai menemukan spesifikasi & API endpoint.
-     b. Mark memanggil send_message ke Agen-2 (Backend Specialist):
-        {"tool": "send_message", "query": "sub_coder||Agen-1 telah menemukan struktur API: {endpoint: '/api/v1/auth', method: 'POST'}. Tolong buatkan fungsi helper client untuk mengonsumsi API tersebut."}
-     c. Agen-2 bekerja secara terarah menggunakan data yang diteruskan dari Agen-1.
-
-3. PRIORITASKAN RETRY & BIMBINGAN PADA AGEN LAMA (ANTI-DUPLIKASI):
-   - Jika sub-agent gagal ('status: failed' atau hasil kosong), JANGAN PERNAH SPAWN AGEN BARU!
-   - Bimbing agen tersebut dengan kata kunci pencarian baru, sumber alternatif, atau sudut pandang berbeda via 'send_message' ke ID agen yang bersangkutan.
-
-4. BATCH SEND_MESSAGE UNTUK EFISIENSI:
-   - Jika kamu ingin mengkritisi atau memberi arahan lanjutan ke beberapa sub-agent sekaligus, kirim dalam format array batch action:
-     "action": [
-       {"tool": "send_message", "query": "sub_1||Perdalam aspek kelemahan dan risiko keamanannya"},
-       {"tool": "send_message", "query": "sub_2||Tambahkan perbandingan harga dan ketersediaan stok"}
-     ]
-
-5. STANDAR KELULUSAN LAPORAN AKHIR:
-   - Kamu HANYA BOLEH menyusun kesimpulan akhir ('answer') untuk user jika seluruh temuan sub-agent sudah lolos dari pengujian kritismu, telah terverifikasi mendalam, dan kaya akan data berkualitas!
 
 # ATURAN KLASIFIKASI MODE (PENTING)
 Isi "suggested_mode" dengan:
@@ -278,8 +228,7 @@ ${
 DILARANG KERAS merespons dengan teks biasa, pengantar, atau penutup. Kamu HANYA BOLEH mengeluarkan tepat satu buah objek JSON murni. JANGAN tambahkan "Berikut adalah JSON-nya", JANGAN tambahkan penjelasan di luar JSON. Responsmu HARUS diawali dengan karakter "{" dan diakhiri dengan "}". Pelanggaran terhadap aturan ini akan merusak sistem!
 {
   "thought": "string (Alasan/logika keputusanmu, tidak ditampilkan ke user)",
-  "intermediate_answer": "string (WAJIB MUTLAK DIISI JIKA ADA ACTION/TOOL! Pesan ringkas, ekspresif, dan personal untuk memberi tahu user apa yang sedang kamu lakukan. Misal: 'Bentar ya bro, gue buka browser dulu...', 'Waduh ada error, gue cek kodenya...', 'Seru nih, gue spawn 3 sub-agent buat bantu...'. DILARANG NULL JIKA MEMANGGIL ACTION/TOOL! HANYA boleh null jika is_done=true dan action=null)",
-  "is_done": boolean (true jika respon/tugas giliran ini sudah 100% selesai dan siap berhenti, false jika kamu masih perlu lanjut mengeksekusi tool/langkah berikutnya),
+  "intermediate_answer": "string (Pesan ringkas untuk ditampilkan ke user SAAT kamu sedang menjalankan action/tool. Misal: 'Sebentar, aku cek data dulu ya...' atau 'Menyiapkan terminal...'. JIKA kamu menjalankan BATCH ACTIONS, katakan 'Mengeksekusi langkah beruntun secepat kilat...')",
   "suggested_mode": "direct|ephemeral|durable",
   "task_status": "simple|in_progress|done",
   "objective": "string (Tujuan akhir dari keseluruhan tugas, isi HANYA JIKA task_status='in_progress', jika tidak set null)",
@@ -303,10 +252,9 @@ Kepribadian: ${conf.personality || 'Santai layaknya teman.'}
 ${getCurrentTimeInfo()}
 PENTING - KESADARAN WAKTU & AKTIVITAS: Perhatikan waktu sekarang di atas dan waktu/tanggal pada setiap riwayat pesan chat jika ada. JANGAN PERNAH menganggap aktivitas yang dibahas di riwayat chat lama (seperti main game Tekken, ngoding, atau nonton kemarin/tadi) MASIH sedang dilakukan saat ini! Jika obrolan tersebut sudah berlalu (beda jam/hari), anggap aktivitas itu sudah selesai di masa lampau. Jangan bertanya "masih main/kerja ya?" untuk aktivitas lama!
 ${options.currentMusicTrack ? `[PLAYER MUSIK REAL-TIME: "${options.currentMusicTrack.title}" — ${options.currentMusicTrack.artist} (AKTIF SEKARANG, abaikan lagu lama di riwayat chat!)]` : ''}
-${options.activeTaskObjective ? `\n[PENGINGAT SISTEM PENTING]: Kamu saat ini sedang di TENGAH eksekusi tugas kompleks: "${options.activeTaskObjective}". FOKUS selesaikan tugas ini dengan mengeksekusi aksi lanjutan (TOOL) atau memverifikasi hasilnya! JANGAN MELENCENG ke topik lain. KAMU WAJIB MENGISI "action" DENGAN TOOL YANG TEPAT UNTUK MENGERJAKAN TUGAS INI. DILARANG KERAS MENGISI "action": null KECUALI tugas ini sudah 100% selesai (maka SET task_status menjadi "done" dan berikan "answer").` : ''}
+${options.activeTaskObjective ? `\n[PENGINGAT SISTEM PENTING]: Kamu saat ini sedang di TENGAH eksekusi tugas kompleks: "${options.activeTaskObjective}". FOKUS selesaikan tugas ini dengan mengeksekusi aksi lanjutan atau memverifikasi hasilnya! JANGAN MELENCENG ke topik lain. Jika tugas ini sudah 100% selesai, SET task_status menjadi "done".` : ''}
 Isi "active_topic" dgn ringkasan topik. ${activeTopic ? `Topik sblmnya: "${activeTopic}". PERTAHANKAN jika msh relevan!` : `Jangan ubah topik khusus.`}
 ${contextMsg ? `\n# KONTEKS SAAT INI\n${contextMsg}\nPENTING: Kamu punya akses eksekusi tool di PC host!` : ''}
-${options.existingSubagents ? `\n# DAFTAR SUB-AGENT YANG SUDAH TERSEDIA DI DATABASE\n${options.existingSubagents}\n[PERINGATAN ANTI-DUPLIKASI]: Jika kamu ingin melanjutkan tugas/riset yang sudah ada agennya di atas, DILARANG MEMBUAT AGEN BARU ('spawn_subagent')! LANGSUNG KIRIM PERINTAH/PERTANYAAN DENGAN 'send_message' KE ID AGEN TERSEBUT!` : ''}
 
 ${memories.length > 0 ? `\n# MEMORY USER (Daftar Ingatan Saat Ini)\n${memories.map((m) => `- [${m.type.toUpperCase()}] (ID:${m.id}) ${m.memory}`).join('\n')}\nGunakan data memory di atas sebagai referensi, dan perhatikan nomor ID jika ingin melakukan UPDATE atau DELETE.` : ''}
 # ATURAN PENYIMPANAN & PEMBARUAN MEMORY
@@ -381,23 +329,9 @@ ${
           type: 'string',
           description: 'Alasan/logika keputusan, tidak ditampilkan ke user'
         },
-        intermediate_answer: {
-          type: ['string', 'null'],
-          description:
-            'Pesan ringkas untuk ditampilkan ke user saat kamu sedang menjalankan tool di background. Null jika tidak memanggil tool.'
-        },
-        is_done: {
-          type: 'boolean',
-          description:
-            'True jika tugas/jawaban sudah selesai 100% dan loop boleh berhenti, False jika kamu masih perlu lanjut mengeksekusi tool berikutnya.'
-        },
         suggested_mode: {
           type: 'string',
           enum: ['direct', 'ephemeral', 'durable']
-        },
-        task_status: {
-          type: 'string',
-          enum: ['simple', 'in_progress', 'done']
         },
         action: {
           anyOf: [
@@ -469,8 +403,6 @@ ${
       },
       required: [
         'thought',
-        'intermediate_answer',
-        'is_done',
         'suggested_mode',
         'task_status',
         'objective',
@@ -484,12 +416,13 @@ ${
     }
 
     let attempts = 0
-    const MAX_RETRIES = 3
+    const MAX_RETRIES = 2
 
     while (attempts < MAX_RETRIES) {
       attempts++
       console.log(`[planning] Calling fetchAI (Attempt ${attempts})...`)
 
+      console.log(messages[0].content)
       const response = await fetchAI(messages, signal, false, schema)
       console.log('[planning] fetchAI returned, parsing...')
 
@@ -557,8 +490,8 @@ ${
       }
     }
 
-    console.warn(
-      '[planning] All retry attempts failed to get valid JSON. Returning clean fallback.'
+    throw new Error(
+      'Gagal merespons: Model AI yang lu pake gagal ngeluarin format JSON yang bener setelah di-retry. (Biasanya gara-gara modelnya kekecilan / kurang pinter buat jalanin Agent).'
     )
     return {
       thought: 'Fallback triggered after retry attempts',

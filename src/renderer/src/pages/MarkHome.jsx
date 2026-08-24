@@ -53,8 +53,6 @@ const MarkHome = () => {
   const [isMaxWindow, setIsMaxWindow] = useState(false)
   const [ttsIntensity, setTtsIntensity] = useState(0)
   const [workspaceRoot, setWorkspaceRoot] = useState(null)
-  const [showClock, setShowClock] = useState(false)
-  const clockTimerRef = useRef(null)
 
   useEffect(() => {
     db.sessions
@@ -74,6 +72,9 @@ const MarkHome = () => {
       }
     }
   }
+
+  const [showClock, setShowClock] = useState(false)
+  const clockTimerRef = useRef(null)
 
   const handleOrbClick = () => {
     setShowClock(prev => {
@@ -195,8 +196,7 @@ const MarkHome = () => {
           setCurrentResponse({
             text: lastItem.content || 'Memproses instruksi...',
             type: 'short',
-            isThinking: true,
-            mood: lastItem.mood || 'neutral'
+            isThinking: true
           })
         } else {
           // Final response

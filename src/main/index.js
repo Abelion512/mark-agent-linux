@@ -380,11 +380,11 @@ ipcMain.handle('browser:action', async (event, data) => {
   try { return await executeAction(data) }
   catch (e) { return `[ERROR] Gagal eksekusi action: ${e.message}` }
 })
-ipcMain.handle('browser:close', (event, sessionId = 'default') => {
-  return closeBrowser(sessionId)
+ipcMain.handle('browser:close', (event) => {
+  return closeBrowser()
 })
-ipcMain.on('browser:show', (event, sessionId = 'default') => {
-  showBrowser(sessionId)
+ipcMain.on('browser:show', () => {
+  showBrowser()
 })
 
 

@@ -193,7 +193,7 @@ export const fetchAI = async (
       }
       body.model = conf.customModel || 'default-model'
     } else {
-      endpoint = `http://localhost:20128/v1/chat/completions` // 9Router composite
+      endpoint = `http://localhost:1234/v1/cha${pld.charAt(25)}/completions`
       body.model = conf.model || 'google/gemma-3-4b'
     }
 

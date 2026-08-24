@@ -58,14 +58,6 @@ const api = {
   sendTgAgentExecutionDone: (data) => ipcRenderer.send('tg:agent-execution-done', data),
   tgSendMessage: (chatId, text) => ipcRenderer.invoke('tg:send-message', { chatId, text }),
   tgBroadcastToAdmins: (text) => ipcRenderer.send('tg:broadcast-to-admins', text),
-  onTgCommandAccept: (cb) => {
-    ipcRenderer.removeAllListeners('tg:command-accept')
-    ipcRenderer.on('tg:command-accept', (_, data) => cb(data))
-  },
-  onTgCommandReject: (cb) => {
-    ipcRenderer.removeAllListeners('tg:command-reject')
-    ipcRenderer.on('tg:command-reject', (_, data) => cb(data))
-  },
   
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),
@@ -95,18 +87,6 @@ const api = {
   reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
   createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
   togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
-  tgTakeScreenshot: (chatId) => ipcRenderer.send('tg:trigger-screenshot', { chatId }),
-  tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
-  tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),
-  getPlugins: () => ipcRenderer.invoke('plugin:get-list'),
-  executeNativeTool: (toolName, query, config) => ipcRenderer.invoke('native-tool:execute', toolName, query, config),
-  checkToolApproval: (toolName, query) => ipcRenderer.invoke('native-tool:needs-approval', toolName, query),
-  executePlugin: (action, query) => ipcRenderer.invoke('plugin:execute', action, query),
-  openPluginFolder: () => ipcRenderer.invoke('plugin:open-folder'),
-  openSpecificFolder: (path) => ipcRenderer.invoke('plugin:open-specific-folder', path),
-  reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
-  createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
-  togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
   deletePlugin: (name) => ipcRenderer.invoke('plugin:delete', name),
   removeTgListeners: () => {
     ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking']
@@ -117,12 +97,12 @@ const api = {
   browserNavigate: (url) => ipcRenderer.invoke('browser:navigate', url),
   browserReadDom: () => ipcRenderer.invoke('browser:read-dom'),
   browserAction: (data) => ipcRenderer.invoke('browser:action', data),
-  browserClose: (sessionId = 'default') => ipcRenderer.invoke('browser:close', sessionId),
+  browserClose: () => ipcRenderer.invoke('browser:close'),
   onBrowserPreview: (cb) => {
     ipcRenderer.removeAllListeners('browser:preview')
     ipcRenderer.on('browser:preview', (_, data) => cb(data))
   },
-  showBrowserWindow: (sessionId = 'default') => ipcRenderer.send('browser:show', sessionId),
+  showBrowserWindow: () => ipcRenderer.send('browser:show'),
   osRead: () => ipcRenderer.invoke('os:read'),
   osClick: (query) => ipcRenderer.invoke('os:click', query),
   osType: (query) => ipcRenderer.invoke('os:type', query),

@@ -14,7 +14,6 @@ import {
   FaFolder
 } from 'react-icons/fa'
 import ConfirmModal from './ConfirmModal'
-import { NATIVE_SKILLS } from './native-skills'
 
 const EMOJIS = [
   '😂',
@@ -240,55 +239,8 @@ const InputBar = ({
     }
   }
 
-  const handleFormSubmit = async () => {
+  const handleFormSubmit = () => {
     let finalPrompt = inputText
-    let userText = inputText
-    const skillMatches = inputText.match(/(?:\s|^)\/([a-zA-Z0-9_-]+)/g)
-
-    if (skillMatches && skillMatches.length > 0 && window.api && window.api.readSkill) {
-      let combinedSkillsContent = ''
-      const loadedSkills = []
-
-      for (const match of skillMatches) {
-        const skillName = match.trim().substring(1) // Hilangkan spasi dan '/'
-
-        // INTERCEPT BUILT-IN SKILLS
-        const nativeSkill = NATIVE_SKILLS.find(s => s.name.toLowerCase() === skillName.toLowerCase())
-        if (nativeSkill) {
-          combinedSkillsContent += `\n\n--- SKILL BAWAAN: ${skillName.toUpperCase()} ---\n${nativeSkill.content}`
-          loadedSkills.push(skillName)
-          userText = userText.replace(match, '')
-          continue
-        }
-
-        try {
-          const skillData = await window.api.readSkill(skillName)
-          if (skillData) {
-            // Support both old string format and new object format
-            const content = typeof skillData === 'string' ? skillData : skillData.content
-            const basePath = typeof skillData === 'object' && skillData.basePath ? skillData.basePath : ''
-
-            combinedSkillsContent += `\n\n--- SKILL EXTERNAL: ${skillName.toUpperCase()} ---\n`
-            if (basePath) {
-               combinedSkillsContent += `[LOKASI ABSOLUT SKILL INI (Base Path): ${basePath}]\n\n`
-            }
-            combinedSkillsContent += `${content}`
-
-            loadedSkills.push(skillName)
-            userText = userText.replace(match, '') // Hapus slash command dari teks yang dilihat AI
-          }
-        } catch (e) {
-          console.error('[InputBar] Failed to read skill:', skillName, e)
-        }
-      }
-
-      userText = userText.trim()
-
-      if (loadedSkills.length > 0) {
-        finalPrompt = `${userText}\n\n=== SYSTEM INSTRUCTION: SKILL DIAKTIFKAN ===\nBerikut adalah instruksi skill khusus yang WAJIB kamu kombinasikan dan ikuti secara ketat untuk mengeksekusi permintaan di atas. Jika skill memiliki referensi sub-file, kamu BISA membacanya menggunakan tool "read-file" dengan menggabungkan "LOKASI ABSOLUT" di bawah ini beserta path relatifnya:\n${combinedSkillsContent}\n=========================================`
-      }
-    }
-
     if (attachedFiles.length > 0) {
       const filePathsText = attachedFiles.map((f) => `"${f.path}"`).join(', ')
       if (finalPrompt.trim()) {
@@ -321,7 +273,7 @@ const InputBar = ({
   const handleTextChange = async (e) => {
     const val = e.target.value
     setInputText(val)
-
+    
     if (val.startsWith('/')) {
       const currentSkills = (skills && skills.length > 0) ? skills : await reloadSkills()
       const query = val.slice(1).toLowerCase()
@@ -550,40 +502,20 @@ const InputBar = ({
           )}
         </div>
 
-        {/* Skill Autocomplete Dropdown */}
-        {showSkillList && filteredSkills.length > 0 && (
-          <div className="absolute bottom-full left-12 mb-2 w-[400px] bg-base-300/95 backdrop-blur-xl border border-[var(--glass-border)] rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-50 animate-fade-in">
-            <div className="p-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/5">
-              Available Skills
-            </div>
-            <div className="max-h-64 overflow-y-auto no-scrollbar">
-              {filteredSkills.map((skillObj, idx) => (
-                <div
-                  key={skillObj.name}
-                  onClick={() => selectSkill(skillObj)}
-                  className={`px-4 py-3 cursor-pointer transition-colors flex flex-col gap-1 border-b border-white/5 last:border-0 ${
-                    idx === selectedSkillIndex
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'hover:bg-white/10 text-gray-300'
-                  }`}
-                >
-                  <div className="font-semibold text-sm">/{skillObj.name}</div>
-                  <div className={`text-xs ${idx === selectedSkillIndex ? 'text-emerald-400/80' : 'text-gray-400'} line-clamp-2`}>
-                    {skillObj.description}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Input Textarea */}
         <textarea
           ref={inputRef}
           rows={1}
           value={inputText}
-          onChange={handleTextChange}
-          onKeyDown={handleKeyDown}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (!isSendDisabled) {
+                handleFormSubmit()
+              }
+            }
+          }}
           placeholder={
             isLoading
               ? 'Beri intervensi ke Mark...'
