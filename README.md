@@ -12,6 +12,8 @@
 ## Fitur Unggulan
 
 - **Autonomous Multi-Agent Sub-Agent Engine (Mission Control):** Mark bertindak sebagai *Lead Agent* yang mampu memecah tugas kompleks dan mendelegasikannya ke banyak **Sub-Agent spesialis** yang bekerja secara paralel di latar belakang. Dilengkapi dengan antarmuka **Mission Control** dan **Live Sub-Agent Intercom HUD** yang menampilkan pemikiran mendalam (*Reasoning Analisis*), langkah eksekusi berkala (*Execution Steps*), dan laporan hasil akhir dengan dukungan penuh Markdown & Syntax Highlighting.
+- **Persistent 3-Layer Memory & Real-Time Turn-Pair Vector Engine:** Mengubah sifat *stateless* LLM menjadi arsitektur **Memory Persistence** sejati (Episodic, Semantic, dan Procedural). Seluruh pasangan tanya-jawab (Turn Pairs) disimpan secara permanen di database lokal (Dexie / IndexedDB) dan diindeks secara *real-time* ke mesin pencari hybrid `@orama/orama` menggunakan model lokal 384-dimensi via **Dedicated Web Worker** tanpa membebani UI thread.
+- **Universal Zero-Hallucination Policy & Strict Groundedness:** Menerapkan kebijakan anti-halusinasi ketat di seluruh ekosistem Mark. Jika data riwayat percakapan lama, berkas kode, atau fakta dokumen tidak ditemukan, Mark wajib jujur mengakuinya dan dilarang keras mengarang informasi, menambah-nambahkan poin fiktif (*anti-extrapolation*), atau berpura-pura mengingat hal yang belum pernah dibahas.
 - **Multi-Session Isolated Browser Automation:** Sistem browser Chromium fisik Mark kini mendukung sesi independen tanpa batas. Beberapa Sub-Agent dapat melakukan riset web, menavigasi Google, mengekstrak data, dan mengisi form secara bersamaan tanpa saling mengganggu, didukung oleh **Multi-Card Holo Preview** yang menampilkan status visual tiap sesi di layar desktop.
 - **Dynamic Agentic Planning (ReAct Loop):** Mengganti sistem penjawab statis dengan arsitektur penalaran cerdas. Mark mampu memecah masalah, memikirkan strategi, menggunakan *tools* secara otonom berulang kali, dan mengevaluasi hasilnya sebelum memberikan jawaban akhir yang komprehensif.
 - **Agent Task Workflows (Durable Tasks):** Untuk pekerjaan multi-langkah yang panjang, router AI memilih mode `durable`, memecah pekerjaan ke dalam *milestone*, lalu mengeksekusinya bertahap. Setiap langkah divalidasi, di-checkpoint, dapat di-retry, dan menghasilkan artifact resmi di `Documents/Mark Tasks/<task-id>/`.
@@ -27,6 +29,7 @@
 ## Kemampuan Utama (Tools)
 
 - **Autonomous Multi-Agent Tools:** `spawn_subagent`, `wait_subagents`, `send_message`, `list_subagents`, `kill_subagent`.
+- **Memory & Recall Tools (`memory-search`):** Pencarian semantik memori, preferensi, catatan teknis, dan pasangan percakapan asli (Turn Pairs) dengan *similarity threshold* dinamis (`keyword||threshold||limit`, default threshold `0.5`, limit `5`).
 - **Multi-Session Web Browsing (`browser-*`):** `browser-navigate`, `browser-read`, `browser-click`, `browser-type`, `browser-scroll`, `browser-extract`, `browser-ask-user`, `browser-close`.
 - **Desktop Automation (`os-*`):** `os-read`, `os-click`, `os-type`, `os-key`, `os-scroll`, `os-open`, `os-list-windows`, `os-focus-window`, `os-ask`.
 - **Native File Handling & PowerShell:** `read-file`, `write-file`, `replace-lines`, `delete-file`, `list-dir`, `grep-search`, `run-powershell`.
@@ -35,6 +38,22 @@
 - **Perangkum YouTube & YouTube Music:** Transkripsi kilat video YouTube dan pemutar YouTube Music tanpa iklan dengan *ad-blaster*.
 - **Mark Skills System:** Kustomisasi kepribadian dan kapabilitas menggunakan instruksi Markdown (`.md`) dengan pemanggilan slash command (`/nama-skill`).
 - **Sistem Plugin Kustom:** Penambahan modul fungsi Node.js baru langsung dari antarmuka pengguna dengan Monaco Editor.
+
+## Arsitektur Memory Persistence & Integritas Fakta
+
+Arsitektur memori Mark dirancang untuk memberikan kontinuitas ingatan jangka panjang (*Long-Term Memory Persistence*) secara lokal tanpa bergantung pada cloud:
+
+1. **Episodic Memory (Turn-Pair Vector Index)**:
+   * Setiap sesi percakapan dipecah ke dalam unit dialog utuh (Pertanyaan Pengguna + Jawaban AI).
+   * Dihitung embedding-nya (vektor 384-dimensi) di latar belakang menggunakan **Dedicated Web Worker** (`Transformers.js` / `MiniLM-L12-v2`).
+   * Disimpan secara persisten di IndexedDB/Dexie dan dimuat ke `@orama/orama` in-memory vector index untuk pencarian semantik hybrid (BM25 + Cosine Similarity).
+2. **Semantic & Core Memory (`profile`, `preference`, `notes`)**:
+   * Menyimpan fakta identitas pengguna, preferensi gaya bicara, dan catatan eksplisit secara persisten.
+   * Dikelola dan dirampingkan secara otomatis oleh *Hippocampus Memory Groomer*.
+3. **Procedural Memory (Learned Skills)**:
+   * Menyimpan alur kerja teknis dan trik solusi yang berhasil dipelajari Mark saat memecahkan masalah kompleks (*Self-Improving Skills*).
+4. **Universal Zero-Hallucination & Groundedness**:
+   * Sistem prompt dan ReAct loop Mark dibentengi oleh aturan integritas fakta ketat. Mark dilarang mengarang fakta jika riwayat obrolan atau data file tidak ditemukan di memori, menjamin hasil penarikan informasi yang akurat dan dapat dipercaya.
 
 ## Arsitektur Proyek
 
