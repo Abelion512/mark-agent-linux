@@ -10,38 +10,21 @@ import {
   globalShortcut,
   nativeImage,
   Notification,
-  desktopCapturer,
-  screen
+  desktopCapturer
 } from 'electron'
+import { join } from 'path'
 import path from 'path'
 import fs from 'fs'
-import { electronApp, is } from '@electron-toolkit/utils'
+import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.ico?asset'
-import iconPng from '../../resources/icon.png?asset'
 import { fetchTranscript } from 'youtube-transcript-plus'
+import { url } from 'inspector'
 import yts from 'yt-search'
 import YTMusic from 'ytmusic-api'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
 import { startTracking, getBuffer, flushBuffer } from './awareness/window-tracker.js'
-import { NATIVE_TOOLS, _getOSMeta } from './node-tools.js'
-import {
-  startTelegramBot,
-  stopTelegramBot,
-  getConnectionStatus,
-  uiMessageHistory
-} from './telegram/telegram-service.js'
-
-import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
-import {
-  connectGoogle,
-  disconnectGoogle,
-  getGoogleStatus
-} from './google/google-service.js'
-import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
-import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
-import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
-
-// Matikan semua optimasi throttling Chromium agar background task Telegram tidak tertidur
+import { NATIVE_TOOLS } from './native-tools.js'
+// Matikan semua optimasi throttling Chromium agar webview WhatsApp tidak tertidur di hasil Build (.exe)
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
@@ -66,13 +49,10 @@ function createWindow() {
     width: 900,
     height: 670,
     show: false,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
     autoHideMenuBar: true,
     icon: icon,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.js'),
       webviewTag: true,
       sandbox: false,
       webSecurity: false,
@@ -86,6 +66,23 @@ function createWindow() {
     // mainWindow.webContents.openDevTools()
   })
 
+  // Broadcast window state to renderer (orb easter-egg guard)
+  const sendWindowState = () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window-state', {
+        isMaximized: mainWindow.isMaximized(),
+        isFullScreen: mainWindow.isFullScreen()
+      })
+    }
+  }
+  ;['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen'].forEach(ev =>
+    mainWindow.on(ev, sendWindowState)
+  )
+  ipcMain.handle('window:get-state', () => ({
+    isMaximized: mainWindow.isMaximized(),
+    isFullScreen: mainWindow.isFullScreen()
+  }))
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     console.log('openlink: ' + details.url)
@@ -97,7 +94,7 @@ function createWindow() {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   // Sembunyikan window saat tombol close diklik (masuk tray)
@@ -105,60 +102,6 @@ function createWindow() {
     if (!isQuiting) {
       event.preventDefault()
       mainWindow.hide()
-    }
-  })
-
-  mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window-maximized', true)
-  })
-
-  mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window-maximized', false)
-  })
-
-  mainWindow.on('resize', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('window-maximized', mainWindow.isMaximized())
-    }
-  })
-
-  // Custom Aero Snap Logic
-  mainWindow.on('moved', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isMaximized()) return
-
-    const bounds = mainWindow.getBounds()
-    const currentScreen = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y })
-    const workArea = currentScreen.workArea
-
-    const THRESHOLD = 15
-
-    // Snap to Top -> Maximize
-    if (bounds.y <= workArea.y + THRESHOLD) {
-      mainWindow.maximize()
-      return
-    }
-
-    // Snap to Left -> Half screen left
-    if (bounds.x <= workArea.x + THRESHOLD) {
-      mainWindow.setBounds({
-        x: workArea.x,
-        y: workArea.y,
-        width: Math.floor(workArea.width / 2),
-        height: workArea.height
-      })
-      return
-    }
-
-    // Snap to Right -> Half screen right
-    if (bounds.x + bounds.width >= workArea.x + workArea.width - THRESHOLD) {
-      mainWindow.setBounds({
-        x: workArea.x + Math.floor(workArea.width / 2),
-        y: workArea.y,
-        width: Math.floor(workArea.width / 2),
-        height: workArea.height
-      })
-      return
     }
   })
 }
@@ -171,53 +114,18 @@ ipcMain.on('remote-music-command', (event, command, payload) => {
   }
 })
 
-ipcMain.on('window-minimize', () => {
-  if (mainWindow) mainWindow.minimize()
-})
-
-ipcMain.on('window-maximize', () => {
-  if (mainWindow) {
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow.maximize()
-    }
-  }
-})
-
-ipcMain.on('window-close', () => {
-  if (mainWindow) mainWindow.close()
-})
-
+import { fetchAI, setGlobalConfig, abortAllFetches } from './ai-bridge.js'
 
 ipcMain.on('sync-config', (event, config) => {
   setGlobalConfig(config)
-  if (config?.tgBotToken && config.tgBotToken.trim() && getConnectionStatus().status === 'disconnected') {
-    console.log('[Main] Auto-starting Telegram Bot from synced config...')
-    startTelegramBot(config.tgBotToken.trim(), mainWindow)
-  }
-  
-  // Re-register global shortcut dynamically
-  const shortcut = config?.shortcutKey || 'CommandOrControl+Alt+M'
-  globalShortcut.unregisterAll()
-  try {
-    globalShortcut.register(shortcut, () => {
-      if (mainWindow) {
-        mainWindow.show()
-        mainWindow.webContents.send('trigger-live-audio')
-      }
-    })
-  } catch (err) {
-    console.error('[Main] Failed to register shortcut:', err)
-  }
 })
 
 // --- NATIVE TOOLS IPC ---
-ipcMain.handle('native-tool:execute', async (event, toolName, query, config) => {
+ipcMain.handle('native-tool:execute', async (event, toolName, query) => {
   const tool = NATIVE_TOOLS[toolName]
   if (!tool) return { success: false, error: 'Tool tidak ditemukan' }
   try {
-    const result = await tool.handler(query, config)
+    const result = await tool.handler(query)
     return { success: true, data: result }
   } catch (err) {
     return { success: false, error: err.message }
@@ -252,34 +160,6 @@ ipcMain.on('ai:abort-fetch', () => {
   abortAllFetches()
 })
 
-// --- GOOGLE WORKSPACE IPC ---
-ipcMain.handle('google:connect', async (event, clientId, clientSecret) => {
-  try {
-    await connectGoogle(clientId, clientSecret)
-    return { success: true }
-  } catch (err) {
-    return { success: false, error: err.message }
-  }
-})
-
-ipcMain.handle('google:disconnect', async () => {
-  try {
-    await disconnectGoogle()
-    return { success: true }
-  } catch (err) {
-    return { success: false, error: err.message }
-  }
-})
-
-ipcMain.handle('google:status', async () => {
-  try {
-    const isConnected = await getGoogleStatus()
-    return { isConnected }
-  } catch (err) {
-    return { isConnected: false }
-  }
-})
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -304,10 +184,18 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
   }
 })
 
-ipcMain.on('tg:start', (event, token) => startTelegramBot(token, mainWindow))
-ipcMain.on('tg:stop', () => stopTelegramBot())
-ipcMain.handle('tg:get-status', () => getConnectionStatus())
-ipcMain.handle('tg:get-history', () => uiMessageHistory)
+import {
+  startWhatsappBot,
+  stopWhatsappBot,
+  getConnectionStatus,
+  logoutWhatsapp,
+  uiMessageHistory
+} from './whatsapp/baileys-service.js'
+
+ipcMain.on('wa:start', () => startWhatsappBot(mainWindow))
+ipcMain.on('wa:stop', () => stopWhatsappBot())
+ipcMain.handle('wa:get-status', () => getConnectionStatus())
+ipcMain.handle('wa:get-history', () => uiMessageHistory)
 
 ipcMain.handle('parse-document', async (event, arrayBuffer, isDocx) => {
   try {
@@ -327,6 +215,7 @@ ipcMain.handle('parse-document', async (event, arrayBuffer, isDocx) => {
     throw new Error('Gagal mem-parsing dokumen: ' + error.message)
   }
 })
+ipcMain.handle('wa:logout', async () => await logoutWhatsapp())
 
 ipcMain.handle('dialog:open-file', async () => {
   const result = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] })
@@ -351,6 +240,8 @@ ipcMain.handle('save-temp-file', async (event, arrayBuffer, fileName) => {
   }
 })
 
+import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
+import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 
 // Browser Automation IPCs
 ipcMain.handle('browser:navigate', async (event, url) => {
@@ -372,6 +263,7 @@ ipcMain.on('browser:show', () => {
   showBrowser()
 })
 
+import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
 
 // PC Automation IPCs
 ipcMain.handle('os:read', async () => await readDesktop())
@@ -383,7 +275,6 @@ ipcMain.handle('os:open', async (event, target) => await openApp(target))
 ipcMain.handle('os:list-windows', async () => await listWindows())
 ipcMain.handle('os:focus-window', async (event, title) => await focusWindow(title))
 ipcMain.handle('os:ask-user', async (event, query) => await askUserPC(query))
-ipcMain.handle('app:get-documents-path', () => app.getPath('documents'))
 
 app.whenReady().then(async () => {
   // Set app user model id for windows
@@ -421,8 +312,11 @@ app.whenReady().then(async () => {
 
   createWindow()
 
+  // Langsung jalankan WhatsApp Bot di background secara rahasia (Tray Mode) saat aplikasi utama dibuka
+  startWhatsappBot(mainWindow)
+
   // Setup System Tray
-  // Ekstrak icon 16x16 langsung dari file executable aplikasi.
+  // Cara paling aman dan ampuh di Windows: Ekstrak icon 16x16 langsung dari file .exe aplikasi!
   // Ini menghindari semua masalah pathing ASAR dan masalah format .ico yang rusak.
   app
     .getFileIcon(process.execPath, { size: 'small' })
@@ -433,16 +327,16 @@ app.whenReady().then(async () => {
       const contextMenu = Menu.buildFromTemplate([
         { label: 'Buka Mark', click: () => mainWindow.show() },
         {
-          label: 'Telegram Bot',
+          label: 'Monitor WhatsApp',
           click: () => {
             mainWindow.show()
-            mainWindow.webContents.send('navigate', '/telegram-bot')
+            mainWindow.webContents.send('navigate', '/whatsapp-bot')
           }
         },
         {
-          label: 'Matikan Telegram Bot',
+          label: 'Matikan WhatsApp Bot',
           click: () => {
-            stopTelegramBot()
+            stopWhatsappBot()
           }
         },
         {
@@ -466,15 +360,16 @@ app.whenReady().then(async () => {
     })
     .catch(() => {
       // Fallback jika gagal (misal saat masih mode npm run dev)
-      tray = new Tray(nativeImage.createFromPath(iconPng).resize({ width: 22, height: 22 }))
+      tray = new Tray(nativeImage.createFromPath(icon).resize({ width: 16, height: 16 }))
       tray.setToolTip('Mark AI Assistant')
     })
-  // Global Shortcut (Toggle)
+
+  // Global Shortcut (One-way)
   // Menggunakan Ctrl+Alt+M untuk menghindari bentrok dengan shortcut OS atau aplikasi lain (misal: Discord/AMD)
   globalShortcut.register('CommandOrControl+Alt+M', () => {
     if (mainWindow) {
       mainWindow.show()
-      mainWindow.webContents.send('trigger-live-audio', 'toggle')
+      mainWindow.webContents.send('trigger-live-audio')
     }
   })
 
@@ -632,12 +527,6 @@ app.on('will-quit', () => {
 
 app.on('window-all-closed', () => {
   // Abaikan event ini agar aplikasi tetap hidup di background tray
-})
-
-app.on('before-quit', () => {
-  // Pastikan isQuiting = true agar window close event tidak memunculkan tray-only hide
-  isQuiting = true
-  if (tray) tray.destroy()
 })
 
 // In this file you can include the rest of your app's specific main process

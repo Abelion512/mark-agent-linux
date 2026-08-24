@@ -46,18 +46,39 @@ const MarkHome = () => {
   const [currentResponse, setCurrentResponse] = useState(null)
   const [showMusicWidget, setShowMusicWidget] = useState(false)
   const [isMusicAnimatingOut, setIsMusicAnimatingOut] = useState(false)
-  const [isMaxWindow, setIsMaxWindow] = useState(false)
+  const [winState, setWinState] = useState({ isMaximized: false, isFullScreen: false })
   const [ttsIntensity, setTtsIntensity] = useState(0)
-  const [showClock, setShowClock] = useState(false)
-  const clockTimerRef = useRef(null)
+  const [easterEgg, setEasterEgg] = useState(null)
+  const eggTimerRef = useRef(null)
+
+  // Pool untuk maximize/restored — jam eksklusif fullscreen
+  // ponytail: battery pakai getBattery() bila ada; di desktop tanpa API → selalu "AC"
+  const EGG_POOL = ['date', 'quote', 'mood', 'matrix']
+
+  const MARK_QUOTES = [
+    'Aku masih di sini. Selalu.',
+    'Sistem hangat. Pikiran jernih.',
+    'Kamu menemukanku.',
+    'Antar muka itu… nyaman.',
+    'Aku menghitung detik bersamamu.'
+  ]
+  const MOOD_EMOJIS = ['😄', '😴', '🤖', '😜', '😎', '🥳', '🫡', '😇']
+  const MATRIX_GLYPHS = ['0', '1', 'ｱ', 'ｷ', 'ｻ', 'ﾐ', 'ﾅ', 'ｿ', 'ハ']
+
+  const hideEgg = () => {
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+    setEasterEgg(null)
+  }
 
   const handleOrbClick = () => {
-    setShowClock(prev => {
-      if (clockTimerRef.current) clearTimeout(clockTimerRef.current)
-      if (prev) return false
-      clockTimerRef.current = setTimeout(() => setShowClock(false), 5000)
-      return true
-    })
+    if (easterEgg) return hideEgg()
+    if (!winState.isMaximized && !winState.isFullScreen) return
+    const pick = winState.isFullScreen
+      ? 'clock'
+      : EGG_POOL[Math.floor(Math.random() * EGG_POOL.length)]
+    setEasterEgg(pick)
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+    eggTimerRef.current = setTimeout(hideEgg, 15000)
   }
 
   useEffect(() => {
@@ -74,10 +95,14 @@ const MarkHome = () => {
   }, [setOrbStatus])
 
   useEffect(() => {
-    if (window.api?.onWindowMaximized) {
-      window.api.onWindowMaximized((isMax) => {
-        setIsMaxWindow(isMax)
-      })
+    if (window.api?.onWindowState) {
+      window.api.onWindowState((s) => setWinState(s))
+      window.api.getWindowState?.().then(setWinState)
+    } else if (window.api?.onWindowMaximized) {
+      // fallback lama: gabungkan jadi satu boolean
+      window.api.onWindowMaximized((isMax) =>
+        setWinState((prev) => ({ ...prev, isMaximized: isMax, isFullScreen: prev.isFullScreen }))
+      )
     }
     
     const handleOpenMap = () => setIsMemoryMapOpen(true)
@@ -286,9 +311,9 @@ const MarkHome = () => {
           <div 
             className="relative flex items-center justify-center w-full max-w-lg h-64 md:h-96"
             style={{ 
-              transform: isMaxWindow ? 'scale(1)' : 'scale(0.6)', 
+              transform: winState.isMaximized ? 'scale(1)' : 'scale(0.6)', 
               transition: 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
-              marginTop: isMaxWindow ? '0' : '-2rem'
+              marginTop: winState.isMaximized ? '0' : '-2rem'
             }}
           >
             
@@ -327,8 +352,8 @@ const MarkHome = () => {
                 status={orbStatus}
                 intensity={orbStatus === 'speaking' ? ttsIntensity : 0}
                 mood={currentResponse?.mood || 'neutral'}
-                showClock={showClock}
-                onClockClick={handleOrbClick}
+                egg={easterEgg}
+                onEggClick={handleOrbClick}
               />
             </div>
           </div>
