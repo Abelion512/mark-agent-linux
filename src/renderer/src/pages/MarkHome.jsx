@@ -11,13 +11,10 @@ import ProcessPanel from '../components/core/ProcessPanel'
 import ThoughtNeuralFlow from '../components/core/ThoughtNeuralFlow'
 import MemoryVisualizer from '../components/core/MemoryVisualizer'
 import BrowserPreviewWidget from '../components/core/BrowserPreviewWidget'
-import { ChatStudioModal } from '../components/core/ChatStudioModal'
-import { MessageSquare } from 'lucide-react'
 import musicCoverFallback from '../assets/music-cover.png'
 import { useYoutubeMusic } from '../contexts/YoutubeMusicContext'
 import { useVAD } from '../hooks/useVAD'
 import { useMemoryGroomer } from '../hooks/useMemoryGroomer'
-import { db, setSessionWorkspace } from '../api/db'
 
 const MarkHome = () => {
   const chatContext = useChat()
@@ -45,35 +42,14 @@ const MarkHome = () => {
   useMemoryGroomer(true) // Aktifkan Hippocampus Engine
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const [isChatStudioOpen, setIsChatStudioOpen] = useState(false)
   const [isMemoryMapOpen, setIsMemoryMapOpen] = useState(false)
   const [currentResponse, setCurrentResponse] = useState(null)
   const [showMusicWidget, setShowMusicWidget] = useState(false)
   const [isMusicAnimatingOut, setIsMusicAnimatingOut] = useState(false)
   const [isMaxWindow, setIsMaxWindow] = useState(false)
   const [ttsIntensity, setTtsIntensity] = useState(0)
-  const [workspaceRoot, setWorkspaceRoot] = useState(null)
   const [showClock, setShowClock] = useState(false)
   const clockTimerRef = useRef(null)
-
-  useEffect(() => {
-    db.sessions
-      .get(1)
-      .then((s) => {
-        if (s?.workspaceRoot) setWorkspaceRoot(s.workspaceRoot)
-      })
-      .catch(() => {})
-  }, [])
-
-  const handleSelectWorkspace = async () => {
-    if (window.api && window.api.selectDirectory) {
-      const selected = await window.api.selectDirectory()
-      if (selected) {
-        await setSessionWorkspace(1, selected)
-        setWorkspaceRoot(selected)
-      }
-    }
-  }
 
   const handleOrbClick = () => {
     setShowClock(prev => {
@@ -105,15 +81,8 @@ const MarkHome = () => {
     }
     
     const handleOpenMap = () => setIsMemoryMapOpen(true)
-    const handleOpenChat = () => setIsChatStudioOpen(true)
-
     window.addEventListener('open-memory-map', handleOpenMap)
-    window.addEventListener('open-chat-studio', handleOpenChat)
-
-    return () => {
-      window.removeEventListener('open-memory-map', handleOpenMap)
-      window.removeEventListener('open-chat-studio', handleOpenChat)
-    }
+    return () => window.removeEventListener('open-memory-map', handleOpenMap)
   }, [])
 
   const handleVoiceTranscript = (text) => {
@@ -195,8 +164,7 @@ const MarkHome = () => {
           setCurrentResponse({
             text: lastItem.content || 'Memproses instruksi...',
             type: 'short',
-            isThinking: true,
-            mood: lastItem.mood || 'neutral'
+            isThinking: true
           })
         } else {
           // Final response
@@ -300,14 +268,6 @@ const MarkHome = () => {
 
       {/* Floating UI Elements */}
       <FloatingMenu onOpenHistory={() => setIsHistoryOpen(true)} />
-      <button
-        onClick={() => setIsChatStudioOpen(true)}
-        className="fixed top-8 left-22 z-50 h-12 px-3.5 btn btn-outline bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--glass-border)] flex items-center gap-2 transition-all shadow-lg hover:shadow-[0_0_15px_oklch(var(--p)/0.3)] text-white/80 hover:text-white rounded-xl"
-        title="Buka Chat Studio (Multi-Session Bubble Chat)"
-      >
-        <MessageSquare className="w-4 h-4 text-primary" />
-        <span className="text-xs font-semibold hidden md:inline">Studio</span>
-      </button>
       <StatusIndicator notifications={notifications} />
       <ProcessPanel processes={activeProcesses} onDismiss={dismissProcess} />
       <BrowserPreviewWidget />
@@ -458,20 +418,12 @@ const MarkHome = () => {
         onStopRecord={stopRecording}
         onStop={handleStop}
         source={inputSource}
-        workspaceRoot={workspaceRoot}
-        onSelectWorkspace={handleSelectWorkspace}
       />
 
-      {/* Slide-out Drawers & Modals */}
+      {/* Slide-out Drawers */}
       <HistoryDrawer isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
 
       <MemoryVisualizer isOpen={isMemoryMapOpen} onClose={() => setIsMemoryMapOpen(false)} />
-
-      <ChatStudioModal
-        isOpen={isChatStudioOpen}
-        onClose={() => setIsChatStudioOpen(false)}
-        chatContext={chatContext}
-      />
     </div>
   )
 }

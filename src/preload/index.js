@@ -8,7 +8,6 @@ const api = {
   },
   saveTempFile: (arrayBuffer, fileName) => ipcRenderer.invoke('save-temp-file', arrayBuffer, fileName),
   showOpenDialog: () => ipcRenderer.invoke('dialog:open-file'),
-  selectDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
   fetchAI: (params) => ipcRenderer.invoke('ai:fetch', params),
   abortFetchAI: () => ipcRenderer.send('ai:abort-fetch'),
   syncConfig: (config) => ipcRenderer.send('sync-config', config),
@@ -58,14 +57,6 @@ const api = {
   sendTgAgentExecutionDone: (data) => ipcRenderer.send('tg:agent-execution-done', data),
   tgSendMessage: (chatId, text) => ipcRenderer.invoke('tg:send-message', { chatId, text }),
   tgBroadcastToAdmins: (text) => ipcRenderer.send('tg:broadcast-to-admins', text),
-  onTgCommandAccept: (cb) => {
-    ipcRenderer.removeAllListeners('tg:command-accept')
-    ipcRenderer.on('tg:command-accept', (_, data) => cb(data))
-  },
-  onTgCommandReject: (cb) => {
-    ipcRenderer.removeAllListeners('tg:command-reject')
-    ipcRenderer.on('tg:command-reject', (_, data) => cb(data))
-  },
   
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),
@@ -95,18 +86,6 @@ const api = {
   reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
   createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
   togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
-  tgTakeScreenshot: (chatId) => ipcRenderer.send('tg:trigger-screenshot', { chatId }),
-  tgDownloadMusic: (chatId, query) => ipcRenderer.send('tg:trigger-music-download', { chatId, query }),
-  tgPlayMusicUi: (command, query) => ipcRenderer.send('tg:trigger-music-ui', { command, query }),
-  getPlugins: () => ipcRenderer.invoke('plugin:get-list'),
-  executeNativeTool: (toolName, query, config) => ipcRenderer.invoke('native-tool:execute', toolName, query, config),
-  checkToolApproval: (toolName, query) => ipcRenderer.invoke('native-tool:needs-approval', toolName, query),
-  executePlugin: (action, query) => ipcRenderer.invoke('plugin:execute', action, query),
-  openPluginFolder: () => ipcRenderer.invoke('plugin:open-folder'),
-  openSpecificFolder: (path) => ipcRenderer.invoke('plugin:open-specific-folder', path),
-  reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
-  createPlugin: (payload) => ipcRenderer.invoke('plugin:create', payload),
-  togglePlugin: (name, isEnabled) => ipcRenderer.invoke('plugin:toggle', name, isEnabled),
   deletePlugin: (name) => ipcRenderer.invoke('plugin:delete', name),
   removeTgListeners: () => {
     ['tg:connection', 'tg:message', 'tg:reply-sent', 'tg:thinking']
@@ -117,12 +96,12 @@ const api = {
   browserNavigate: (url) => ipcRenderer.invoke('browser:navigate', url),
   browserReadDom: () => ipcRenderer.invoke('browser:read-dom'),
   browserAction: (data) => ipcRenderer.invoke('browser:action', data),
-  browserClose: (sessionId = 'default') => ipcRenderer.invoke('browser:close', sessionId),
+  browserClose: () => ipcRenderer.invoke('browser:close'),
   onBrowserPreview: (cb) => {
     ipcRenderer.removeAllListeners('browser:preview')
     ipcRenderer.on('browser:preview', (_, data) => cb(data))
   },
-  showBrowserWindow: (sessionId = 'default') => ipcRenderer.send('browser:show', sessionId),
+  showBrowserWindow: () => ipcRenderer.send('browser:show'),
   osRead: () => ipcRenderer.invoke('os:read'),
   osClick: (query) => ipcRenderer.invoke('os:click', query),
   osType: (query) => ipcRenderer.invoke('os:type', query),
@@ -131,37 +110,7 @@ const api = {
   osOpen: (target) => ipcRenderer.invoke('os:open', target),
   osListWindows: () => ipcRenderer.invoke('os:list-windows'),
   osFocusWindow: (title) => ipcRenderer.invoke('os:focus-window', title),
-  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query),
-
-  // Skills
-  getSkills: () => ipcRenderer.invoke('get-skills'),
-  readSkill: (name) => ipcRenderer.invoke('read-skill', name),
-  saveSkill: (name, content) => ipcRenderer.invoke('save-skill', name, content),
-  deleteSkill: (name) => ipcRenderer.invoke('delete-skill', name),
-  installSkill: (sourcePath) => ipcRenderer.invoke('install-skill', sourcePath),
-  showOpenDialog: () => ipcRenderer.invoke('show-open-dialog'),
-  
-  // VSCode-like Skill Manager
-  getSkillTree: (name) => ipcRenderer.invoke('get-skill-tree', name),
-  readSkillFile: (name, relativePath) => ipcRenderer.invoke('read-skill-file', name, relativePath),
-  saveSkillFile: (name, relativePath, content) => ipcRenderer.invoke('save-skill-file', name, relativePath, content),
-  createSkillItem: (name, relativePath, isFolder) => ipcRenderer.invoke('create-skill-item', name, relativePath, isFolder),
-  deleteSkillItem: (name, relativePath) => ipcRenderer.invoke('delete-skill-item', name, relativePath),
-  renameSkillItem: (name, oldPath, newPath) => ipcRenderer.invoke('rename-skill-item', name, oldPath, newPath),
-  onSkillsUpdated: (callback) => {
-    const handler = () => callback()
-    ipcRenderer.on('skills-updated', handler)
-    return () => ipcRenderer.removeListener('skills-updated', handler)
-  },
-
-  // Workspace RAG & .mark/ Engine
-  workspaceIndex: (workspaceRoot) => ipcRenderer.invoke('workspace:index', workspaceRoot),
-  workspaceQuery: (workspaceRoot, queryText, topK = 4) =>
-    ipcRenderer.invoke('workspace:query', { workspaceRoot, queryText, topK }),
-  workspaceGetMemory: (workspaceRoot) => ipcRenderer.invoke('workspace:get-memory', workspaceRoot),
-  workspaceSaveMemory: (workspaceRoot, memoryData) =>
-    ipcRenderer.invoke('workspace:save-memory', { workspaceRoot, memoryData }),
-  workspaceEnsure: (workspaceRoot) => ipcRenderer.invoke('workspace:ensure', workspaceRoot)
+  osAskUser: (query) => ipcRenderer.invoke('os:ask-user', query)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

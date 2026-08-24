@@ -38,16 +38,8 @@ import {
   getGoogleStatus
 } from './google/google-service.js'
 import { loadPlugins, initPluginIPC } from './plugins/plugin-loader.js'
-import { setupSkillIPC, setupSkillWatcher } from './skills/skill-manager.js'
 import { navigateTo, readDOM, executeAction, closeBrowser, showBrowser } from './browser-agent.js'
 import { readDesktop, executeClick, executeType, executeKey, executeScroll, openApp, listWindows, focusWindow, askUserPC } from './pc-agent.js'
-import {
-  ensureMarkWorkspace,
-  readWorkingMemory,
-  saveWorkingMemory,
-  indexWorkspace,
-  queryCodebase
-} from './workspace-rag.js'
 
 // Matikan semua optimasi throttling Chromium agar background task Telegram tidak tertidur
 app.commandLine.appendSwitch('disable-background-timer-throttling')
@@ -91,7 +83,6 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
-    setupSkillWatcher(mainWindow)
     // mainWindow.webContents.openDevTools()
   })
 
@@ -343,12 +334,6 @@ ipcMain.handle('dialog:open-file', async () => {
   return result.filePaths
 })
 
-ipcMain.handle('dialog:open-directory', async () => {
-  const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
-  if (result.canceled || !result.filePaths || result.filePaths.length === 0) return null
-  return result.filePaths[0]
-})
-
 ipcMain.handle('save-temp-file', async (event, arrayBuffer, fileName) => {
   try {
     const tempDir = path.join(app.getPath('temp'), 'mark-attachments')
@@ -380,11 +365,11 @@ ipcMain.handle('browser:action', async (event, data) => {
   try { return await executeAction(data) }
   catch (e) { return `[ERROR] Gagal eksekusi action: ${e.message}` }
 })
-ipcMain.handle('browser:close', (event, sessionId = 'default') => {
-  return closeBrowser(sessionId)
+ipcMain.handle('browser:close', (event) => {
+  return closeBrowser()
 })
-ipcMain.on('browser:show', (event, sessionId = 'default') => {
-  showBrowser(sessionId)
+ipcMain.on('browser:show', () => {
+  showBrowser()
 })
 
 
@@ -534,23 +519,6 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('open-external', async (event, url) => {
     shell.openExternal(url)
-  })
-
-  // Workspace RAG & .mark/ Engine
-  ipcMain.handle('workspace:index', async (_, workspaceRoot) => {
-    return await indexWorkspace(workspaceRoot)
-  })
-  ipcMain.handle('workspace:query', async (_, { workspaceRoot, queryText, topK }) => {
-    return queryCodebase(workspaceRoot, queryText, topK)
-  })
-  ipcMain.handle('workspace:get-memory', async (_, workspaceRoot) => {
-    return readWorkingMemory(workspaceRoot)
-  })
-  ipcMain.handle('workspace:save-memory', async (_, { workspaceRoot, memoryData }) => {
-    return saveWorkingMemory(workspaceRoot, memoryData)
-  })
-  ipcMain.handle('workspace:ensure', async (_, workspaceRoot) => {
-    return ensureMarkWorkspace(workspaceRoot)
   })
 
   ipcMain.handle('get-youtube-transcript', async (event, url) => {
