@@ -493,17 +493,6 @@ ${
     throw new Error(
       'Gagal merespons: Model AI yang lu pake gagal ngeluarin format JSON yang bener setelah di-retry. (Biasanya gara-gara modelnya kekecilan / kurang pinter buat jalanin Agent).'
     )
-    return {
-      thought: 'Fallback triggered after retry attempts',
-      suggested_mode: 'direct',
-      action: null,
-      answer: 'Maaf, terjadi kendala format respons saat memproses instruksi. Bisa tolong ulangi atau berikan detail tambahan?',
-      task_status: 'simple',
-      objective: null,
-      memory: null,
-      mood: 'neutral',
-      active_topic: activeTopic
-    }
   } catch (error) {
     if (error.name !== 'AbortError' && !error.message.includes('AbortError')) {
       console.error('Error in getNextAction:', error)

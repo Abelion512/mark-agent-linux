@@ -6,7 +6,7 @@ import yts from 'yt-search'
 import { execFile } from 'child_process'
 import ffmpeg from 'ffmpeg-static'
 import { desktopCapturer } from 'electron'
-import { getGlobalConfig } from '../ai-bridge.js'
+import { getGlobalConfig, activeAbortControllers, abortAllFetches } from '../ai-bridge.js'
 
 let bot = null
 let currentStatus = 'disconnected'

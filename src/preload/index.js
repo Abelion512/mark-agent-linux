@@ -131,8 +131,6 @@ const api = {
   saveSkill: (name, content) => ipcRenderer.invoke('save-skill', name, content),
   deleteSkill: (name) => ipcRenderer.invoke('delete-skill', name),
   installSkill: (sourcePath) => ipcRenderer.invoke('install-skill', sourcePath),
-  showOpenDialog: () => ipcRenderer.invoke('show-open-dialog'),
-  
   // VSCode-like Skill Manager
   getSkillTree: (name) => ipcRenderer.invoke('get-skill-tree', name),
   readSkillFile: (name, relativePath) => ipcRenderer.invoke('read-skill-file', name, relativePath),

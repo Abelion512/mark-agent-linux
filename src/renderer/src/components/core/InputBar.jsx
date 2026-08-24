@@ -14,6 +14,7 @@ import {
   FaFolder
 } from 'react-icons/fa'
 import ConfirmModal from './ConfirmModal'
+import { NATIVE_SKILLS } from './native-skills'
 
 const EMOJIS = [
   '😂',
