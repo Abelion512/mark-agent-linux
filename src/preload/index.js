@@ -58,6 +58,18 @@ const api = {
   sendTgAgentExecutionDone: (data) => ipcRenderer.send('tg:agent-execution-done', data),
   tgSendMessage: (chatId, text) => ipcRenderer.invoke('tg:send-message', { chatId, text }),
   tgBroadcastToAdmins: (text) => ipcRenderer.send('tg:broadcast-to-admins', text),
+  onTgCommandAccept: (cb) => {
+    ipcRenderer.removeAllListeners('tg:command-accept')
+    ipcRenderer.on('tg:command-accept', (_, data) => cb(data))
+  },
+  onTgCommandAlways: (cb) => {
+    ipcRenderer.removeAllListeners('tg:command-always')
+    ipcRenderer.on('tg:command-always', (_, data) => cb(data))
+  },
+  onTgCommandReject: (cb) => {
+    ipcRenderer.removeAllListeners('tg:command-reject')
+    ipcRenderer.on('tg:command-reject', (_, data) => cb(data))
+  },
   
   // RAG Parsing
   parseDocument: (arrayBuffer, isDocx) => ipcRenderer.invoke('parse-document', arrayBuffer, isDocx),

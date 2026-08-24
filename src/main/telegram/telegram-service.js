@@ -85,6 +85,55 @@ export const startTelegramBot = async (token, mainWindow) => {
       ctx.reply('👋 Halo! Saya Mark (AI OS Companion). Bot Telegram ini telah terhubung.')
     })
 
+    bot.command('info', (ctx) => {
+      ctx.reply(
+        '**Daftar Perintah MARK:**\n\n' +
+        '/start - Memulai bot\n' +
+        '/info - Menampilkan daftar perintah\n' +
+        '/abort - Menghentikan proses AI yang sedang berjalan\n' +
+        '/accept - Mengizinkan persetujuan sekali saja\n' +
+        '/always - Mengizinkan selamanya untuk path folder ini\n' +
+        '/reject - Menolak prompt persetujuan',
+        { parse_mode: 'Markdown' }
+      )
+    })
+
+    bot.command('abort', (ctx) => {
+      if (activeAbortControllers.size > 0) {
+        abortAllFetches()
+        ctx.reply('[INFO]: Membatalkan proses AI saat ini...')
+      } else {
+        ctx.reply('[INFO]: Tidak ada proses AI yang sedang berjalan.')
+      }
+    })
+
+    bot.command('accept', (ctx) => {
+      if (botWindow && !botWindow.isDestroyed()) {
+        const chatId = String(ctx.chat?.id || ctx.from?.id || '')
+        botWindow.webContents.send('tg:command-accept', { chatId })
+      } else {
+        ctx.reply('[ERROR]: UI Mark tidak terhubung.')
+      }
+    })
+
+    bot.command('always', (ctx) => {
+      if (botWindow && !botWindow.isDestroyed()) {
+        const chatId = String(ctx.chat?.id || ctx.from?.id || '')
+        botWindow.webContents.send('tg:command-always', { chatId })
+      } else {
+        ctx.reply('[ERROR]: UI Mark tidak terhubung.')
+      }
+    })
+
+    bot.command('reject', (ctx) => {
+      if (botWindow && !botWindow.isDestroyed()) {
+        const chatId = String(ctx.chat?.id || ctx.from?.id || '')
+        botWindow.webContents.send('tg:command-reject', { chatId })
+      } else {
+        ctx.reply('[ERROR]: UI Mark tidak terhubung.')
+      }
+    })
+
     bot.on('text', async (ctx) => {
       const senderId = String(ctx.from?.id || '')
       const senderName = ctx.from?.first_name
