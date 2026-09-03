@@ -45,13 +45,25 @@ skills 6 + tg 1.
 
 ## Metode audit (untuk reproduce)
 
+Sejak refactor registry (PR #18), handler tidak lagi didaftarkan di
+`sidecar/engine.mjs` — pindah ke `sidecar/engine/channels/*`. Perintah di
+bawah sudah disesuaikan dan TERVERIFIKASI pada commit refactor:
+
 ```bash
+# Normalisasi baris dulu agar registrasi multi-line (on(
+#   'workspace:query', ...)) ikut terbaca:
+find sidecar/engine -name '*.mjs' -exec cat {} + | tr '\n' ' ' > /tmp/engine-all.mjs
 # Channel yang dipanggil renderer tapi tidak punya handler:
 comm -23 \
   <(grep -oP "call\('\K[^']+" src/api/tauri-bridge.js | sort -u) \
-  <(grep -oP "^on\('\K[^']+" sidecar/engine.mjs | sort -u)
-# Saat audit pertama: 21 baris (2 false positive multi-line, 5 browser:* stub,
-# 14 gap nyata + plugin/skills/tg families).
+  <(grep -oP "on\(\s*'\K[^']+" /tmp/engine-all.mjs | sort -u)
+# Hasil terverifikasi pada refactor: yang muncul hanya 5 stub browser:*
+# (browser:navigate/read-dom/action/close/show) — semuanya terdaftar via
+# loop `unsupported()` di engine/channels/music.mjs, jadi BUKAN gap.
+# 9 stub os:* tidak muncul karena renderer memakai invoke('os_*') Rust native.
+# Hitungan handler total: 55 terdaftar langsung + 14 stub loop = 69.
+# Saat audit pertama (pra-registry): 21 baris (2 false positive multi-line,
+# 5 browser:* stub, 14 gap nyata + plugin/skills/tg families).
 ```
 
 ## Verdict merge-readiness PR #16

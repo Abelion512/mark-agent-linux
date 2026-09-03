@@ -13,7 +13,8 @@ mulai bekerja di repo ini:
    eksplisit + override yang dipakai + proses review audit.
 5. `RELEASE-AUTOMATION.md` — alur rilis otomatis (prepare/finalize), gate
    verifikasi, catatan toolchain Rust+Bun.
-6. `PLANNED/migration-tauri-v2.md` — rencana fase migrasi (B6/C3/C4).
+6. `MIGRATION-PLAN.md` — rencana fase migrasi tersisa (B5/B6/C3/C4),
+   lengkap dengan titik masuk implementasi + verifikasi per fase.
 7. `../evaluation/README.md` — MarkBench: harness evaluasi, verifier
    deterministik, anti-fabrication principles, roadmap.
 

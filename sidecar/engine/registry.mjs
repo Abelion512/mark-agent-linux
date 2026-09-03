@@ -18,7 +18,7 @@ export const on = (action, fn) => {
 }
 
 export const unsupported = (phase) => async () =>
-  ok({ unsupported: true, message: `Channel ini dipindah ke ${phase} (lihat docs/PLANNED/migration-tauri-v2.md)` })
+  ok({ unsupported: true, message: `Channel ini dipindah ke ${phase} (lihat docs/MIGRATION-PLAN.md)` })
 
 // Prinsip load-when-needed: modul berat hanya di-import saat channel-nya
 // dipakai pertama kali. Startup sidecar jadi instan, dan efek samping modul

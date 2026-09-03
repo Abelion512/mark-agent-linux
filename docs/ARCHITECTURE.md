@@ -58,6 +58,11 @@ Saat refactor registry ini, paritas 69/69 terverifikasi.
 
 ## 3. Pola Arsitektur yang Diadopsi (dari pola Agent Skills / plugin Claude)
 
+Sumber pola: ekosistem plugin/Agent Skills Claude (claude.com/plugins), pola
+security solution Claude (claude.com/solutions/cybersecurity: policy
+adherence + agentic multi-step di bawah kendali kebijakan), dan praktik
+harness benchmark frontier. Bukan salinan kode — prinsipnya yang diadopsi:
+
 1. **Progressive disclosure / load-when-needed.** Modul berat (ai-bridge,
    telegram, plugin-loader, transformers) di-import saat channel-nya pertama
    kali dipakai (`lazy()` di registry). Efek samping (interval polling)
@@ -65,12 +70,16 @@ Saat refactor registry ini, paritas 69/69 terverifikasi.
    listing hanya nama+deskripsi; isi SKILL.md dibaca saat dipakai.
 2. **Filesystem-based capability store.** Skills = folder `<nama>/SKILL.md`
    di XDG data dir; plugin = folder + manifest. Tidak ada database opaque —
-   agent bisa membaca store langsung dari shell.
+   agent bisa membaca store langsung dari shell. (Pola plugin directory:
+   metadata terkurasi di listing, kode dieksekusi ter-isolasi.)
 3. **Registry, bukan monolit.** Satu map handler + modul per domain. Menambah
    kemampuan tidak pernah menyentuh core loop.
 4. **Policy adherence di boundary.** Approval (rfd native) dan sanitasi path
    (`resolve_contained`, `sanitizeSkillRelPath`) hidup di lapisan eksekusi,
    bukan di lapisan keputusan AI. Model tidak bisa meng-approve dirinya.
+5. **Fail-fast capability signaling.** Channel yang belum di-port tidak
+   mengembalikan sukses palsu — `unsupported()` eksplisit agar konsumen tahu
+   batas kemampuan, bukan diam-diam percaya fitur jalan.
 
 ## 4. Alur Data Kritis
 
@@ -80,10 +89,11 @@ Saat refactor registry ini, paritas 69/69 terverifikasi.
 - **Tool berbahaya:** model memutuskan → renderer `node_invoke('native-tool:execute')`
   → Rust cek `APPROVAL_ACTIONS`/`needsApproval` → dialog rfd native →
   baru diteruskan ke sidecar `main/node-tools.js`.
-- **Benchmark (MarkBench):** `evaluation/run.mjs` → `mark-adapter.mjs`
+- **Benchmark (MarkBench):** `evaluation/terminal-bench.mjs` (entry
+  `runTask`/`runAll`, script `bun run benchmark:echo`) → `mark-adapter.mjs`
   (spawn sidecar persisten, multiplex per id) → jawaban diverifier predikat
-  deterministik → laporan JSON + opsional Telegram dashboard
-  (`benchmark:telegram`).
+  deterministik yang dieksekusi → laporan JSON + opsional Telegram dashboard
+  (`benchmark:telegram`). Smoke tanpa network: `bun evaluation/smoke.mjs`.
 - **Knowledge:** dokumen → `ragPipeline.js` (chunk 500/50) → Dexie + Orama;
   workspace `.mark/` → `workspace:*` channel → working memory disuntikkan ke
   system prompt.
@@ -96,6 +106,6 @@ Saat refactor registry ini, paritas 69/69 terverifikasi.
   Electron (paritas fitur sudah pindah); kandidat pembersihan menyusul.
 - `yt:load/show/hide/command` butuh WebviewWindow; respons stub aman.
 
-Rencana fase: `docs/PLANNED/migration-tauri-v2.md`.
+Rencana fase: `docs/MIGRATION-PLAN.md` (status per fase + verifikasi).
 Audit gap lengkap: `docs/MIGRATION-GAPS.md`. Triage risiko dependency:
 `docs/SECURITY-TRIAGE.md`.
