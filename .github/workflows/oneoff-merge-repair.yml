@@ -1,9 +1,5 @@
 name: One-off merge repair (linux)
 
-# Sekali jalan: memperbaiki sisa kerusakan resolusi konflik merge PR #26 pada
-# branch linux, verifikasi (vitest + vite build), lalu push perbaikan ke linux.
-# Log dikirim ke komentar PR #29 dan ke .repair/repair.log di branch ini.
-
 on:
   push:
     branches: ["chore/merge-repair-linux"]
@@ -33,8 +29,11 @@ jobs:
         shell: bash
         run: |
           exec > >(tee -a /tmp/repair.log) 2>&1
-          echo "### import block BEFORE"
-          sed -n '28,52p' src/hooks/agent/useMarkPlan.js
+
+          echo "### 1. install"
+          bun install --frozen-lockfile 2>&1 | tail -n 3
+
+          echo "### 2. patch useMarkPlan.js"
           python3 - <<'PY'
           import re, pathlib
 
@@ -59,9 +58,9 @@ jobs:
               repl = "  logSubAgentSpawn as trajectoryLogSub,\n  logReasoning\n} from '../../api/trajectory'"
               if anchor in s:
                   s = s.replace(anchor, repl, 1)
-                  notes.append("FIX2 ok - logReasoning imported from api/trajectory")
+                  notes.append("FIX2 ok - logReasoning imported")
               else:
-                  notes.append("FIX2 FAIL - trajectory import anchor not found")
+                  notes.append("FIX2 FAIL - anchor not found")
           else:
               notes.append("FIX2 skip - uses=%s bound=%s local=%s" % (uses_lr, bound_lr, local_lr))
 
@@ -75,27 +74,105 @@ jobs:
               notes.append("useMarkPlan.js unchanged")
           print("\n".join(notes))
           PY
-          echo "### import block AFTER"
-          sed -n '28,54p' src/hooks/agent/useMarkPlan.js
-          echo "### conflict markers"
-          git grep -I -n -E '^(<<<<<<< |>>>>>>> )' -- src src-tauri extension scripts tests evaluation || echo "none"
-          echo "### versions"
-          grep -m1 '"version"' package.json || true
-          grep -m1 '"version"' src-tauri/tauri.conf.json || true
-          grep -m1 '^version' src-tauri/Cargo.toml || true
-          echo "### install"
-          bun install --frozen-lockfile 2>&1 | tail -n 12
-          echo "### vitest"
+
+          echo "### 3. repair Configuration.jsx"
+          PRM=91d1ce3208c81c12256ae9e45243d33fe839f252
+          PRHEAD=dba9e015a510e81c565932624ee16b9b034661bb
+          FEAT=$(git rev-parse "$PRHEAD^1")
+          LINPRE=$(git rev-parse "$PRHEAD^2")
+          MB=$(git merge-base "$FEAT" "$LINPRE")
+          echo "FEAT=$FEAT"
+          echo "LINPRE=$LINPRE"
+          echo "MB=$MB"
+          POST_UNTOUCHED=0
+          SIDE_UNCHANGED=0
+          git diff --quiet "$PRM" HEAD -- src/pages/Configuration.jsx && POST_UNTOUCHED=1
+          git diff --quiet "$MB" "$LINPRE" -- src/pages/Configuration.jsx && SIDE_UNCHANGED=1
+          echo "post_merge_untouched=$POST_UNTOUCHED linux_side_unchanged=$SIDE_UNCHANGED"
+          if [ "$POST_UNTOUCHED" = "1" ] && [ "$SIDE_UNCHANGED" = "1" ]; then
+            git checkout "$FEAT" -- src/pages/Configuration.jsx
+            echo "RESTORED Configuration.jsx from pre-conflict feature parent"
+            git diff --stat -- src/pages/Configuration.jsx
+          else
+            echo "SKIP restore - showing evidence"
+            git diff --stat "$MB" "$LINPRE" -- src/pages/Configuration.jsx
+            git diff --stat "$PRM" HEAD -- src/pages/Configuration.jsx
+          fi
+
+          echo "### 4. jsx structure check"
+          cat > /tmp/locate.py <<'PY'
+          import sys, pathlib
+          path = sys.argv[1]
+          lines = pathlib.Path(path).read_text(encoding="utf-8").split("\n")
+          stack = []
+          issues = []
+          for i, ln in enumerate(lines, 1):
+              t = ln.strip()
+              ind = len(ln) - len(ln.lstrip())
+              if t.startswith("<div") and not t.endswith("/>") and "</div>" not in t:
+                  stack.append((ind, i))
+              elif t == "</div>":
+                  if not stack:
+                      issues.append("line %d: closing div with empty stack" % i)
+                      continue
+                  ind0, i0 = stack.pop()
+                  if ind0 != ind:
+                      issues.append("line %d: close indent %d != open line %d indent %d" % (i, ind, i0, ind0))
+          print("%s: unclosed=%s" % (path, [i for _, i in stack][:10]))
+          for m in issues[:8]:
+              print("  " + m)
+          if issues:
+              first = int(issues[0].split()[1].rstrip(":"))
+              lo = max(1, first - 18)
+              hi = min(len(lines), first + 6)
+              print("--- context %d-%d ---" % (lo, hi))
+              for k in range(lo, hi + 1):
+                  print("%5d| %s" % (k, lines[k - 1]))
+          if not issues and not stack:
+              print("  balanced")
+          PY
+          python3 /tmp/locate.py src/pages/Configuration.jsx
+
+          echo "### 5. parse sweep (esbuild)"
+          cat > .parsecheck.cjs <<'NODE'
+          const { transformSync } = require("esbuild")
+          const fs = require("fs")
+          const path = require("path")
+          const roots = ["src", "scripts", "extension", "evaluation", "tests"]
+          let bad = 0, n = 0
+          for (const root of roots) {
+            if (!fs.existsSync(root)) continue
+            for (const rel of fs.readdirSync(root, { recursive: true })) {
+              const p = path.join(root, rel)
+              if (!/\.(js|jsx|mjs|cjs)$/.test(p)) continue
+              if (!fs.statSync(p).isFile()) continue
+              n++
+              try {
+                transformSync(fs.readFileSync(p, "utf8"), { loader: "jsx", jsx: "automatic" })
+              } catch (e) {
+                bad++
+                const err = e && e.errors && e.errors[0]
+                const loc = err && err.location ? err.location.line + ":" + err.location.column : "?"
+                console.log("PARSE-FAIL", p, loc, err ? err.text : String(e).split("\n")[0])
+              }
+            }
+          }
+          console.log("parse-sweep files=" + n + " failures=" + bad)
+          NODE
+          node .parsecheck.cjs
+          rm -f .parsecheck.cjs
+
+          echo "### 6. vitest"
           set +e
-          bunx vitest run 2>&1 | tail -n 45
+          bunx vitest run 2>&1 | tail -n 12
           VT=${PIPESTATUS[0]}
           echo "vitest_exit=$VT"
-          echo "### build"
-          bun run build 2>&1 | tail -n 35
+          echo "### 7. build"
+          bun run build 2>&1 | tail -n 30
           BD=${PIPESTATUS[0]}
           echo "build_exit=$BD"
           set -e
-          echo "### git status"
+          echo "### 8. git status"
           git status --porcelain
           if [ "$VT" -ne 0 ] || [ "$BD" -ne 0 ]; then
             echo "VERIFY-FAILED"
@@ -110,17 +187,15 @@ jobs:
           exec > >(tee -a /tmp/repair.log) 2>&1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- src/hooks/agent/useMarkPlan.js || true
+          git add -- src/hooks/agent/useMarkPlan.js src/pages/Configuration.jsx || true
           if git diff --cached --quiet; then
             echo "NOTHING-TO-COMMIT"
           else
-            git commit -m "fix(merge): perbaiki blok import useMarkPlan.js + panggilan osOpen pasca merge PR #26"
+            git commit -m "fix(merge): perbaiki import useMarkPlan.js, panggilan osOpen, dan struktur JSX Configuration.jsx pasca merge PR #26"
             if git push origin HEAD:linux; then
               echo "PUSHED-OK $(git rev-parse HEAD)"
             else
               echo "PUSH-FAILED"
-              git format-patch -1 --stdout > /tmp/repair.patch
-              head -c 20000 /tmp/repair.patch
             fi
           fi
 
@@ -134,12 +209,3 @@ jobs:
           tail -c 55000 /tmp/repair.log > /tmp/repair-tail.log
           { echo '```text'; cat /tmp/repair-tail.log; echo '```'; } > /tmp/repair-comment.md
           gh pr comment 29 --repo "$GITHUB_REPOSITORY" --body-file /tmp/repair-comment.md || echo "pr comment failed"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin chore/merge-repair-linux || true
-          git checkout -f -B replog FETCH_HEAD || true
-          mkdir -p .repair
-          cp /tmp/repair-tail.log .repair/repair.log
-          git add .repair/repair.log || true
-          git commit -m "chore(repair): publish log [skip ci]" || true
-          git push origin HEAD:chore/merge-repair-linux || echo "log push failed"
