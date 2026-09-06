@@ -2,7 +2,7 @@ name: One-off merge repair (linux)
 
 # Sekali jalan: memperbaiki sisa kerusakan resolusi konflik merge PR #26 pada
 # branch linux, verifikasi (vitest + vite build), lalu push perbaikan ke linux.
-# Log lengkap dipublikasikan ke .repair/repair.log di branch ini.
+# Log dikirim ke komentar PR #29 dan ke .repair/repair.log di branch ini.
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   repair:
@@ -29,11 +30,12 @@ jobs:
       - name: Patch + verify
         id: work
         continue-on-error: true
+        shell: bash
         run: |
-          set -o pipefail
-          touch /tmp/repair.log
-          echo "=== patch useMarkPlan.js ===" | tee -a /tmp/repair.log
-          python3 - <<'PY' 2>&1 | tee -a /tmp/repair.log
+          exec > >(tee -a /tmp/repair.log) 2>&1
+          echo "### import block BEFORE"
+          sed -n '28,52p' src/hooks/agent/useMarkPlan.js
+          python3 - <<'PY'
           import re, pathlib
 
           p = pathlib.Path("src/hooks/agent/useMarkPlan.js")
@@ -73,57 +75,71 @@ jobs:
               notes.append("useMarkPlan.js unchanged")
           print("\n".join(notes))
           PY
-          echo "=== conflict markers ===" | tee -a /tmp/repair.log
-          if git grep -I -n -E '^(<<<<<<< |>>>>>>> )' -- src src-tauri extension scripts tests evaluation >> /tmp/repair.log; then
-            echo "MARKERS FOUND (listed above)" | tee -a /tmp/repair.log
-          else
-            echo "none" | tee -a /tmp/repair.log
+          echo "### import block AFTER"
+          sed -n '28,54p' src/hooks/agent/useMarkPlan.js
+          echo "### conflict markers"
+          git grep -I -n -E '^(<<<<<<< |>>>>>>> )' -- src src-tauri extension scripts tests evaluation || echo "none"
+          echo "### versions"
+          grep -m1 '"version"' package.json || true
+          grep -m1 '"version"' src-tauri/tauri.conf.json || true
+          grep -m1 '^version' src-tauri/Cargo.toml || true
+          echo "### install"
+          bun install --frozen-lockfile 2>&1 | tail -n 12
+          echo "### vitest"
+          set +e
+          bunx vitest run 2>&1 | tail -n 45
+          VT=${PIPESTATUS[0]}
+          echo "vitest_exit=$VT"
+          echo "### build"
+          bun run build 2>&1 | tail -n 35
+          BD=${PIPESTATUS[0]}
+          echo "build_exit=$BD"
+          set -e
+          echo "### git status"
+          git status --porcelain
+          if [ "$VT" -ne 0 ] || [ "$BD" -ne 0 ]; then
+            echo "VERIFY-FAILED"
+            exit 1
           fi
-          echo "=== versions ===" | tee -a /tmp/repair.log
-          node -p "'package.json=' + require('./package.json').version" | tee -a /tmp/repair.log
-          node -p "'tauri.conf.json=' + require('./src-tauri/tauri.conf.json').version" | tee -a /tmp/repair.log
-          (grep -m1 '^version' src-tauri/Cargo.toml || true) | tee -a /tmp/repair.log
-          echo "=== branch containment vs origin/linux ===" | tee -a /tmp/repair.log
-          for b in $(git branch -r --format='%(refname:short)' | grep -v HEAD); do
-            if git merge-base --is-ancestor "$b" origin/linux; then
-              echo "contained: $b"
-            else
-              echo "NOT-contained: $b"
-            fi
-          done | tee -a /tmp/repair.log
-          echo "=== bun install ===" | tee -a /tmp/repair.log
-          bun install --frozen-lockfile 2>&1 | tail -n 15 | tee -a /tmp/repair.log
-          echo "=== vitest ===" | tee -a /tmp/repair.log
-          bunx vitest run 2>&1 | tail -n 60 | tee -a /tmp/repair.log
-          echo "=== vite build ===" | tee -a /tmp/repair.log
-          bun run build 2>&1 | tail -n 40 | tee -a /tmp/repair.log
-          echo "=== ALL GREEN ===" | tee -a /tmp/repair.log
+          echo "VERIFY-OK"
 
-      - name: Push repair commit to linux
+      - name: Commit repair to linux
         if: steps.work.outcome == 'success'
+        shell: bash
         run: |
+          exec > >(tee -a /tmp/repair.log) 2>&1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- src/hooks/agent/useMarkPlan.js; then
-            echo "no diff to push" | tee -a /tmp/repair.log
+          git add -- src/hooks/agent/useMarkPlan.js || true
+          if git diff --cached --quiet; then
+            echo "NOTHING-TO-COMMIT"
           else
-            git add src/hooks/agent/useMarkPlan.js
             git commit -m "fix(merge): perbaiki blok import useMarkPlan.js + panggilan osOpen pasca merge PR #26"
-            git push origin HEAD:linux
-            echo "PUSHED $(git rev-parse HEAD) -> linux" | tee -a /tmp/repair.log
+            if git push origin HEAD:linux; then
+              echo "PUSHED-OK $(git rev-parse HEAD)"
+            else
+              echo "PUSH-FAILED"
+              git format-patch -1 --stdout > /tmp/repair.patch
+              head -c 20000 /tmp/repair.patch
+            fi
           fi
 
       - name: Publish log
         if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           [ -f /tmp/repair.log ] || echo "(no log produced)" > /tmp/repair.log
-          cp /tmp/repair.log /tmp/repair-final.log
+          tail -c 55000 /tmp/repair.log > /tmp/repair-tail.log
+          { echo '```text'; cat /tmp/repair-tail.log; echo '```'; } > /tmp/repair-comment.md
+          gh pr comment 29 --repo "$GITHUB_REPOSITORY" --body-file /tmp/repair-comment.md || echo "pr comment failed"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin chore/merge-repair-linux
-          git checkout -f -B replog FETCH_HEAD
+          git fetch origin chore/merge-repair-linux || true
+          git checkout -f -B replog FETCH_HEAD || true
           mkdir -p .repair
-          cp /tmp/repair-final.log .repair/repair.log
-          git add .repair/repair.log
-          git commit -m "chore(repair): publish log [skip ci]" || echo "nothing to commit"
-          git push origin HEAD:chore/merge-repair-linux
+          cp /tmp/repair-tail.log .repair/repair.log
+          git add .repair/repair.log || true
+          git commit -m "chore(repair): publish log [skip ci]" || true
+          git push origin HEAD:chore/merge-repair-linux || echo "log push failed"
