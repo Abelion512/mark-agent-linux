@@ -31,7 +31,7 @@ jobs:
           exec > >(tee -a /tmp/repair.log) 2>&1
 
           echo "### 1. install"
-          bun install --frozen-lockfile 2>&1 | tail -n 3
+          bun install --frozen-lockfile 2>&1 | tail -n 2
 
           echo "### 2. patch useMarkPlan.js"
           python3 - <<'PY'
@@ -48,7 +48,7 @@ jobs:
               s = s.replace(broken, fixed, 1)
               notes.append("FIX1 ok - objectiveVerifier import statement restored")
           else:
-              notes.append("FIX1 skip - broken import pattern not found")
+              notes.append("FIX1 skip - pattern not found")
 
           uses_lr = re.search(r"\blogReasoning\s*\(", s) is not None
           bound_lr = re.search(r"import\s*\{[^}]*\blogReasoning\b[^}]*\}\s*from", s) is not None
@@ -75,63 +75,68 @@ jobs:
           print("\n".join(notes))
           PY
 
-          echo "### 3. repair Configuration.jsx"
-          PRM=91d1ce3208c81c12256ae9e45243d33fe839f252
+          echo "### 3. evidence: </div> dropped by PR #26 branch"
           PRHEAD=dba9e015a510e81c565932624ee16b9b034661bb
           FEAT=$(git rev-parse "$PRHEAD^1")
           LINPRE=$(git rev-parse "$PRHEAD^2")
           MB=$(git merge-base "$FEAT" "$LINPRE")
-          echo "FEAT=$FEAT"
-          echo "LINPRE=$LINPRE"
-          echo "MB=$MB"
-          POST_UNTOUCHED=0
-          SIDE_UNCHANGED=0
-          git diff --quiet "$PRM" HEAD -- src/pages/Configuration.jsx && POST_UNTOUCHED=1
-          git diff --quiet "$MB" "$LINPRE" -- src/pages/Configuration.jsx && SIDE_UNCHANGED=1
-          echo "post_merge_untouched=$POST_UNTOUCHED linux_side_unchanged=$SIDE_UNCHANGED"
-          if [ "$POST_UNTOUCHED" = "1" ] && [ "$SIDE_UNCHANGED" = "1" ]; then
-            git checkout "$FEAT" -- src/pages/Configuration.jsx
-            echo "RESTORED Configuration.jsx from pre-conflict feature parent"
-            git diff --stat -- src/pages/Configuration.jsx
-          else
-            echo "SKIP restore - showing evidence"
-            git diff --stat "$MB" "$LINPRE" -- src/pages/Configuration.jsx
-            git diff --stat "$PRM" HEAD -- src/pages/Configuration.jsx
-          fi
+          git diff "$MB" "$FEAT" -- src/pages/Configuration.jsx | grep -n -B4 -A4 '^-.*</div>' | head -n 70 || true
 
-          echo "### 4. jsx structure check"
-          cat > /tmp/locate.py <<'PY'
-          import sys, pathlib
-          path = sys.argv[1]
-          lines = pathlib.Path(path).read_text(encoding="utf-8").split("\n")
-          stack = []
-          issues = []
-          for i, ln in enumerate(lines, 1):
-              t = ln.strip()
-              ind = len(ln) - len(ln.lstrip())
-              if t.startswith("<div") and not t.endswith("/>") and "</div>" not in t:
-                  stack.append((ind, i))
-              elif t == "</div>":
-                  if not stack:
-                      issues.append("line %d: closing div with empty stack" % i)
+          echo "### 4. fix Configuration.jsx"
+          python3 - <<'PY'
+          import pathlib
+
+          p = pathlib.Path("src/pages/Configuration.jsx")
+          lines = p.read_text(encoding="utf-8").split("\n")
+
+          def scan(ls):
+              stack = []
+              bad = []
+              for i, ln in enumerate(ls, 1):
+                  t = ln.strip()
+                  ind = len(ln) - len(ln.lstrip())
+                  if t.startswith("<div") and not t.endswith("/>") and "</div>" not in t:
+                      stack.append((ind, i))
+                  elif t == "</div>":
+                      if not stack:
+                          bad.append(("extra", i, ind, None, None))
+                          continue
+                      ind0, i0 = stack.pop()
+                      if ind0 != ind:
+                          bad.append(("mismatch", i, ind, i0, ind0))
+              return stack, bad
+
+          stack, bad = scan(lines)
+          print("before: unclosed=%s mismatches=%d" % ([i for _, i in stack], len(bad)))
+
+          if bad and bad[0][0] == "mismatch":
+              _, cl, cind, oline, oind = bad[0]
+              print("first mismatch: close line %d (indent %d) popped open line %d (indent %d)" % (cl, cind, oline, oind))
+              print("--- opening context %d-%d ---" % (max(1, oline - 6), min(len(lines), oline + 6)))
+              for j in range(max(1, oline - 6), min(len(lines), oline + 6) + 1):
+                  print("%5d| %s" % (j, lines[j - 1]))
+              ins = None
+              for k in range(oline, len(lines)):
+                  ln = lines[k]
+                  if not ln.strip():
                       continue
-                  ind0, i0 = stack.pop()
-                  if ind0 != ind:
-                      issues.append("line %d: close indent %d != open line %d indent %d" % (i, ind, i0, ind0))
-          print("%s: unclosed=%s" % (path, [i for _, i in stack][:10]))
-          for m in issues[:8]:
-              print("  " + m)
-          if issues:
-              first = int(issues[0].split()[1].rstrip(":"))
-              lo = max(1, first - 18)
-              hi = min(len(lines), first + 6)
-              print("--- context %d-%d ---" % (lo, hi))
-              for k in range(lo, hi + 1):
-                  print("%5d| %s" % (k, lines[k - 1]))
-          if not issues and not stack:
-              print("  balanced")
+                  ind = len(ln) - len(ln.lstrip())
+                  if ind <= oind:
+                      ins = k + 1
+                      break
+              if ins:
+                  print("--- insertion point: before line %d (indent %d) ---" % (ins, oind))
+                  for j in range(max(1, ins - 12), min(len(lines), ins + 4) + 1):
+                      print("%5d| %s" % (j, lines[j - 1]))
+                  lines.insert(ins - 1, " " * oind + "</div>")
+                  p.write_text("\n".join(lines), encoding="utf-8")
+                  stack2, bad2 = scan(lines)
+                  print("after: unclosed=%s mismatches=%d" % ([i for _, i in stack2], len(bad2)))
+              else:
+                  print("no insertion point found")
+          else:
+              print("no mismatch to fix")
           PY
-          python3 /tmp/locate.py src/pages/Configuration.jsx
 
           echo "### 5. parse sweep (esbuild)"
           cat > .parsecheck.cjs <<'NODE'
@@ -164,16 +169,17 @@ jobs:
 
           echo "### 6. vitest"
           set +e
-          bunx vitest run 2>&1 | tail -n 12
+          bunx vitest run 2>&1 | tail -n 6
           VT=${PIPESTATUS[0]}
           echo "vitest_exit=$VT"
           echo "### 7. build"
-          bun run build 2>&1 | tail -n 30
+          bun run build 2>&1 | tail -n 18
           BD=${PIPESTATUS[0]}
           echo "build_exit=$BD"
           set -e
-          echo "### 8. git status"
-          git status --porcelain
+          echo "### 8. diff"
+          git --no-pager diff --stat
+          git --no-pager diff -U2 -- src/pages/Configuration.jsx | head -n 40
           if [ "$VT" -ne 0 ] || [ "$BD" -ne 0 ]; then
             echo "VERIFY-FAILED"
             exit 1
@@ -191,7 +197,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "NOTHING-TO-COMMIT"
           else
-            git commit -m "fix(merge): perbaiki import useMarkPlan.js, panggilan osOpen, dan struktur JSX Configuration.jsx pasca merge PR #26"
+            git commit -m "fix(merge): perbaiki import useMarkPlan.js, panggilan osOpen, dan tag </div> Configuration.jsx pasca merge PR #26"
             if git push origin HEAD:linux; then
               echo "PUSHED-OK $(git rev-parse HEAD)"
             else
